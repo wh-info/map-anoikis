@@ -1,0 +1,19 @@
+# SDE dumps — huge, regenerate with `python build/build_systems.py`
+build/sde_cache/
+
+# Node
+backend/node_modules/
+backend/npm-debug.log
+backend/.env
+
+# Python
+build/__pycache__/
+build/.venv/
+*.pyc
+
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp

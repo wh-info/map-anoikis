@@ -1,0 +1,21 @@
+[project]
+name = "map-anoikis-build"
+version = "0.0.0"
+description = "Build-time data pipeline for the Anoikis map (SDE -> JS)."
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "RUF",
+]
