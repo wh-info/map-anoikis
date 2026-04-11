@@ -25,9 +25,14 @@ const PALETTES = {
     C5: [156,50,237], C6: [242,48,220], Thera: [246,252,50],
     C13: [237,237,237], Drifter: [237,237,237]
   },
+  ghost: {
+    C1: [38,110,110], C2: [38,110,110], C3: [38,110,110], C4: [38,110,110],
+    C5: [38,110,110], C6: [38,110,110], Thera: [38,110,110],
+    C13: [38,110,110], Drifter: [38,110,110]
+  },
 };
 
-const CLASS_COLORS = { ...PALETTES.ember };
+const CLASS_COLORS = { ...PALETTES.ghost };
 
 function applyPalette(name) {
   const p = PALETTES[name];
@@ -96,6 +101,26 @@ const stars = window.ANOIKIS_SYSTEMS.map((s) => ({
 document.getElementById('star-count').textContent = stars.length + ' systems';
 // systemID -> star, used by the live kill feed to resolve incoming IDs.
 const starById = new Map(stars.map((s) => [s.id, s]));
+
+// Named Drifter systems — custom display names and subclasses
+const DRIFTER_INFO = {
+  'J055520': { displayName: 'Sentinel MZ',       subclass: 'C14' },
+  'J110145': { displayName: 'Liberated Barbican', subclass: 'C15' },
+  'J164710': { displayName: 'Sanctified Vidette', subclass: 'C16' },
+  'J200727': { displayName: 'Conflux Eyrie',      subclass: 'C17' },
+  'J174618': { displayName: 'Azdaja Redoubt',     subclass: 'C18' },
+};
+function drifterDisplay(star) { return DRIFTER_INFO[star.name] ?? null; }
+
+const CLASS_OVERRIDES = { 'Thera': 'C12' };
+function displayClass(star) {
+  const dd = drifterDisplay(star);
+  if (dd) return dd.subclass;
+  return CLASS_OVERRIDES[star.name] ?? star.whClass;
+}
+function displayName(star) {
+  return drifterDisplay(star)?.displayName ?? star.name;
+}
 
 // Star bounds — used by resetView().
 const starBounds = (() => {
@@ -316,7 +341,7 @@ function draw() {
       if (s.x < topLeft.x || s.x > botRight.x) continue;
       if (s.y < topLeft.y || s.y > botRight.y) continue;
       const p = worldToScreen(s.x, s.y);
-      ctx.fillText(s.name, p.x, p.y + labelOffset);
+      ctx.fillText(drifterDisplay(s)?.displayName ?? s.name, p.x, p.y + labelOffset);
     }
   }
 
@@ -479,8 +504,8 @@ function handleHover(sx, sy) {
   if (dragging) { tooltip.classList.remove('visible'); return; }
   const s = pickStar(sx, sy);
   if (s) {
-    ttName.textContent = s.name;
-    ttClass.textContent = s.whClass + ' · ' + s.regionName;
+    ttName.textContent = displayName(s);
+    ttClass.textContent = displayClass(s) + ' · ' + s.regionName;
     tooltip.style.left = (sx + 14) + 'px';
     tooltip.style.top = (sy + 14) + 'px';
     tooltip.classList.add('visible');
@@ -547,9 +572,12 @@ function selectStar(s, focus) {
   selected = s;
   for (const el of Object.values(cornerEls)) el.classList.add('corner--active');
   siEl.classList.remove('empty');
-  document.getElementById('si-name').textContent = s.name;
-  document.getElementById('si-region').textContent = s.regionName + ' · ' + s.constellation;
-  document.getElementById('si-class').textContent = s.whClass;
+  const dd = drifterDisplay(s);
+  document.getElementById('si-name').textContent = displayName(s);
+  document.getElementById('si-jcode-row').style.display = dd ? '' : 'none';
+  if (dd) document.getElementById('si-jcode').textContent = s.name;
+  document.getElementById('si-class').textContent = displayClass(s);
+  document.getElementById('si-region').textContent = s.regionName;
   document.getElementById('si-const').textContent = s.constellation;
   document.getElementById('si-effect').textContent = s.effect || 'None';
   const stEl = document.getElementById('si-statics');
@@ -599,7 +627,8 @@ searchEl.addEventListener('input', () => {
   if (q.length < 2) return;
   const matches = [];
   for (const s of stars) {
-    if (s.name.toLowerCase().includes(q) || s.regionName.toLowerCase().includes(q)) {
+    const dn = displayName(s).toLowerCase();
+    if (s.name.toLowerCase().includes(q) || dn.includes(q) || s.regionName.toLowerCase().includes(q)) {
       matches.push(s);
       if (matches.length >= 20) break;
     }
@@ -607,7 +636,7 @@ searchEl.addEventListener('input', () => {
   for (const s of matches) {
     const item = document.createElement('div');
     item.className = 'sr-item';
-    item.innerHTML = `<span class="sr-name">${s.name}</span><span class="sr-class">${s.whClass}</span>`;
+    item.innerHTML = `<span class="sr-name">${escapeHtml(displayName(s))}</span><span class="sr-class">${displayClass(s)}</span>`;
     item.addEventListener('click', () => {
       selectStar(s, true);
       searchEl.value = '';
@@ -615,6 +644,12 @@ searchEl.addEventListener('input', () => {
     });
     searchResults.appendChild(item);
   }
+});
+
+searchEl.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const first = searchResults.querySelector('.sr-item');
+  if (first) first.click();
 });
 
 // --- vSDE panel --------------------------------------------------
@@ -694,18 +729,21 @@ document.getElementById('toggle-labels').addEventListener('click', (e) => {
   btn.textContent = showLabels ? 'On' : 'Off';
 });
 
-const paletteEmberBtn  = document.getElementById('palette-ember');
+const paletteEmberBtn   = document.getElementById('palette-ember');
 const paletteAnoikisBtn = document.getElementById('palette-anoikis');
 const paletteWhtypeBtn  = document.getElementById('palette-whtype');
+const paletteGhostBtn   = document.getElementById('palette-ghost');
 function setPalette(name) {
   applyPalette(name);
   paletteEmberBtn.classList.toggle('on',   name === 'ember');
   paletteAnoikisBtn.classList.toggle('on', name === 'anoikis');
   paletteWhtypeBtn.classList.toggle('on',  name === 'whtype');
+  paletteGhostBtn.classList.toggle('on',   name === 'ghost');
 }
 paletteEmberBtn.addEventListener('click',   () => setPalette('ember'));
 paletteAnoikisBtn.addEventListener('click', () => setPalette('anoikis'));
 paletteWhtypeBtn.addEventListener('click',  () => setPalette('whtype'));
+paletteGhostBtn.addEventListener('click',   () => setPalette('ghost'));
 
 // --- Panel visibility toggles ------------------------------------
 document.getElementById('hide-left').addEventListener('click', () => {
@@ -840,6 +878,8 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
 
   const hasChar = characterId != null;
   const hasCorp = corporationId != null;
+  const starDisplayName  = displayName(star);
+  const starDisplayClass = displayClass(star);
   const ownerLoading = hasChar || hasCorp;
   const ownerInitial = ownerLoading
     ? (hasChar ? 'Loading pilot…' : 'Loading corporation…')
@@ -851,7 +891,7 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
   if (!activeKinds.has(kindKey)) el.style.display = 'none';
 
   el.innerHTML = `
-    <button class="kill-btn kill-btn--locate locate-btn" title="Locate ${escapeHtml(star.name)}" aria-label="Locate ${escapeHtml(star.name)}">
+    <button class="kill-btn kill-btn--locate locate-btn" title="Locate ${escapeHtml(starDisplayName)}" aria-label="Locate ${escapeHtml(starDisplayName)}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <circle cx="12" cy="12" r="4"></circle>
         <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
@@ -868,7 +908,7 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
         <span class="kill-ship-name">${escapeHtml(name)}</span>
       </div>
       <div class="kill-pilot${ownerLoading ? ' loading' : ''}">${ownerInitial}</div>
-      <div class="kill-sys">${escapeHtml(star.name)} · ${escapeHtml(star.whClass)}</div>
+      <div class="kill-sys">${escapeHtml(starDisplayName)} · ${escapeHtml(starDisplayClass)}</div>
       <div class="kill-meta">
         ${hasImplants ? `<span class="implant-badge" title="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
         <span class="kill-value">${formatIsk(value)} ISK</span>
