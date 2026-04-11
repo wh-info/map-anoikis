@@ -453,6 +453,11 @@ canvas.addEventListener('click', (e) => {
   else deselectStar();
 });
 
+canvas.addEventListener('dblclick', (e) => {
+  if (pickStar(e.clientX, e.clientY)) return;
+  animatedResetView();
+});
+
 function pickStar(sx, sy) {
   const w = screenToWorld(sx, sy);
   const wRadius = 18 / camera.scale;
