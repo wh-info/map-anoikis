@@ -1,6 +1,6 @@
-// Anoikis Live Map — main script
-// Vanilla JS + Canvas 2D. Data loaded via window.ANOIKIS_SYSTEMS (anoikis-systems.js)
-// and window.TYPE_NAMES / window.TYPE_KINDS (type-kinds.js) before this script runs.
+// map.anoikis.info — main script
+// Canvas 2D map of Anoikis (wormhole) space with live zKillboard kill feed.
+// Data globals loaded before this script: window.ANOIKIS_SYSTEMS, window.TYPE_NAMES, window.TYPE_KINDS.
 
 // --- Constants ---------------------------------------------------
 const MIN_SCALE = 0.18;
@@ -125,7 +125,7 @@ function animatedResetView() {
 }
 resetView();
 
-let showLabels = true;
+let showLabels = false;
 
 // Spatial index for hit testing (grid)
 const GRID = 200;
@@ -531,8 +531,38 @@ document.getElementById('zoom-out').addEventListener('click', () => buttonZoom(0
 document.getElementById('reset-view').addEventListener('click', animatedResetView);
 document.getElementById('toggle-labels').addEventListener('click', (e) => {
   showLabels = !showLabels;
-  e.currentTarget.classList.toggle('off', !showLabels);
+  const btn = e.currentTarget;
+  btn.classList.toggle('off', !showLabels);
+  btn.textContent = showLabels ? 'On' : 'Off';
 });
+
+// --- Panel visibility toggles ------------------------------------
+document.getElementById('hide-left').addEventListener('click', () => {
+  document.getElementById('panel-left').style.display = 'none';
+  document.getElementById('restore-left').classList.add('visible');
+});
+document.getElementById('restore-left').addEventListener('click', () => {
+  document.getElementById('panel-left').style.display = '';
+  document.getElementById('restore-left').classList.remove('visible');
+});
+document.getElementById('hide-right').addEventListener('click', () => {
+  document.getElementById('panel-right').style.display = 'none';
+  document.getElementById('restore-right').classList.add('visible');
+});
+document.getElementById('restore-right').addEventListener('click', () => {
+  document.getElementById('panel-right').style.display = '';
+  document.getElementById('restore-right').classList.remove('visible');
+});
+
+// --- Settings panel toggle ---------------------------------------
+const settingsBtn = document.getElementById('settings-btn');
+const settingsPanel = document.getElementById('settings-panel');
+settingsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  settingsPanel.classList.toggle('open');
+});
+document.addEventListener('click', () => settingsPanel.classList.remove('open'));
+settingsPanel.addEventListener('click', (e) => e.stopPropagation());
 
 // --- Kill feed ---------------------------------------------------
 const killList = document.getElementById('kill-list');
