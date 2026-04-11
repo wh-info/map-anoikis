@@ -412,29 +412,3 @@ button.ctrl.off { color: var(--dim); background: rgba(255,255,255,0.02); }
 .sde-row { display: flex; align-items: center; gap: 8px; }
 .sde-label { color: var(--muted); flex-shrink: 0; }
 .sde-val { color: var(--text); font-variant-numeric: tabular-nums; }
-.sde-secret-input {
-  flex: 1;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text);
-  padding: 5px 8px;
-  font: inherit;
-  outline: none;
-}
-.sde-secret-input:focus { border-color: var(--border-strong); }
-.sde-trigger-btn {
-  background: rgba(120,232,255,0.08);
-  border: 1px solid rgba(120,232,255,0.28);
-  color: #b8f4ff;
-  border-radius: 6px;
-  padding: 5px 10px;
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s;
-}
-.sde-trigger-btn:hover { background: rgba(120,232,255,0.16); border-color: rgba(120,232,255,0.5); }
-.sde-trigger-btn:disabled { opacity: 0.45; cursor: default; }
-.sde-status { margin-top: 6px; color: var(--muted); font-size: 10px; min-height: 14px; }

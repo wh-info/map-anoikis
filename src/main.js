@@ -532,19 +532,11 @@ async function showSdePanel() {
     <div class="sde-row"><span class="sde-label">Local SDE</span><span class="sde-val">${escapeHtml(localBuild)}</span></div>
     <div class="sde-row"><span class="sde-label">Remote build</span><span class="sde-val sde-remote">Checking…</span></div>
     <div class="sde-version-status"></div>
-    <div class="sde-row" style="margin-top:8px;">
-      <input class="sde-secret-input" type="password" placeholder="passphrase" autocomplete="off" />
-      <button class="sde-trigger-btn">Update SDE</button>
-    </div>
-    <div class="sde-status"></div>
   `;
   searchResults.appendChild(panel);
 
-  const remoteEl  = panel.querySelector('.sde-remote');
-  const verEl     = panel.querySelector('.sde-version-status');
-  const secretInput = panel.querySelector('.sde-secret-input');
-  const triggerBtn  = panel.querySelector('.sde-trigger-btn');
-  const statusEl    = panel.querySelector('.sde-status');
+  const remoteEl = panel.querySelector('.sde-remote');
+  const verEl    = panel.querySelector('.sde-version-status');
 
   // Fetch remote build number from CCP
   try {
@@ -577,30 +569,6 @@ async function showSdePanel() {
     remoteEl.textContent = 'unavailable';
   }
 
-  triggerBtn.addEventListener('click', async () => {
-    const secret = secretInput.value.trim();
-    if (!secret) { statusEl.textContent = 'Enter passphrase.'; return; }
-    triggerBtn.disabled = true;
-    statusEl.textContent = 'Triggering…';
-    try {
-      const res = await fetch(
-        (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-          ? 'http://localhost:8080/trigger-sde'
-          : 'https://ws.anoikis.info/trigger-sde',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ secret })
-        }
-      );
-      const data = await res.json();
-      statusEl.textContent = data.ok ? 'Workflow triggered. Check GitHub Actions.' : ('Error: ' + data.error);
-    } catch {
-      statusEl.textContent = 'Request failed.';
-    } finally {
-      triggerBtn.disabled = false;
-    }
-  });
 }
 
 // --- Zoom controls ----------------------------------------------
