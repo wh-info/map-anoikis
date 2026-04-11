@@ -49,20 +49,28 @@
       </button>
     </div>
   </div>
-  <div id="kill-filters">
-    <span class="kind-chip on" data-kind="ship"       title="Ships (frigates through titans, pods)">Ships</span>
-    <span class="kind-chip on" data-kind="structure"  title="Upwell structures (Citadels, Engineering Complexes, Refineries, …)">Structures</span>
-    <span class="kind-chip on" data-kind="tower"      title="POS Control Towers">Towers</span>
-    <span class="kind-chip on" data-kind="fighter"    title="Carrier / supercarrier fighters">Fighters</span>
-    <span class="kind-chip on" data-kind="deployable" title="Mobile Depots, MTUs, Cyno Inhibitors, …">Deployables</span>
-  </div>
   <div id="kill-list"></div>
+  <div id="kill-footer">
+    <button class="kill-footer-hdr" id="kill-footer-toggle">
+      <span>Filter</span>
+      <svg class="kill-footer-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    </button>
+    <div id="kill-filters">
+      <span class="kind-chip on" data-kind="ship"       title="Ships (frigates through titans, pods)">Ships</span>
+      <span class="kind-chip on" data-kind="structure"  title="Upwell structures (Citadels, Engineering Complexes, Refineries, …)">Structures</span>
+      <span class="kind-chip on" data-kind="tower"      title="POS Control Towers">Towers</span>
+      <span class="kind-chip on" data-kind="fighter"    title="Carrier / supercarrier fighters">Fighters</span>
+      <span class="kind-chip on" data-kind="deployable" title="Mobile Depots, MTUs, Cyno Inhibitors, …">Deployables</span>
+    </div>
+  </div>
 </div>
 
 
 <!-- Restore buttons (visible when panels are hidden) -->
 <button class="panel-restore-btn" id="restore-left" title="Show search &amp; system info">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+  <span class="cursor-blink restore-cursor">_</span>
 </button>
 <button class="panel-restore-btn" id="restore-right" title="Show kill feed">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>

@@ -598,19 +598,19 @@ document.getElementById('toggle-labels').addEventListener('click', (e) => {
 
 // --- Panel visibility toggles ------------------------------------
 document.getElementById('hide-left').addEventListener('click', () => {
-  document.getElementById('panel-left').style.display = 'none';
+  document.getElementById('panel-left').classList.add('panel--hidden');
   document.getElementById('restore-left').classList.add('visible');
 });
 document.getElementById('restore-left').addEventListener('click', () => {
-  document.getElementById('panel-left').style.display = '';
+  document.getElementById('panel-left').classList.remove('panel--hidden');
   document.getElementById('restore-left').classList.remove('visible');
 });
 document.getElementById('hide-right').addEventListener('click', () => {
-  document.getElementById('panel-right').style.display = 'none';
+  document.getElementById('panel-right').classList.add('panel--hidden');
   document.getElementById('restore-right').classList.add('visible');
 });
 document.getElementById('restore-right').addEventListener('click', () => {
-  document.getElementById('panel-right').style.display = '';
+  document.getElementById('panel-right').classList.remove('panel--hidden');
   document.getElementById('restore-right').classList.remove('visible');
 });
 
@@ -679,6 +679,11 @@ const KIND_LABEL = {
   deployable: 'Deployable'
 };
 
+// metaGroupID → badge filename (populated by build_types.py into window.TYPE_META)
+function techBadge(typeId) {
+  return (window.TYPE_META && typeId != null && window.TYPE_META[typeId]) || null;
+}
+
 const activeKinds = new Set(['ship', 'structure', 'tower', 'fighter', 'deployable']);
 
 function escapeHtml(s) {
@@ -720,7 +725,6 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
     : '';
   const zkbHref = killId ? `https://zkillboard.com/kill/${killId}/` : null;
   const kindKey = kind || 'ship';
-  const kindLabel = KIND_LABEL[kindKey] || 'Kill';
 
   const hasChar = characterId != null;
   const hasCorp = corporationId != null;
@@ -735,42 +739,36 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
   if (!activeKinds.has(kindKey)) el.style.display = 'none';
 
   el.innerHTML = `
-    <div class="kill-img" style="background-image: url('${img}')"></div>
+    <div class="kill-left">
+      <div class="kill-img-wrap">
+        <div class="kill-img" style="background-image: url('${img}')"></div>
+        ${techBadge(typeId) ? `<img src="./img/graphic/${techBadge(typeId)}.png" class="kill-tech-badge" alt="" aria-hidden="true" />` : ''}
+      </div>
+      <div class="kill-img-actions">
+        <button class="kill-btn locate-btn" title="Locate ${escapeHtml(star.name)}" aria-label="Locate ${escapeHtml(star.name)}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
     <div class="kill-body">
       <div class="kill-ship">
         <span class="kill-ship-name">${escapeHtml(name)}</span>
-        <span class="kind-pill ${kindKey}">${kindLabel}</span>
       </div>
       <div class="kill-pilot${ownerLoading ? ' loading' : ''}">${ownerInitial}</div>
       <div class="kill-sys">${escapeHtml(star.name)} · ${escapeHtml(star.whClass)}</div>
       <div class="kill-meta">
+        ${hasImplants ? `<span class="implant-badge" title="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
         <span class="kill-value">${formatIsk(value)} ISK</span>
         <span class="kill-age" data-ts="${ts || ''}">· ${formatAge(ts)}</span>
-        <span class="kill-actions">
-          ${hasImplants ? `
-            <span class="implant-badge" title="Pod had implants" aria-label="Pod had implants">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M10.5 4.5a5 5 0 0 1 7.07 7.07l-6.01 6.01a5 5 0 0 1-7.07-7.07z"></path>
-                <path d="M7.5 7.5l9 9"></path>
-              </svg>
-            </span>` : ''}
-          ${zkbHref ? `
-            <a class="kill-btn zkb-link" href="${zkbHref}" target="_blank" rel="noopener noreferrer" title="Open on zKillboard" aria-label="Open on zKillboard">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 4h6v6"></path>
-                <path d="M20 4L10 14"></path>
-                <path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"></path>
-              </svg>
-            </a>` : ''}
-          <button class="kill-btn locate-btn" title="Locate ${escapeHtml(star.name)}" aria-label="Locate ${escapeHtml(star.name)}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <circle cx="12" cy="12" r="4"></circle>
-              <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
-            </svg>
-          </button>
-        </span>
       </div>
     </div>
+    ${zkbHref ? `
+    <a class="kill-btn kill-btn--zkb zkb-link" href="${zkbHref}" target="_blank" rel="noopener noreferrer" title="Open on zKillboard" aria-label="Open on zKillboard">
+      <img src="./img/graphic/zkb.svg" class="zkb-img" alt="" aria-hidden="true" />
+    </a>` : ''}
   `;
   const zkbEl = el.querySelector('.zkb-link');
   if (zkbEl) zkbEl.addEventListener('click', (ev) => ev.stopPropagation());
@@ -849,6 +847,11 @@ setInterval(() => {
     el.textContent = '· ' + formatAge(ts);
   }
 }, 10000);
+
+// --- Kill footer filter toggle -----------------------------------
+document.getElementById('kill-footer-toggle').addEventListener('click', () => {
+  document.getElementById('kill-footer').classList.toggle('open');
+});
 
 // --- Live backend WS ---------------------------------------------
 const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:';
