@@ -1,0 +1,81 @@
+name: Update SDE data
+
+on:
+  schedule:
+    # Runs every 2 days at 04:00 UTC
+    - cron: '0 4 */2 * *'
+  workflow_dispatch:  # allows manual trigger from GitHub Actions UI
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check if SDE has changed
+        id: sde_check
+        run: |
+          URL="https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2"
+          LAST_MODIFIED=$(curl -sI "$URL" | grep -i last-modified | tr -d '\r' | cut -d' ' -f2-)
+          echo "Remote Last-Modified: $LAST_MODIFIED"
+
+          CACHE_FILE=".github/sde_last_modified.txt"
+          if [ -f "$CACHE_FILE" ]; then
+            CACHED=$(cat "$CACHE_FILE")
+          else
+            CACHED=""
+          fi
+          echo "Cached Last-Modified: $CACHED"
+
+          if [ "$LAST_MODIFIED" = "$CACHED" ]; then
+            echo "SDE unchanged, skipping."
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "SDE has changed."
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "$LAST_MODIFIED" > "$CACHE_FILE"
+          fi
+
+      - name: Download and decompress SDE
+        if: steps.sde_check.outputs.changed == 'true'
+        run: |
+          mkdir -p build/sde_cache
+          echo "Downloading SDE (~80MB)..."
+          curl -L "https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2" -o build/sde_cache/sqlite-latest.sqlite.bz2
+          echo "Decompressing..."
+          python3 -c "
+          import bz2, shutil
+          with bz2.open('build/sde_cache/sqlite-latest.sqlite.bz2', 'rb') as src, \
+               open('build/sde_cache/sqlite-latest.sqlite', 'wb') as dst:
+              shutil.copyfileobj(src, dst)
+          "
+          rm build/sde_cache/sqlite-latest.sqlite.bz2
+
+      - name: Run build scripts
+        if: steps.sde_check.outputs.changed == 'true'
+        run: |
+          python3 build/build_types.py
+          python3 build/build_systems.py
+
+      - name: Commit if data changed
+        if: steps.sde_check.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add data/type-kinds.js data/anoikis-systems.js backend/src/type-kinds.json .github/sde_last_modified.txt
+
+          # Only commit if something actually changed
+          if git diff --cached --quiet; then
+            echo "Data files unchanged after rebuild, nothing to commit."
+          else
+            git commit -m "chore: update SDE data"
+            git push
+          fi
