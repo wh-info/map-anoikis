@@ -333,18 +333,53 @@ html, body {
 }
 
 
-/* Live indicator — keep green (status colour) */
-.pulse-dot {
-  width: 7px; height: 7px;
-  background: #6ef28a;
-  box-shadow: 0 0 5px #6ef28a;
-  display: inline-block;
-  margin-right: 6px;
-  animation: pulse 1.6s ease-in-out infinite;
+/* Live lines — restore button icon, top to bottom */
+.live-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  justify-content: center;
 }
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.35; transform: scale(0.75); }
+.live-lines span {
+  display: block;
+  width: 14px;
+  height: 2px;
+  background: var(--dim);
+  opacity: 0;
+}
+.live-lines span:nth-child(1) { animation: ld1 1.5s linear infinite; }
+.live-lines span:nth-child(2) { animation: ld2 1.5s linear infinite; }
+.live-lines span:nth-child(3) { animation: ld3 1.5s linear infinite; }
+
+/* Live dots — accumulating animation after "Live Kills" */
+.live-dots { margin-left: 1px; letter-spacing: 0.05em; }
+.live-dots span { font-weight: 700; opacity: 0; }
+.live-dots span:nth-child(1) { animation: ld1 1.5s linear infinite; }
+.live-dots span:nth-child(2) { animation: ld2 1.5s linear infinite; }
+.live-dots span:nth-child(3) { animation: ld3 1.5s linear infinite; }
+
+@keyframes ld1 {
+  0%   { opacity: 1; }
+  66%  { opacity: 1; }
+  67%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+@keyframes ld2 {
+  0%   { opacity: 0; }
+  21%  { opacity: 0; }
+  22%  { opacity: 1; }
+  66%  { opacity: 1; }
+  67%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+@keyframes ld3 {
+  0%   { opacity: 0; }
+  43%  { opacity: 0; }
+  44%  { opacity: 1; }
+  66%  { opacity: 1; }
+  67%  { opacity: 0; }
+  100% { opacity: 0; }
 }
 
 /* ================================================================ */
@@ -609,6 +644,14 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 }
 #restore-left  { top: 16px; left: 16px; }
 #restore-right { top: 16px; right: 16px; }
+
+@keyframes kill-flash {
+  0%, 100% { border-color: var(--border); }
+  50%       { border-color: var(--accent); }
+}
+#restore-right.kill-flash {
+  animation: kill-flash 0.6s ease-in-out 4;
+}
 
 /* ================================================================ */
 /* SETTINGS GEAR BUTTON                                             */

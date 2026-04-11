@@ -758,10 +758,19 @@ document.getElementById('hide-right').addEventListener('click', () => {
   document.getElementById('panel-right').classList.add('panel--hidden');
   document.getElementById('restore-right').classList.add('visible');
 });
-document.getElementById('restore-right').addEventListener('click', () => {
+const restoreRightBtn = document.getElementById('restore-right');
+restoreRightBtn.addEventListener('click', () => {
   document.getElementById('panel-right').classList.remove('panel--hidden');
-  document.getElementById('restore-right').classList.remove('visible');
+  restoreRightBtn.classList.remove('visible');
+  restoreRightBtn.classList.remove('kill-flash');
 });
+
+function flashRestoreRight() {
+  if (!document.getElementById('panel-right').classList.contains('panel--hidden')) return;
+  restoreRightBtn.classList.remove('kill-flash');
+  void restoreRightBtn.offsetWidth; // force reflow to restart animation
+  restoreRightBtn.classList.add('kill-flash');
+}
 
 // --- Settings panel toggle ---------------------------------------
 const settingsBtn = document.getElementById('settings-btn');
@@ -975,6 +984,7 @@ function handleBackendKill(kill, animated) {
     hasImplants: !!kill.hasImplants,
     animated
   });
+  if (animated) flashRestoreRight();
 }
 
 document.querySelectorAll('#kill-filters .kind-chip').forEach((chip) => {
