@@ -520,13 +520,16 @@ searchEl.addEventListener('input', () => {
 });
 
 // --- vSDE panel --------------------------------------------------
-function showSdePanel() {
+async function showSdePanel() {
   searchResults.innerHTML = '';
-  const buildDate = window.SDE_BUILD_DATE || 'unknown';
+  const localBuild = window.SDE_BUILD_DATE || 'unknown';
+
   const panel = document.createElement('div');
   panel.className = 'sde-panel';
   panel.innerHTML = `
-    <div class="sde-row"><span class="sde-label">SDE build</span><span class="sde-val">${escapeHtml(buildDate)}</span></div>
+    <div class="sde-row"><span class="sde-label">Local SDE</span><span class="sde-val">${escapeHtml(localBuild)}</span></div>
+    <div class="sde-row"><span class="sde-label">Remote build</span><span class="sde-val sde-remote">Checking…</span></div>
+    <div class="sde-version-status"></div>
     <div class="sde-row" style="margin-top:8px;">
       <input class="sde-secret-input" type="password" placeholder="passphrase" autocomplete="off" />
       <button class="sde-trigger-btn">Update SDE</button>
@@ -535,9 +538,41 @@ function showSdePanel() {
   `;
   searchResults.appendChild(panel);
 
+  const remoteEl  = panel.querySelector('.sde-remote');
+  const verEl     = panel.querySelector('.sde-version-status');
   const secretInput = panel.querySelector('.sde-secret-input');
   const triggerBtn  = panel.querySelector('.sde-trigger-btn');
   const statusEl    = panel.querySelector('.sde-status');
+
+  // Fetch remote build number from CCP
+  try {
+    const res = await fetch('https://developers.eveonline.com/static-data/tranquility/latest.jsonl');
+    const obj = res.ok ? await res.json() : null;
+    const remoteBuild = obj?.buildNumber ?? null;
+    if (remoteBuild) {
+      remoteEl.textContent = String(remoteBuild);
+      // Extract local build number from SDE_BUILD_DATE if present,
+      // otherwise compare the full string. The workflow stores buildNumber
+      // in sde_build_id.txt but TYPE_NAMES just has a date string — so we
+      // compare against window.SDE_BUILD_NUMBER if it exists (future), or
+      // fall back to checking if local contains the remote number.
+      const localNum = window.SDE_BUILD_NUMBER ?? null;
+      const isLatest = localNum
+        ? String(localNum) === String(remoteBuild)
+        : localBuild.includes(String(remoteBuild));
+      if (isLatest) {
+        verEl.textContent = `✓ You are using the latest SDE (build ${remoteBuild})`;
+        verEl.style.color = '#6ef28a';
+      } else {
+        verEl.textContent = `⚠ Update available: local build ${localNum || localBuild} → remote ${remoteBuild}`;
+        verEl.style.color = '#ffd37a';
+      }
+    } else {
+      remoteEl.textContent = 'unavailable';
+    }
+  } catch {
+    remoteEl.textContent = 'unavailable';
+  }
 
   triggerBtn.addEventListener('click', async () => {
     const secret = secretInput.value.trim();
