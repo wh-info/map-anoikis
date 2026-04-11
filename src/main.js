@@ -1,401 +1,6 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Anoikis Live Map — Mockup</title>
-<style>
-  :root {
-    --bg: #000;
-    --panel: rgba(10, 14, 28, 0.82);
-    --panel-solid: #0b1020;
-    --border: rgba(180, 210, 255, 0.16);
-    --border-strong: rgba(180, 210, 255, 0.32);
-    --text: #e8efff;
-    --muted: #9eb1d9;
-    --dim: #6b7ea6;
-    --accent: #8fd3ff;
-    --danger: #ff6d6d;
-    --c1: #7ad1ff; --c2: #6ad0c7; --c3: #86e08a; --c4: #d8d86a;
-    --c5: #ffad6a; --c6: #ff6d6d; --thera: #c98bff; --c13: #9aa6c2; --drifter: #ff4fa3;
-  }
-  * { box-sizing: border-box; }
-  html, body {
-    margin: 0; padding: 0;
-    height: 100%; width: 100%;
-    background: var(--bg);
-    color: var(--text);
-    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    overflow: hidden;
-    user-select: none;
-    -webkit-font-smoothing: antialiased;
-  }
-  #map { position: fixed; inset: 0; display: block; cursor: grab; }
-  #map.dragging { cursor: grabbing; }
-
-  .panel {
-    position: fixed;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    backdrop-filter: blur(14px) saturate(140%);
-    -webkit-backdrop-filter: blur(14px) saturate(140%);
-    box-shadow: 0 10px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
-  }
-
-  #panel-left {
-    top: 16px; left: 16px;
-    width: 300px;
-    padding: 14px 14px 12px;
-  }
-  #panel-right {
-    top: 16px; right: 16px;
-    width: 320px;
-    max-height: calc(100vh - 32px);
-    display: flex; flex-direction: column;
-  }
-  #panel-bottom {
-    bottom: 16px; left: 50%;
-    transform: translateX(-50%);
-    padding: 8px 14px;
-    display: flex; align-items: center; gap: 14px;
-    font-size: 12px; color: var(--muted);
-  }
-
-  .title {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--muted);
-    margin: 0 0 8px;
-    font-weight: 600;
-  }
-  .brand {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 12px;
-  }
-  .brand-dot {
-    width: 10px; height: 10px; border-radius: 50%;
-    background: radial-gradient(circle, #bfe0ff 0%, #3a7bd6 70%, transparent 100%);
-    box-shadow: 0 0 10px #6aa8ff;
-  }
-  .brand-title {
-    font-size: 14px; font-weight: 600; letter-spacing: 0.02em;
-  }
-  .brand-sub {
-    font-size: 10px; color: var(--dim);
-    text-transform: uppercase; letter-spacing: 0.14em;
-  }
-
-  #search {
-    width: 100%;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    color: var(--text);
-    padding: 9px 12px;
-    font: inherit;
-    outline: none;
-    transition: border-color 0.15s, background 0.15s;
-  }
-  #search::placeholder { color: var(--dim); }
-  #search:focus {
-    border-color: var(--border-strong);
-    background: rgba(255,255,255,0.06);
-  }
-  #search-results {
-    margin-top: 6px;
-    max-height: 220px;
-    overflow-y: auto;
-    border-radius: 8px;
-  }
-  #search-results:empty { display: none; }
-  .sr-item {
-    padding: 7px 10px;
-    cursor: pointer;
-    border-radius: 6px;
-    display: flex; justify-content: space-between; align-items: center;
-    gap: 8px;
-  }
-  .sr-item:hover { background: rgba(255,255,255,0.05); }
-  .sr-name { font-weight: 500; }
-  .sr-class {
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 4px;
-    background: rgba(255,255,255,0.06);
-    color: var(--muted);
-  }
-
-  #system-info { margin-top: 12px; }
-  #system-info.empty .info-body { display: none; }
-  .info-body {
-    padding-top: 10px;
-    border-top: 1px solid var(--border);
-    margin-top: 10px;
-  }
-  .info-row {
-    display: flex; justify-content: space-between;
-    padding: 4px 0;
-    font-size: 12px;
-  }
-  .info-row .k { color: var(--muted); }
-  .info-row .v { color: var(--text); }
-  .sys-name {
-    font-size: 16px; font-weight: 600; margin-bottom: 2px;
-  }
-  .sys-region { font-size: 11px; color: var(--muted); }
-  .statics {
-    margin-top: 8px;
-    display: flex; gap: 6px; flex-wrap: wrap;
-  }
-  .static-chip {
-    font-size: 10px; font-weight: 600;
-    padding: 3px 7px; border-radius: 4px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--border);
-    letter-spacing: 0.04em;
-  }
-
-  #kill-header {
-    padding: 14px 14px 8px;
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  #kill-filters {
-    padding: 0 14px 10px;
-    border-bottom: 1px solid var(--border);
-    display: flex; flex-wrap: wrap; gap: 4px;
-  }
-  .kind-chip {
-    font-size: 9.5px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    padding: 3px 7px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: rgba(255,255,255,0.03);
-    color: var(--muted);
-    cursor: pointer;
-    user-select: none;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-  }
-  .kind-chip:hover { border-color: var(--border-strong); }
-  .kind-chip.on {
-    background: rgba(120,232,255,0.12);
-    border-color: rgba(120,232,255,0.45);
-    color: #b8f4ff;
-  }
-  /* Inline label shown on each kill card to identify the category at a
-     glance, matches the chip visual but smaller. */
-  .kind-pill {
-    font-size: 9px;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    padding: 1px 6px;
-    border-radius: 999px;
-    border: 1px solid rgba(120,232,255,0.28);
-    background: rgba(120,232,255,0.08);
-    color: #b8f4ff;
-  }
-  .kind-pill.structure { border-color: rgba(255,188,120,0.35); background: rgba(255,188,120,0.10); color: #ffd7a8; }
-  .kind-pill.tower     { border-color: rgba(255,140,140,0.35); background: rgba(255,140,140,0.10); color: #ffc0c0; }
-  .kind-pill.fighter   { border-color: rgba(180,140,255,0.35); background: rgba(180,140,255,0.10); color: #d6b8ff; }
-  .kind-pill.deployable{ border-color: rgba(140,255,180,0.28); background: rgba(140,255,180,0.08); color: #b8f4c8; }
-  .pulse-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: #6ef28a;
-    box-shadow: 0 0 8px #6ef28a;
-    animation: pulse 1.6s ease-in-out infinite;
-    display: inline-block; margin-right: 6px;
-  }
-  @keyframes pulse {
-    0%,100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.8); }
-  }
-  #kill-list {
-    flex: 1; overflow-y: auto;
-    padding: 8px 10px;
-    display: flex; flex-direction: column; gap: 8px;
-  }
-  .kill {
-    display: flex; gap: 10px;
-    padding: 8px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, transform 0.2s;
-    animation: killIn 0.35s ease-out;
-  }
-  .kill:hover {
-    background: rgba(255,255,255,0.06);
-    border-color: var(--border-strong);
-  }
-  @keyframes killIn {
-    from { opacity: 0; transform: translateY(-6px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .kill-img {
-    width: 48px; height: 48px;
-    border-radius: 8px;
-    background: #0a0f1e;
-    flex-shrink: 0;
-    background-size: cover; background-position: center;
-    border: 1px solid var(--border);
-  }
-  .kill-body { flex: 1; min-width: 0; }
-  .kill-ship { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .kill-pilot {
-    font-size: 10.5px; color: var(--muted); margin-top: 1px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    opacity: 0.85;
-  }
-  .kill-pilot.loading { opacity: 0.45; font-style: italic; }
-  .kill-sys { font-size: 11px; color: var(--muted); }
-  .kill-meta { font-size: 10px; color: var(--dim); margin-top: 2px; display: flex; gap: 6px; align-items: center; }
-  .kill-value { color: #ffd37a; }
-  .kill-actions { display: inline-flex; gap: 4px; align-items: center; margin-left: auto; }
-  .kill-btn {
-    width: 22px; height: 22px; min-width: 22px; padding: 0;
-    border-radius: 999px;
-    display: inline-flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    text-decoration: none;
-    border: 1px solid rgba(120,232,255,0.28);
-    background: rgba(120,232,255,0.08);
-    color: #b8f4ff;
-    transition: border-color 0.15s, background 0.15s;
-  }
-  .kill-btn:hover {
-    border-color: rgba(120,232,255,0.5);
-    background: rgba(120,232,255,0.18);
-  }
-  .kill-btn svg { width: 12px; height: 12px; display: block; }
-  /* Implant indicator — non-interactive, visually distinct from the action
-     buttons so the eye doesn't try to click it. */
-  .implant-badge {
-    width: 22px; height: 22px; min-width: 22px;
-    border-radius: 999px;
-    display: inline-flex; align-items: center; justify-content: center;
-    border: 1px solid rgba(255,188,120,0.35);
-    background: rgba(255,188,120,0.10);
-    color: #ffd7a8;
-  }
-  .implant-badge svg { width: 12px; height: 12px; display: block; }
-
-  button.ctrl {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    color: var(--text);
-    width: 28px; height: 28px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    display: inline-flex; align-items: center; justify-content: center;
-    transition: background 0.15s;
-  }
-  button.ctrl:hover { background: rgba(255,255,255,0.09); }
-  button.ctrl.off { color: var(--dim); background: rgba(255,255,255,0.02); }
-  #panel-bottom .sep { width: 1px; height: 16px; background: var(--border); }
-  #zoom-val { color: var(--text); font-variant-numeric: tabular-nums; min-width: 44px; }
-
-  #tooltip {
-    position: fixed;
-    pointer-events: none;
-    background: var(--panel);
-    border: 1px solid var(--border-strong);
-    border-radius: 8px;
-    padding: 6px 10px;
-    font-size: 11px;
-    backdrop-filter: blur(10px);
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.1s;
-    z-index: 10;
-  }
-  #tooltip.visible { opacity: 1; }
-  .tt-name { font-weight: 600; color: var(--text); }
-  .tt-class { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
-
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
-</style>
-</head>
-<body>
-
-<canvas id="map"></canvas>
-
-<!-- LEFT PANEL: search + system info -->
-<div id="panel-left" class="panel">
-  <div class="brand">
-    <div class="brand-dot"></div>
-    <div>
-      <div class="brand-title">Anoikis Live Map</div>
-      <div class="brand-sub">Mockup &middot; Phase 2</div>
-    </div>
-  </div>
-  <input id="search" type="text" placeholder="Search system (e.g. J123456)" autocomplete="off" spellcheck="false" />
-  <div id="search-results"></div>
-
-  <div id="system-info" class="empty">
-    <div class="title">System</div>
-    <div class="info-body">
-      <div class="sys-name" id="si-name">—</div>
-      <div class="sys-region" id="si-region">—</div>
-      <div class="info-row"><span class="k">Class</span><span class="v" id="si-class">—</span></div>
-      <div class="info-row"><span class="k">Constellation</span><span class="v" id="si-const">—</span></div>
-      <div class="info-row"><span class="k">Effect</span><span class="v" id="si-effect">—</span></div>
-      <div class="statics" id="si-statics"></div>
-    </div>
-  </div>
-</div>
-
-<!-- RIGHT PANEL: kill feed -->
-<div id="panel-right" class="panel">
-  <div id="kill-header">
-    <div class="title" style="margin: 0;"><span class="pulse-dot"></span>Live Kills</div>
-    <div style="font-size: 10px; color: var(--dim);" id="kill-count">0 shown</div>
-  </div>
-  <div id="kill-filters">
-    <span class="kind-chip on" data-kind="ship"       title="Ships (frigates through titans, pods)">Ships</span>
-    <span class="kind-chip on" data-kind="structure"  title="Upwell structures (Citadels, Engineering Complexes, Refineries, Jump Bridges, …)">Structures</span>
-    <span class="kind-chip on" data-kind="tower"      title="POS Control Towers">Towers</span>
-    <span class="kind-chip on" data-kind="fighter"    title="Carrier / supercarrier fighters">Fighters</span>
-    <span class="kind-chip on" data-kind="deployable" title="Mobile Depots, MTUs, Cyno Inhibitors, …">Deployables</span>
-  </div>
-  <div id="kill-list"></div>
-</div>
-
-<!-- BOTTOM PANEL: zoom + status -->
-<div id="panel-bottom" class="panel">
-  <button class="ctrl" id="zoom-out" title="Zoom out">&minus;</button>
-  <span id="zoom-val">1.00x</span>
-  <button class="ctrl" id="zoom-in" title="Zoom in">+</button>
-  <div class="sep"></div>
-  <span id="star-count">0 systems</span>
-  <div class="sep"></div>
-  <button class="ctrl" id="reset-view" title="Reset view" style="width: auto; padding: 0 10px;">Reset</button>
-  <button class="ctrl" id="toggle-labels" title="Toggle system name labels" style="width: auto; padding: 0 10px;">Labels</button>
-  <div class="sep"></div>
-  <button class="ctrl" id="test-kill" title="Trigger a random kill (dev only)" style="width: auto; padding: 0 10px; color: #ffb3b3;">Test Kill</button>
-  <button class="ctrl" id="test-burst" title="10 kills in one system (dev only)" style="width: auto; padding: 0 10px; color: #ffb3b3;">Burst ×10</button>
-</div>
-
-<div id="tooltip">
-  <div class="tt-name"></div>
-  <div class="tt-class"></div>
-</div>
-
-<script src="../data/anoikis-systems.js"></script>
-<script src="../data/type-kinds.js"></script>
-<script>
-/* ============================================================
-   Anoikis Live Map — Mockup (Phase 2)
-   Vanilla JS + Canvas 2D. Real Anoikis positions via
-   data/anoikis-systems.js (extracted from the reference mockup).
-   ============================================================ */
+// Anoikis Live Map — main script
+// Vanilla JS + Canvas 2D. Data loaded via window.ANOIKIS_SYSTEMS (anoikis-systems.js)
+// and window.TYPE_NAMES / window.TYPE_KINDS (type-kinds.js) before this script runs.
 
 // --- Constants ---------------------------------------------------
 const MIN_SCALE = 0.18;
@@ -422,7 +27,7 @@ function resize() {
   canvas.style.height = window.innerHeight + 'px';
 }
 // On resize: keep whatever world point was under the screen center under
-// the screen center after resize. Same behavior as the reference mockup.
+// the screen center after resize.
 window.addEventListener('resize', () => {
   const prevCx = window.innerWidth * 0.5;
   const prevCy = window.innerHeight * 0.5;
@@ -435,11 +40,7 @@ window.addEventListener('resize', () => {
 resize();
 
 // --- Camera ------------------------------------------------------
-// Camera model ported 1:1 from the reference mockup:
-// screen = world * scale + offset. We store offsetX/offsetY directly instead
-// of a world-space camera point. This is the key to matching the reference's
-// pan/zoom/focus feel — every lerp, drag, and wheel op works in the same
-// space the renderer projects into, so nothing ever needs reconstruction math.
+// screen = world * scale + offset.
 const camera = {
   scale: 1,
   offsetX: 0,
@@ -454,11 +55,8 @@ function screenToWorld(x, y) {
 }
 
 // --- Star loader -------------------------------------------------
-// Real Anoikis positions from data/anoikis-systems.js (injected as
-// window.ANOIKIS_SYSTEMS). Each entry has: id, name, region, class, x, y, r.
-// We tag each star with runtime fields the renderer needs.
 if (!window.ANOIKIS_SYSTEMS) {
-  throw new Error('anoikis-systems.js did not load — check <script src="../data/anoikis-systems.js">');
+  throw new Error('anoikis-systems.js did not load — check <script src="./data/anoikis-systems.js">');
 }
 const stars = window.ANOIKIS_SYSTEMS.map((s) => ({
   id: s.id,
@@ -479,7 +77,7 @@ document.getElementById('star-count').textContent = stars.length + ' systems';
 // systemID -> star, used by the live kill feed to resolve incoming IDs.
 const starById = new Map(stars.map((s) => [s.id, s]));
 
-// Star bounds — used by resetView(). Reference mockup does the same pass.
+// Star bounds — used by resetView().
 const starBounds = (() => {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const s of stars) {
@@ -491,8 +89,6 @@ const starBounds = (() => {
   return { minX, minY, maxX, maxY };
 })();
 
-// Compute the (scale, offsetX, offsetY) that fits the full star bounds into
-// the viewport with a 50px padding — ported from the reference mockup.
 function computeResetTarget() {
   const padding = 50;
   const cw = window.innerWidth, ch = window.innerHeight;
@@ -509,8 +105,6 @@ function computeResetTarget() {
   };
 }
 
-// Snap the camera to the reset target (no animation). Used once on load
-// and on window resize.
 function resetView() {
   const t = computeResetTarget();
   camera.scale = t.scale;
@@ -520,9 +114,6 @@ function resetView() {
   updateZoomLabel();
 }
 
-// Smoothly fly the camera to the reset target. Uses the same 520ms ease-out
-// cubic interpolation as the locate / search focus animation, so zoom-out
-// feels identical to zoom-in.
 function animatedResetView() {
   const to = computeResetTarget();
   camera.focusAnim = {
@@ -532,11 +123,8 @@ function animatedResetView() {
     to
   };
 }
-// Fire once now that stars + bounds exist, before the first draw.
 resetView();
 
-// Label visibility — toggled by the UI button. Applies only when
-// camera.scale > 2.4 (the labels stay hidden when zoomed out anyway).
 let showLabels = true;
 
 // Spatial index for hit testing (grid)
@@ -564,9 +152,6 @@ function starsNear(wx, wy, wRadius) {
 }
 
 // --- Sprite cache (glow for each class) -------------------------
-// Mirrors the reference mockup: 128px canvas, soft outer gradient,
-// shadow-blurred hot core, crisp pinpoint center. Drawn with 'screen'
-// compositing in the main loop, then a source-over pinpoint on top.
 const SPRITE_SIZE = 128;
 const spriteCache = {};
 function rgba(arr, a) { return `rgba(${arr[0]},${arr[1]},${arr[2]},${a})`; }
@@ -601,9 +186,7 @@ function buildSprite(color) {
 for (const cls of Object.keys(CLASS_COLORS)) spriteCache[cls] = buildSprite(CLASS_COLORS[cls]);
 
 // --- Kill animations --------------------------------------------
-// Flare is expressed by setting star.flareUntil; the star draw loop reads it.
-// Ring pulses live in activeAnims and are drawn after the star pass.
-const activeAnims = []; // {star, t0, dur}
+const activeAnims = [];
 function triggerKillAnim(star) {
   const now = performance.now();
   star.flareUntil = now + FLARE_MS;
@@ -616,7 +199,6 @@ function draw() {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, W, H);
 
-  // Focus animation — ported 1:1 from the reference mockup (focusOnStar + frame).
   if (camera.focusAnim) {
     const fa = camera.focusAnim;
     const t = clamp((performance.now() - fa.start) / fa.duration, 0, 1);
@@ -630,12 +212,10 @@ function draw() {
 
   const cw = window.innerWidth, ch = window.innerHeight;
 
-  // Culling bounds
   const pad = 80;
   const topLeft = screenToWorld(-pad, -pad);
   const botRight = screenToWorld(cw + pad, ch + pad);
 
-  // Stars — matches reference mockup: soft 'screen' halo + 'source-over' pinpoint
   ctx.save();
   ctx.scale(DPR, DPR);
 
@@ -657,12 +237,10 @@ function draw() {
     const intensity = twinkle + flare * 1.25;
     const size = spriteSize * (0.45 + s.r * 0.11 + flare * 0.22) * (0.75 + zoomT * 0.95);
 
-    // Soft halo (slightly more glow than reference — still subtle)
     ctx.globalCompositeOperation = 'screen';
     ctx.globalAlpha = clamp(0.16 + intensity * 0.24 * glowFactor, 0.10, 0.56 + flare * 0.35);
     ctx.drawImage(spr, p.x - size / 2, p.y - size / 2, size, size);
 
-    // Crisp pinpoint
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = clamp(0.75 + zoomT * 0.2 + flare * 0.2, 0.65, 1);
     const crispR = Math.max(0.75, (0.35 + s.r * 0.16) * (0.7 + zoomT * 0.9));
@@ -671,7 +249,6 @@ function draw() {
     ctx.arc(p.x, p.y, crispR, 0, Math.PI * 2);
     ctx.fill();
 
-    // Flare halo: white-hot radial gradient layered on top
     if (flare > 0.02) {
       const haloR = (8 + zoomT * 12) + flare * 24;
       const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, haloR);
@@ -687,7 +264,6 @@ function draw() {
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'lighter';
 
-  // Ring pulses (kill events) — matches reference mockup
   ctx.globalCompositeOperation = 'lighter';
   for (let i = activeAnims.length - 1; i >= 0; i--) {
     const a = activeAnims[i];
@@ -706,8 +282,6 @@ function draw() {
     ctx.stroke();
   }
 
-  // System labels at high zoom — appear at 2.4x, grow slightly as you keep
-  // zooming in (11px → 15px between 2.4x and ~6x), then hold.
   if (showLabels && camera.scale > 2.4) {
     ctx.globalCompositeOperation = 'source-over';
     const labelAlpha = Math.min(1, (camera.scale - 2.4) / 1.5);
@@ -725,7 +299,6 @@ function draw() {
     }
   }
 
-  // Selected system marker
   if (selected) {
     const p = worldToScreen(selected.x, selected.y);
     ctx.globalCompositeOperation = 'source-over';
@@ -740,7 +313,6 @@ function draw() {
     ctx.stroke();
   }
 
-  // Locator marker — matches reference mockup (dashed square + crosshair arms)
   if (searchMarker) {
     const age = now - searchMarker.start;
     if (age > searchMarker.duration) {
@@ -784,19 +356,16 @@ function draw() {
 }
 
 // --- Interaction -------------------------------------------------
-// Drag pan — reference mockup directly accumulates pixel deltas into
-// offsetX/offsetY. No /scale division needed because offsets are already
-// in screen-space pixels.
 let dragging = false;
 let dragStart = null;
 let dragMoved = false;
-const DRAG_THRESHOLD = 2; // reference uses 2px
+const DRAG_THRESHOLD = 2;
 canvas.addEventListener('mousedown', (e) => {
   dragging = true;
   dragMoved = false;
   dragStart = { x: e.clientX, y: e.clientY, ox: camera.offsetX, oy: camera.offsetY };
   canvas.classList.add('dragging');
-  camera.focusAnim = null; // cancel any running flyTo
+  camera.focusAnim = null;
 });
 window.addEventListener('mouseup', () => {
   dragging = false;
@@ -817,9 +386,6 @@ window.addEventListener('mousemove', (e) => {
   handleHover(e.clientX, e.clientY);
 });
 
-// Wheel zoom — copied 1:1 from reference mockup.
-// Fixed 12% step, cursor-anchored via "screenToWorld before → apply scale →
-// reposition offsets so before.world still lands under the cursor".
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
   const rect = canvas.getBoundingClientRect();
@@ -838,7 +404,6 @@ canvas.addEventListener('wheel', (e) => {
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
 canvas.addEventListener('click', (e) => {
-  // Only register a click if it wasn't a drag
   if (dragMoved) return;
   const hit = pickStar(e.clientX, e.clientY);
   if (hit) selectStar(hit, true);
@@ -879,7 +444,7 @@ function handleHover(sx, sy) {
 
 // --- Selection + system info ------------------------------------
 let selected = null;
-let searchMarker = null; // {star, start, duration} — locator pulse animation
+let searchMarker = null;
 const siEl = document.getElementById('system-info');
 function selectStar(s, focus) {
   selected = s;
@@ -903,17 +468,10 @@ function selectStar(s, focus) {
   }
 }
 
-// Fired when the user clicks a kill-feed locator. Same as selectStar(focus=true)
-// but wired up as a separate entry point so kill cards don't need to know the
-// internal selection model.
 function locateStar(s) {
   selectStar(s, true);
 }
 
-// Ported 1:1 from the reference mockup's focusOnStar.
-// Captures live camera as "from", computes target offsets that land (x,y) at
-// screen center at finalScale as "to", and the draw loop lerps all three
-// fields. 520ms ease-out cubic is the reference's exact duration.
 function flyTo(x, y, scale, dur) {
   const cw = window.innerWidth, ch = window.innerHeight;
   const finalScale = clamp(scale, MIN_SCALE, MAX_SCALE);
@@ -975,9 +533,8 @@ document.getElementById('toggle-labels').addEventListener('click', (e) => {
   showLabels = !showLabels;
   e.currentTarget.classList.toggle('off', !showLabels);
 });
+
 // --- Kill feed ---------------------------------------------------
-// Live feed of Anoikis kills. In production the backend WS streams both
-// a snapshot (recent history, no animations) and live events (animated).
 const killList = document.getElementById('kill-list');
 const killCountEl = document.getElementById('kill-count');
 const MAX_KILLS = 40;
@@ -1012,9 +569,6 @@ const KIND_LABEL = {
   deployable: 'Deployable'
 };
 
-// Which kinds are currently visible. Mutated by the filter chips; cards
-// that don't match are hidden via display:none rather than removed so we
-// don't have to re-render anything when the user toggles.
 const activeKinds = new Set(['ship', 'structure', 'tower', 'fighter', 'deployable']);
 
 function escapeHtml(s) {
@@ -1023,11 +577,6 @@ function escapeHtml(s) {
   }[c]));
 }
 
-// ESI name resolver for characters and corporations. Both use the same
-// public endpoint pattern and return `{ name, ... }` without auth. We
-// cache resolved names forever (keyed by "char:ID" / "corp:ID") and
-// dedupe in-flight requests so a snapshot with 40 cards triggers exactly
-// one network call per unique ID, not 40.
 const nameCache = new Map();
 const nameInFlight = new Map();
 
@@ -1053,8 +602,6 @@ function resolveEntityName(kind, id) {
   return p;
 }
 
-// Render a kill card. `animated` controls whether the star pulses — we want
-// the on-map flare/ring only for live events, not for snapshot replay.
 function spawnKill({ star, killId, typeId, kind, characterId, corporationId, value, ts, hasImplants, animated }) {
   if (animated) triggerKillAnim(star);
   const name = typeNameFor(typeId);
@@ -1065,9 +612,6 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
   const kindKey = kind || 'ship';
   const kindLabel = KIND_LABEL[kindKey] || 'Kill';
 
-  // Structures and control towers never have a victim character — the
-  // killmail is corp-level. Fall back to corp name so the line isn't
-  // dead weight.
   const hasChar = characterId != null;
   const hasCorp = corporationId != null;
   const ownerLoading = hasChar || hasCorp;
@@ -1118,7 +662,6 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
       </div>
     </div>
   `;
-  // Stop link + locate clicks from bubbling into the kill card itself.
   const zkbEl = el.querySelector('.zkb-link');
   if (zkbEl) zkbEl.addEventListener('click', (ev) => ev.stopPropagation());
   el.querySelector('.locate-btn').addEventListener('click', (ev) => {
@@ -1126,7 +669,6 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
     locateStar(star);
   });
 
-  // Resolve pilot / corp name lazily.
   if (ownerLoading) {
     const pilotEl = el.querySelector('.kill-pilot');
     const [entityKind, entityId] = hasChar
@@ -1144,8 +686,6 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
   updateKillCount();
 }
 
-// Count only currently-visible cards so the header reflects the active
-// filter set, not the raw DOM length.
 function updateKillCount() {
   let visible = 0;
   for (const el of killList.children) {
@@ -1154,7 +694,6 @@ function updateKillCount() {
   killCountEl.textContent = visible + ' shown';
 }
 
-// Resolve a backend kill payload to a star and forward to spawnKill.
 function handleBackendKill(kill, animated) {
   const star = starById.get(kill.systemId);
   if (!star) return;
@@ -1172,8 +711,6 @@ function handleBackendKill(kill, animated) {
   });
 }
 
-// Filter chip handlers — toggle visibility of existing cards and track the
-// active kind set so new arrivals honor it too.
 document.querySelectorAll('#kill-filters .kind-chip').forEach((chip) => {
   chip.addEventListener('click', () => {
     const kind = chip.dataset.kind;
@@ -1191,7 +728,6 @@ document.querySelectorAll('#kill-filters .kind-chip').forEach((chip) => {
   });
 });
 
-// Refresh relative-time labels every 10s so "33s ago" actually ages.
 setInterval(() => {
   for (const el of killList.querySelectorAll('.kill-age')) {
     const ts = Number(el.dataset.ts) || 0;
@@ -1199,40 +735,9 @@ setInterval(() => {
   }
 }, 10000);
 
-// --- Dev test buttons --------------------------------------------
-// Used to verify animations when the backend isn't running.
-const DEV_SHIP_IDS = [670, 11202, 11999, 17738, 22456, 24698, 28665, 29984, 29988, 33818, 11567, 11176];
-const DEV_VALUES   = [10000, 42e6, 48e6, 480e6, 85e6, 62e6, 220e6, 420e6, 390e6, 840e6, 1.2e11, 38e6];
-function devRandomKill(star) {
-  const i = Math.floor(Math.random() * DEV_SHIP_IDS.length);
-  const typeId = DEV_SHIP_IDS[i];
-  spawnKill({
-    star,
-    killId: null, // dev kills aren't on zKB, no link
-    typeId,
-    kind: 'ship',
-    characterId: null, // no pilot name lookup in dev mode
-    corporationId: null,
-    value: DEV_VALUES[i],
-    ts: Math.floor(Date.now() / 1000),
-    hasImplants: typeId === 670, // pretend dev pods always had implants
-    animated: true
-  });
-}
-document.getElementById('test-kill').addEventListener('click', () => {
-  devRandomKill(stars[Math.floor(Math.random() * stars.length)]);
-});
-document.getElementById('test-burst').addEventListener('click', () => {
-  const star = stars[Math.floor(Math.random() * stars.length)];
-  for (let i = 0; i < 10; i++) setTimeout(() => devRandomKill(star), i * 180);
-});
-
 // --- Live backend WS ---------------------------------------------
-// When running the mockup from file:// or localhost, the Node worker is
-// assumed to be at ws://localhost:8080/ws. When served from a real host
-// (GitHub Pages later), override via window.ANOIKIS_WS_URL before this
-// script runs.
-const WS_URL = window.ANOIKIS_WS_URL || 'ws://localhost:8080/ws';
+const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:';
+const WS_URL = window.ANOIKIS_WS_URL || (IS_LOCAL ? 'ws://localhost:8080/ws' : 'wss://ws.anoikis.info/ws');
 
 function connectKillFeed() {
   let backoff = 1000;
@@ -1258,9 +763,6 @@ function connectKillFeed() {
       let msg;
       try { msg = JSON.parse(e.data); } catch { return; }
       if (msg.type === 'snapshot' && Array.isArray(msg.kills)) {
-        // Replay newest-first so the feed ends up chronological. Cap to
-        // MAX_KILLS so we don't wastefully build DOM for kills we'd
-        // immediately trim.
         const recent = msg.kills.slice(-MAX_KILLS);
         for (const k of recent) handleBackendKill(k, false);
       } else if (msg.type === 'kill' && msg.kill) {
@@ -1276,6 +778,3 @@ connectKillFeed();
 
 // --- Go ----------------------------------------------------------
 requestAnimationFrame(draw);
-</script>
-</body>
-</html>

@@ -11,6 +11,10 @@ build/__pycache__/
 build/.venv/
 *.pyc
 
+# Dev-only / private
+mockup/
+claude.md
+
 # Editor / OS noise
 .vscode/
 .idea/
