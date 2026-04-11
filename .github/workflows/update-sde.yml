@@ -22,7 +22,18 @@ jobs:
       - name: Check if SDE has a new build
         id: sde_check
         run: |
-          LATEST=$(curl -sf "https://developers.eveonline.com/static-data/tranquility/latest.jsonl" | python3 -c "import sys,json; print(json.loads(sys.stdin.read().strip()).get('buildId',''))")
+          RAW=$(curl -sf "https://developers.eveonline.com/static-data/tranquility/latest.jsonl")
+          echo "Raw latest.jsonl: $RAW"
+          LATEST=$(echo "$RAW" | python3 -c "
+          import sys, json
+          raw = sys.stdin.read().strip()
+          if not raw:
+              print('')
+          else:
+              obj = json.loads(raw)
+              # Try common field names
+              print(obj.get('buildId') or obj.get('build_id') or obj.get('id') or obj.get('version') or '')
+          ")
           echo "Remote build: $LATEST"
 
           CACHE_FILE=".github/sde_build_id.txt"
@@ -33,7 +44,7 @@ jobs:
             echo "SDE unchanged, skipping."
             echo "changed=false" >> $GITHUB_OUTPUT
           else
-            echo "SDE has changed."
+            echo "SDE has changed (or first run)."
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "$LATEST" > "$CACHE_FILE"
           fi
