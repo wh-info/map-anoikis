@@ -191,6 +191,7 @@ html, body {
 /* ================================================================ */
 #system-info { margin-top: 12px; }
 #system-info.empty .info-body { display: none; }
+#system-info.empty .title { display: none; }
 
 .info-body {
   padding-top: 10px;
@@ -356,7 +357,7 @@ html, body {
 }
 
 .kill {
-  display: flex; gap: 10px;
+  display: flex; gap: 10px; align-items: center;
   padding: 10px;
   background: var(--panel-dark);
   border: 1px solid var(--border);
@@ -375,10 +376,6 @@ html, body {
 }
 
 .kill-left {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
   flex-shrink: 0;
 }
 .kill-img-wrap {
@@ -399,14 +396,6 @@ html, body {
   background-size: cover; background-position: center;
   border: 1px solid var(--border);
   border-radius: 0;
-}
-/* implant + locate icons sit under the image */
-.kill-img-actions {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
 }
 
 .kill-body { flex: 1; min-width: 0; }
@@ -459,11 +448,11 @@ html, body {
   border-radius: 0;
 }
 .kill-btn:hover { border-color: var(--accent); color: var(--accent); }
-.kill-btn svg { width: 13px; height: 13px; display: block; }
+.kill-btn svg { width: 16px; height: 16px; display: block; }
 
-/* zkillboard icon — right edge of the card, vertically centered */
+/* locate + zkb icons — left/right edges of the card */
+.kill-btn--locate,
 .kill-btn--zkb {
-  align-self: center;
   flex-shrink: 0;
 }
 
@@ -473,12 +462,12 @@ html, body {
   background: rgba(232, 212, 77, 0.08);
   color: #e8d44d;
   border-radius: 0;
-  width: 18px; height: 18px; min-width: 18px;
+  width: 24px; height: 24px; min-width: 24px;
 }
 
 /* implant portrait — tint B&W to gold via sepia chain */
 .implant-img {
-  height: 14px;
+  height: 16px;
   width: auto;
   display: block;
   filter: sepia(1) saturate(2) hue-rotate(8deg) brightness(0.72);
@@ -519,6 +508,7 @@ button.ctrl[style*="width: auto"],
 }
 button.ctrl:hover { border-color: var(--accent); color: var(--accent); }
 button.ctrl.off   { color: var(--dim); }
+button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 
 #zoom-val {
   color: var(--text);
@@ -697,3 +687,20 @@ button.ctrl.off   { color: var(--dim); }
   font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
+
+/* ================================================================ */
+/* SCREEN CORNER DECORATIONS                                        */
+/* ================================================================ */
+.corner {
+  position: fixed;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  z-index: 5;
+  transition: border-color 0.22s ease-out, border-width 0.22s ease-out;
+}
+.corner--active { border-color: rgba(0, 200, 200, 0.7) !important; border-width: 2px !important; }
+.corner--tl { top: 10px;    left: 10px;    border-top:    1px solid var(--border); border-left:   1px solid var(--border); }
+.corner--tr { top: 10px;    right: 10px;   border-top:    1px solid var(--border); border-right:  1px solid var(--border); }
+.corner--bl { bottom: 10px; left: 10px;    border-bottom: 1px solid var(--border); border-left:   1px solid var(--border); }
+.corner--br { bottom: 10px; right: 10px;   border-bottom: 1px solid var(--border); border-right:  1px solid var(--border); }

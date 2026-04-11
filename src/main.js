@@ -3,17 +3,37 @@
 // Data globals loaded before this script: window.ANOIKIS_SYSTEMS, window.TYPE_NAMES, window.TYPE_KINDS.
 
 // --- Constants ---------------------------------------------------
-const MIN_SCALE = 0.18;
-const MAX_SCALE = 30;
+const MIN_SCALE = 0.56;
+const MAX_SCALE = 35;
 const FLARE_MS = 1100;
 const RING_MS  = 2000;
 
-// WH class palette
-const CLASS_COLORS = {
-  C1: [122,209,255], C2: [106,208,199], C3: [134,224,138], C4: [216,216,106],
-  C5: [255,173,106], C6: [255,109,109], Thera: [201,139,255],
-  C13: [154,166,194], Drifter: [255,79,163]
+// WH class palettes
+const PALETTES = {
+  ember: {
+    C1: [255,140,0], C2: [255,140,0], C3: [255,140,0], C4: [255,140,0],
+    C5: [255,140,0], C6: [255,140,0], Thera: [255,140,0],
+    C13: [255,140,0], Drifter: [255,140,0]
+  },
+  anoikis: {
+    C1: [122,209,255], C2: [106,208,199], C3: [134,224,138], C4: [216,216,106],
+    C5: [255,173,106], C6: [255,109,109], Thera: [201,139,255],
+    C13: [154,166,194], Drifter: [255,79,163]
+  },
+  whtype: {
+    C1: [66,255,236], C2: [66,179,255], C3: [66,101,255], C4: [66,48,207],
+    C5: [156,50,237], C6: [242,48,220], Thera: [246,252,50],
+    C13: [237,237,237], Drifter: [237,237,237]
+  },
 };
+
+const CLASS_COLORS = { ...PALETTES.ember };
+
+function applyPalette(name) {
+  const p = PALETTES[name];
+  for (const k of Object.keys(p)) CLASS_COLORS[k] = p[k];
+  for (const cls of Object.keys(CLASS_COLORS)) spriteCache[cls] = buildSprite(CLASS_COLORS[cls]);
+}
 
 // --- Canvas setup ------------------------------------------------
 const canvas = document.getElementById('map');
@@ -118,7 +138,8 @@ function animatedResetView() {
   const to = computeResetTarget();
   camera.focusAnim = {
     start: performance.now(),
-    duration: 520,
+    duration: 380,
+    easePow: 4,
     from: { scale: camera.scale, offsetX: camera.offsetX, offsetY: camera.offsetY },
     to
   };
@@ -202,7 +223,7 @@ function draw() {
   if (camera.focusAnim) {
     const fa = camera.focusAnim;
     const t = clamp((performance.now() - fa.start) / fa.duration, 0, 1);
-    const eased = 1 - Math.pow(1 - t, 3);
+    const eased = 1 - Math.pow(1 - t, fa.easePow ?? 3);
     camera.scale   = fa.from.scale   + (fa.to.scale   - fa.from.scale)   * eased;
     camera.offsetX = fa.from.offsetX + (fa.to.offsetX - fa.from.offsetX) * eased;
     camera.offsetY = fa.from.offsetY + (fa.to.offsetY - fa.from.offsetY) * eased;
@@ -299,15 +320,36 @@ function draw() {
     }
   }
 
+  if (locateHover) {
+    const rect = locateHover.el.getBoundingClientRect();
+    const bx = rect.left + rect.width / 2;
+    const by = rect.top + rect.height / 2;
+    const sp = worldToScreen(locateHover.star.x, locateHover.star.y);
+    const starColor = CLASS_COLORS[locateHover.star.whClass] ?? [0, 200, 200];
+    const grad = ctx.createLinearGradient(bx, by, sp.x, sp.y);
+    grad.addColorStop(0, 'rgba(0,200,200,0.45)');
+    grad.addColorStop(1, rgba(starColor, 0.45));
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 7]);
+    ctx.lineDashOffset = 0;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(sp.x, sp.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
   if (selected) {
     const p = worldToScreen(selected.x, selected.y);
     ctx.globalCompositeOperation = 'source-over';
-    ctx.strokeStyle = 'rgba(143,211,255,0.85)';
+    ctx.strokeStyle = 'rgba(0,200,200,0.85)';
     ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(143,211,255,0.35)';
+    ctx.strokeStyle = 'rgba(0,200,200,0.35)';
     ctx.beginPath();
     ctx.arc(p.x, p.y, 22, 0, Math.PI * 2);
     ctx.stroke();
@@ -325,7 +367,7 @@ function draw() {
       const alpha = 0.85 * Math.pow(1 - t, 0.55);
 
       ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = `rgba(120, 232, 255, ${alpha})`;
+      ctx.strokeStyle = `rgba(0, 200, 200, ${alpha})`;
       ctx.lineWidth = 2;
       ctx.setLineDash([8, 6]);
       ctx.beginPath();
@@ -333,7 +375,7 @@ function draw() {
       ctx.stroke();
 
       ctx.setLineDash([]);
-      ctx.strokeStyle = `rgba(120, 232, 255, ${alpha * 0.9})`;
+      ctx.strokeStyle = `rgba(0, 200, 200, ${alpha * 0.9})`;
       ctx.lineWidth = 1.4;
       const arm = base + 10;
       const gap = base * 0.55;
@@ -344,7 +386,7 @@ function draw() {
       ctx.moveTo(p.x, p.y + gap); ctx.lineTo(p.x, p.y + arm);
       ctx.stroke();
 
-      ctx.fillStyle = `rgba(120, 232, 255, ${alpha * 0.75})`;
+      ctx.fillStyle = `rgba(0, 200, 200, ${alpha * 0.75})`;
       ctx.beginPath();
       ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
       ctx.fill();
@@ -352,6 +394,7 @@ function draw() {
   }
 
   ctx.restore();
+  updateCorners(cw, ch);
   requestAnimationFrame(draw);
 }
 
@@ -407,6 +450,7 @@ canvas.addEventListener('click', (e) => {
   if (dragMoved) return;
   const hit = pickStar(e.clientX, e.clientY);
   if (hit) selectStar(hit, true);
+  else deselectStar();
 });
 
 function pickStar(sx, sy) {
@@ -442,12 +486,61 @@ function handleHover(sx, sy) {
   }
 }
 
+// --- Corner brackets --------------------------------------------
+const cornerEls = {
+  tl: document.querySelector('.corner--tl'),
+  tr: document.querySelector('.corner--tr'),
+  bl: document.querySelector('.corner--bl'),
+  br: document.querySelector('.corner--br'),
+};
+const CORNER_SIZE = 24;
+const RETICLE_R  = 22; // px from star centre to inner edge of each bracket
+
+
+function updateCorners(cw, ch) {
+  const R = RETICLE_R, S = CORNER_SIZE, M = 10;
+  const nat = {
+    tl: { x: M,          y: M          },
+    tr: { x: cw - M - S, y: M          },
+    bl: { x: M,          y: ch - M - S },
+    br: { x: cw - M - S, y: ch - M - S },
+  };
+
+  if (!selected) {
+    for (const k of ['tl', 'tr', 'bl', 'br']) {
+      cornerEls[k].style.transform = 'translate(0,0)';
+    }
+    return;
+  }
+
+  const p = worldToScreen(selected.x, selected.y);
+  const sx = p.x, sy = p.y;
+  const tgt = {
+    tl: { x: sx - R - S, y: sy - R - S },
+    tr: { x: sx + R,     y: sy - R - S },
+    bl: { x: sx - R - S, y: sy + R     },
+    br: { x: sx + R,     y: sy + R     },
+  };
+  for (const k of ['tl', 'tr', 'bl', 'br']) {
+    const dx = tgt[k].x - nat[k].x;
+    const dy = tgt[k].y - nat[k].y;
+    cornerEls[k].style.transform = `translate(${dx}px,${dy}px)`;
+  }
+}
+
 // --- Selection + system info ------------------------------------
 let selected = null;
 let searchMarker = null;
 const siEl = document.getElementById('system-info');
+function deselectStar() {
+  selected = null;
+  siEl.classList.add('empty');
+  for (const el of Object.values(cornerEls)) el.classList.remove('corner--active');
+}
+
 function selectStar(s, focus) {
   selected = s;
+  for (const el of Object.values(cornerEls)) el.classList.add('corner--active');
   siEl.classList.remove('empty');
   document.getElementById('si-name').textContent = s.name;
   document.getElementById('si-region').textContent = s.regionName + ' · ' + s.constellation;
@@ -596,6 +689,19 @@ document.getElementById('toggle-labels').addEventListener('click', (e) => {
   btn.textContent = showLabels ? 'On' : 'Off';
 });
 
+const paletteEmberBtn  = document.getElementById('palette-ember');
+const paletteAnoikisBtn = document.getElementById('palette-anoikis');
+const paletteWhtypeBtn  = document.getElementById('palette-whtype');
+function setPalette(name) {
+  applyPalette(name);
+  paletteEmberBtn.classList.toggle('on',   name === 'ember');
+  paletteAnoikisBtn.classList.toggle('on', name === 'anoikis');
+  paletteWhtypeBtn.classList.toggle('on',  name === 'whtype');
+}
+paletteEmberBtn.addEventListener('click',   () => setPalette('ember'));
+paletteAnoikisBtn.addEventListener('click', () => setPalette('anoikis'));
+paletteWhtypeBtn.addEventListener('click',  () => setPalette('whtype'));
+
 // --- Panel visibility toggles ------------------------------------
 document.getElementById('hide-left').addEventListener('click', () => {
   document.getElementById('panel-left').classList.add('panel--hidden');
@@ -627,7 +733,7 @@ settingsPanel.addEventListener('click', (e) => e.stopPropagation());
 // --- Kill feed ---------------------------------------------------
 const killList = document.getElementById('kill-list');
 const killCountEl = document.getElementById('kill-count');
-const MAX_KILLS = 40;
+const MAX_KILLS = 50;
 
 function formatIsk(v) {
   if (v >= 1e9) return (v / 1e9).toFixed(1) + 'B';
@@ -684,7 +790,8 @@ function techBadge(typeId) {
   return (window.TYPE_META && typeId != null && window.TYPE_META[typeId]) || null;
 }
 
-const activeKinds = new Set(['ship', 'structure', 'tower', 'fighter', 'deployable']);
+const activeKinds = new Set(['ship', 'structure']);
+let locateHover = null;
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({
@@ -739,18 +846,16 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
   if (!activeKinds.has(kindKey)) el.style.display = 'none';
 
   el.innerHTML = `
+    <button class="kill-btn kill-btn--locate locate-btn" title="Locate ${escapeHtml(star.name)}" aria-label="Locate ${escapeHtml(star.name)}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="4"></circle>
+        <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
+      </svg>
+    </button>
     <div class="kill-left">
       <div class="kill-img-wrap">
         <div class="kill-img" style="background-image: url('${img}')"></div>
         ${techBadge(typeId) ? `<img src="./img/graphic/${techBadge(typeId)}.png" class="kill-tech-badge" alt="" aria-hidden="true" />` : ''}
-      </div>
-      <div class="kill-img-actions">
-        <button class="kill-btn locate-btn" title="Locate ${escapeHtml(star.name)}" aria-label="Locate ${escapeHtml(star.name)}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <circle cx="12" cy="12" r="4"></circle>
-            <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
-          </svg>
-        </button>
       </div>
     </div>
     <div class="kill-body">
@@ -772,10 +877,13 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
   `;
   const zkbEl = el.querySelector('.zkb-link');
   if (zkbEl) zkbEl.addEventListener('click', (ev) => ev.stopPropagation());
-  el.querySelector('.locate-btn').addEventListener('click', (ev) => {
+  const locateBtn = el.querySelector('.locate-btn');
+  locateBtn.addEventListener('click', (ev) => {
     ev.stopPropagation();
     locateStar(star);
   });
+  locateBtn.addEventListener('mouseenter', () => { locateHover = { el: locateBtn, star }; });
+  locateBtn.addEventListener('mouseleave', () => { locateHover = null; });
 
   if (ownerLoading) {
     const pilotEl = el.querySelector('.kill-pilot');
