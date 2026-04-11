@@ -393,7 +393,7 @@ html, body {
   pointer-events: none;
 }
 .kill-img {
-  width: 48px; height: 48px;
+  width: 56px; height: 56px;
   background: #040c0c;
   flex-shrink: 0;
   background-size: cover; background-position: center;
