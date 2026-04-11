@@ -522,7 +522,9 @@ searchEl.addEventListener('input', () => {
 // --- vSDE panel --------------------------------------------------
 async function showSdePanel() {
   searchResults.innerHTML = '';
-  const localBuild = window.SDE_BUILD_DATE || 'unknown';
+  const localBuild = window.SDE_BUILD_NUMBER
+    ? `${window.SDE_BUILD_NUMBER} (${window.SDE_BUILD_DATE || 'unknown'})`
+    : (window.SDE_BUILD_DATE || 'unknown');
 
   const panel = document.createElement('div');
   panel.className = 'sde-panel';
@@ -549,8 +551,9 @@ async function showSdePanel() {
     const res = await fetch('https://developers.eveonline.com/static-data/tranquility/latest.jsonl');
     const obj = res.ok ? await res.json() : null;
     const remoteBuild = obj?.buildNumber ?? null;
+    const releaseDate = obj?.releaseDate ? obj.releaseDate.replace('T', ' ').replace('Z', ' UTC').slice(0, 20) + ' UTC' : null;
     if (remoteBuild) {
-      remoteEl.textContent = String(remoteBuild);
+      remoteEl.textContent = releaseDate ? `${remoteBuild} (${releaseDate})` : String(remoteBuild);
       // Extract local build number from SDE_BUILD_DATE if present,
       // otherwise compare the full string. The workflow stores buildNumber
       // in sde_build_id.txt but TYPE_NAMES just has a date string — so we
