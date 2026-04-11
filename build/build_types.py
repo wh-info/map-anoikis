@@ -1,20 +1,20 @@
-"""Extract the type lookup tables for the kill feed from the EVE SDE.
+"""Extract the type lookup tables for the kill feed from the EVE SDE JSONL.
 
-Produces two files from a single SDE pass so the frontend and backend share
-exactly one source of truth for which killmails are in-scope:
+Reads groups.jsonl and types.jsonl from build/sde_cache/ and produces:
 
   data/type-kinds.js
+    window.SDE_BUILD_DATE = "2026-04-11 12:00 UTC"
     window.TYPE_NAMES = { typeID: "Rifter", ... }
     window.TYPE_KINDS = { typeID: "ship" | "structure" | "tower"
-                                | "fighter" | "deployable" }
+                               | "fighter" | "deployable" }
 
   backend/src/type-kinds.json
     { "kinds": { "<typeID>": "ship" | ... } }
 
-Scope (per user):
-  - Ship          (category 6)   — includes capsules, so pod logic keeps working
-  - Structure     (category 65)  — Citadels + other Upwell (EC, Refinery, Jump Bridge, …)
-  - Control Tower (category 23, group 365) — POS guns/arrays/silos deliberately excluded
+Scope:
+  - Ship          (category 6)   — includes capsules
+  - Structure     (category 65)  — Citadels + other Upwell
+  - Control Tower (category 23, group 365) — POS guns/arrays/silos excluded
   - Fighter       (category 87)
   - Deployable    (category 22)
 
@@ -25,49 +25,87 @@ Run:
 from __future__ import annotations
 
 import json
-import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-SDE_PATH = ROOT / "build" / "sde_cache" / "sqlite-latest.sqlite"
-OUT_JS = ROOT / "data" / "type-kinds.js"
-OUT_JSON = ROOT / "backend" / "src" / "type-kinds.json"
+ROOT      = Path(__file__).resolve().parent.parent
+SDE_CACHE = ROOT / "build" / "sde_cache"
+OUT_JS    = ROOT / "data" / "type-kinds.js"
+OUT_JSON  = ROOT / "backend" / "src" / "type-kinds.json"
 
-# (kind_label, SQL predicate). Order matters only for tie-breaking, which
-# can't happen here because the category/group sets are disjoint.
-KIND_QUERIES = [
-    ("ship",       "g.categoryID = 6"),
-    ("structure",  "g.categoryID = 65"),
-    ("tower",      "g.categoryID = 23 AND g.groupID = 365"),
-    ("fighter",    "g.categoryID = 87"),
-    ("deployable", "g.categoryID = 22"),
+# (kind_label, (categoryID,) or (categoryID, groupID)) — disjoint sets.
+KIND_RULES: list[tuple[str, int, int | None]] = [
+    ("ship",        6,  None),
+    ("structure",  65,  None),
+    ("tower",      23,  365),
+    ("fighter",    87,  None),
+    ("deployable", 22,  None),
 ]
 
 
+def iter_jsonl(path: Path):
+    """Yield (key, record) from a CCP SDE JSONL file.
+
+    Each line is a JSON object with a `_key` integer field. Other fields are
+    either top-level (flat format) or nested under `_value` (keyed format).
+    Both layouts are handled.
+    """
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            obj = json.loads(line)
+            key = obj.get("_key")
+            if "_value" in obj:
+                record = obj["_value"]
+            else:
+                record = {k: v for k, v in obj.items() if k != "_key"}
+            yield key, record
+
+
+def en(name_field) -> str:
+    """Extract the English string from a multilingual name object."""
+    if isinstance(name_field, dict):
+        return name_field.get("en") or ""
+    return str(name_field) if name_field else ""
+
+
 def main() -> None:
-    if not SDE_PATH.exists():
-        raise SystemExit(f"SDE not found at {SDE_PATH} — decompress the .bz2 first")
-    con = sqlite3.connect(SDE_PATH)
+    groups_path = SDE_CACHE / "groups.jsonl"
+    types_path  = SDE_CACHE / "types.jsonl"
+    for p in (groups_path, types_path):
+        if not p.exists():
+            raise SystemExit(f"Missing {p} — extract from the SDE zip first")
+
+    # groupID → categoryID
+    group_cat: dict[int, int] = {}
+    for gid, rec in iter_jsonl(groups_path):
+        if gid is not None:
+            cat = rec.get("categoryID")
+            if cat is not None:
+                group_cat[gid] = int(cat)
+
     names: dict[int, str] = {}
     kinds: dict[int, str] = {}
-    try:
-        for kind, predicate in KIND_QUERIES:
-            sql = f"""
-                SELECT t.typeID, t.typeName
-                FROM invTypes t
-                JOIN invGroups g ON g.groupID = t.groupID
-                WHERE t.published = 1 AND ({predicate})
-            """
-            count = 0
-            for type_id, name in con.execute(sql):
-                names[int(type_id)] = name
-                kinds[int(type_id)] = kind
-                count += 1
-            print(f"  {kind:<11} {count:>5}")
-    finally:
-        con.close()
+    counts: dict[str, int] = {k: 0 for k, *_ in KIND_RULES}
 
+    for tid, rec in iter_jsonl(types_path):
+        if tid is None or not rec.get("published", False):
+            continue
+        grp = rec.get("groupID")
+        cat = group_cat.get(grp)
+        if cat is None:
+            continue
+        for kind_label, req_cat, req_grp in KIND_RULES:
+            if cat == req_cat and (req_grp is None or grp == req_grp):
+                names[int(tid)] = en(rec.get("name"))
+                kinds[int(tid)] = kind_label
+                counts[kind_label] += 1
+                break
+
+    for kind_label, count in counts.items():
+        print(f"  {kind_label:<11} {count:>5}")
     print(f"total {len(names)} types")
 
     build_date = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -89,7 +127,7 @@ def main() -> None:
         json.dumps({"kinds": {str(k): v for k, v in kinds.items()}}, separators=(",", ":")),
         encoding="utf-8",
     )
-    js_kb = len(OUT_JS.read_bytes()) // 1024
+    js_kb   = len(OUT_JS.read_bytes())   // 1024
     json_kb = len(OUT_JSON.read_bytes()) // 1024
     print(f"wrote {OUT_JS} ({js_kb} KB)")
     print(f"wrote {OUT_JSON} ({json_kb} KB)")

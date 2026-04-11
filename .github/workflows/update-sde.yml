@@ -19,44 +19,43 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Check if SDE has changed
+      - name: Check if SDE has a new build
         id: sde_check
         run: |
-          URL="https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2"
-          LAST_MODIFIED=$(curl -sI "$URL" | grep -i last-modified | tr -d '\r' | cut -d' ' -f2-)
-          echo "Remote Last-Modified: $LAST_MODIFIED"
+          LATEST=$(curl -sf "https://developers.eveonline.com/static-data/tranquility/latest.jsonl" | python3 -c "import sys,json; print(json.loads(sys.stdin.read().strip()).get('buildId',''))")
+          echo "Remote build: $LATEST"
 
-          CACHE_FILE=".github/sde_last_modified.txt"
-          if [ -f "$CACHE_FILE" ]; then
-            CACHED=$(cat "$CACHE_FILE")
-          else
-            CACHED=""
-          fi
-          echo "Cached Last-Modified: $CACHED"
+          CACHE_FILE=".github/sde_build_id.txt"
+          CACHED=$(cat "$CACHE_FILE" 2>/dev/null || echo "")
+          echo "Cached build: $CACHED"
 
-          if [ "$LAST_MODIFIED" = "$CACHED" ]; then
+          if [ "$LATEST" = "$CACHED" ] && [ -n "$LATEST" ]; then
             echo "SDE unchanged, skipping."
             echo "changed=false" >> $GITHUB_OUTPUT
           else
             echo "SDE has changed."
             echo "changed=true" >> $GITHUB_OUTPUT
-            echo "$LAST_MODIFIED" > "$CACHE_FILE"
+            echo "$LATEST" > "$CACHE_FILE"
           fi
 
-      - name: Download and decompress SDE
+      - name: Download and extract SDE JSONL files
         if: steps.sde_check.outputs.changed == 'true'
         run: |
           mkdir -p build/sde_cache
-          echo "Downloading SDE (~80MB)..."
-          curl -L "https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2" -o build/sde_cache/sqlite-latest.sqlite.bz2
-          echo "Decompressing..."
-          python3 -c "
-          import bz2, shutil
-          with bz2.open('build/sde_cache/sqlite-latest.sqlite.bz2', 'rb') as src, \
-               open('build/sde_cache/sqlite-latest.sqlite', 'wb') as dst:
-              shutil.copyfileobj(src, dst)
-          "
-          rm build/sde_cache/sqlite-latest.sqlite.bz2
+          echo "Downloading SDE JSONL zip..."
+          curl -L "https://developers.eveonline.com/static-data/eve-online-static-data-latest-jsonl.zip" -o /tmp/sde.zip
+          echo "Extracting needed files..."
+          unzip -j /tmp/sde.zip \
+            "types.jsonl" \
+            "groups.jsonl" \
+            "mapSolarSystems.jsonl" \
+            "mapRegions.jsonl" \
+            "mapConstellations.jsonl" \
+            "mapSecondarySuns.jsonl" \
+            -d build/sde_cache/
+          rm /tmp/sde.zip
+          echo "Extracted files:"
+          ls -lh build/sde_cache/
 
       - name: Run build scripts
         if: steps.sde_check.outputs.changed == 'true'
@@ -70,9 +69,12 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add data/type-kinds.js data/anoikis-systems.js backend/src/type-kinds.json .github/sde_last_modified.txt
+          git add \
+            data/type-kinds.js \
+            data/anoikis-systems.js \
+            backend/src/type-kinds.json \
+            .github/sde_build_id.txt
 
-          # Only commit if something actually changed
           if git diff --cached --quiet; then
             echo "Data files unchanged after rebuild, nothing to commit."
           else
