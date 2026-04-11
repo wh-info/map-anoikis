@@ -908,7 +908,7 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
         <span class="kill-ship-name">${escapeHtml(name)}</span>
       </div>
       <div class="kill-pilot${ownerLoading ? ' loading' : ''}">${ownerInitial}</div>
-      <div class="kill-sys">${escapeHtml(starDisplayName)} · ${escapeHtml(starDisplayClass)}</div>
+      <div class="kill-sys">${escapeHtml(starDisplayName)} · <span class="kill-sys-class">${escapeHtml(starDisplayClass)}</span></div>
       <div class="kill-meta">
         ${hasImplants ? `<span class="implant-badge" title="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
         <span class="kill-value">${formatIsk(value)} ISK</span>

@@ -426,6 +426,7 @@ html, body {
   margin-top: 2px;
   letter-spacing: 0.02em;
 }
+.kill-sys-class { font-weight: 700; }
 
 .kill-meta {
   font-size: 11px;
