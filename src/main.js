@@ -488,8 +488,16 @@ function flyTo(x, y, scale, dur) {
 const searchEl = document.getElementById('search');
 const searchResults = document.getElementById('search-results');
 searchEl.addEventListener('input', () => {
-  const q = searchEl.value.trim().toLowerCase();
+  const raw = searchEl.value.trim();
+  const q = raw.toLowerCase();
   searchResults.innerHTML = '';
+
+  // Secret: "vSDE" shows SDE build info and a manual update trigger.
+  if (raw === 'vSDE') {
+    showSdePanel();
+    return;
+  }
+
   if (q.length < 2) return;
   const matches = [];
   for (const s of stars) {
@@ -510,6 +518,52 @@ searchEl.addEventListener('input', () => {
     searchResults.appendChild(item);
   }
 });
+
+// --- vSDE panel --------------------------------------------------
+function showSdePanel() {
+  searchResults.innerHTML = '';
+  const buildDate = window.SDE_BUILD_DATE || 'unknown';
+  const panel = document.createElement('div');
+  panel.className = 'sde-panel';
+  panel.innerHTML = `
+    <div class="sde-row"><span class="sde-label">SDE build</span><span class="sde-val">${escapeHtml(buildDate)}</span></div>
+    <div class="sde-row" style="margin-top:8px;">
+      <input class="sde-secret-input" type="password" placeholder="passphrase" autocomplete="off" />
+      <button class="sde-trigger-btn">Update SDE</button>
+    </div>
+    <div class="sde-status"></div>
+  `;
+  searchResults.appendChild(panel);
+
+  const secretInput = panel.querySelector('.sde-secret-input');
+  const triggerBtn  = panel.querySelector('.sde-trigger-btn');
+  const statusEl    = panel.querySelector('.sde-status');
+
+  triggerBtn.addEventListener('click', async () => {
+    const secret = secretInput.value.trim();
+    if (!secret) { statusEl.textContent = 'Enter passphrase.'; return; }
+    triggerBtn.disabled = true;
+    statusEl.textContent = 'Triggering…';
+    try {
+      const res = await fetch(
+        (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+          ? 'http://localhost:8080/trigger-sde'
+          : 'https://ws.anoikis.info/trigger-sde',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ secret })
+        }
+      );
+      const data = await res.json();
+      statusEl.textContent = data.ok ? 'Workflow triggered. Check GitHub Actions.' : ('Error: ' + data.error);
+    } catch {
+      statusEl.textContent = 'Request failed.';
+    } finally {
+      triggerBtn.disabled = false;
+    }
+  });
+}
 
 // --- Zoom controls ----------------------------------------------
 function updateZoomLabel() {

@@ -15,6 +15,10 @@ const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
 const RING_SIZE = Number(process.env.RING_SIZE || 500);
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '*';
+const ADMIN_SECRET = process.env.ADMIN_SECRET || null;
+const GH_TOKEN     = process.env.GH_TOKEN || null;
+const GH_REPO      = 'wh-info/map-anoikis';
+const GH_WORKFLOW  = 'update-sde.yml';
 
 const ring = createRing(RING_SIZE);
 const clients = new Set();
@@ -79,6 +83,35 @@ fastify.get('/health', async () => ({
   seenAnoikis,
   zkill: zkillStatus
 }));
+
+// Trigger the GitHub Actions SDE update workflow.
+// Requires ADMIN_SECRET and GH_TOKEN env vars to be set on Railway.
+fastify.post('/trigger-sde', async (req, reply) => {
+  const { secret } = req.body || {};
+  if (!ADMIN_SECRET || !GH_TOKEN) {
+    return reply.code(503).send({ ok: false, error: 'not configured' });
+  }
+  if (secret !== ADMIN_SECRET) {
+    return reply.code(403).send({ ok: false, error: 'forbidden' });
+  }
+  const res = await fetch(
+    `https://api.github.com/repos/${GH_REPO}/actions/workflows/${GH_WORKFLOW}/dispatches`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GH_TOKEN}`,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'map-anoikis-backend'
+      },
+      body: JSON.stringify({ ref: 'main' })
+    }
+  );
+  if (res.status === 204) return { ok: true };
+  const body = await res.text();
+  fastify.log.warn({ status: res.status, body }, 'GitHub dispatch failed');
+  return reply.code(502).send({ ok: false, error: `GitHub returned ${res.status}` });
+});
 
 await fastify.listen({ port: PORT, host: HOST });
 
