@@ -32,7 +32,7 @@ jobs:
           else:
               obj = json.loads(raw)
               # Try common field names
-              print(obj.get('buildId') or obj.get('build_id') or obj.get('id') or obj.get('version') or '')
+              print(obj.get('buildNumber') or obj.get('buildId') or obj.get('build_id') or '')
           ")
           echo "Remote build: $LATEST"
 
