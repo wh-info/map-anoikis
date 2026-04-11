@@ -586,6 +586,26 @@ function formatAge(ts) {
   return Math.floor(delta / 86400) + 'd ago';
 }
 
+// ESI cache for type names not in the local SDE table (e.g. new ships on patch day).
+const esiTypeNameCache = new Map();
+
+async function resolveTypeName(typeId, nameEl) {
+  if (typeId == null) { nameEl.textContent = 'Unknown'; return; }
+  const local = window.TYPE_NAMES && window.TYPE_NAMES[typeId];
+  if (local) { nameEl.textContent = local; return; }
+  if (esiTypeNameCache.has(typeId)) { nameEl.textContent = esiTypeNameCache.get(typeId); return; }
+  nameEl.textContent = 'Type ' + typeId; // placeholder while fetching
+  try {
+    const res = await fetch(`https://esi.evetech.net/latest/universe/types/${typeId}/`);
+    const data = res.ok ? await res.json() : null;
+    const name = data?.name || ('Type ' + typeId);
+    esiTypeNameCache.set(typeId, name);
+    if (nameEl.isConnected) nameEl.textContent = name;
+  } catch {
+    esiTypeNameCache.set(typeId, 'Type ' + typeId);
+  }
+}
+
 function typeNameFor(typeId) {
   if (typeId == null) return 'Unknown';
   return (window.TYPE_NAMES && window.TYPE_NAMES[typeId]) || ('Type ' + typeId);
@@ -634,9 +654,9 @@ function resolveEntityName(kind, id) {
 
 function spawnKill({ star, killId, typeId, kind, characterId, corporationId, value, ts, hasImplants, animated }) {
   if (animated) triggerKillAnim(star);
-  const name = typeNameFor(typeId);
+  const name = typeNameFor(typeId); // synchronous best-effort; ESI fills in below if unknown
   const img = typeId != null
-    ? `https://images.evetech.net/types/${typeId}/render?size=128`
+    ? `https://images.evetech.net/types/${typeId}/render?size=64`
     : '';
   const zkbHref = killId ? `https://zkillboard.com/kill/${killId}/` : null;
   const kindKey = kind || 'ship';
@@ -658,7 +678,7 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
     <div class="kill-img" style="background-image: url('${img}')"></div>
     <div class="kill-body">
       <div class="kill-ship">
-        ${escapeHtml(name)}
+        <span class="kill-ship-name">${escapeHtml(name)}</span>
         <span class="kind-pill ${kindKey}">${kindLabel}</span>
       </div>
       <div class="kill-pilot${ownerLoading ? ' loading' : ''}">${ownerInitial}</div>
@@ -714,6 +734,11 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
   killList.insertBefore(el, killList.firstChild);
   while (killList.children.length > MAX_KILLS) killList.removeChild(killList.lastChild);
   updateKillCount();
+
+  // If the name was a fallback placeholder, try ESI now that the element is in the DOM.
+  if (!window.TYPE_NAMES?.[typeId]) {
+    resolveTypeName(typeId, el.querySelector('.kill-ship-name'));
+  }
 }
 
 function updateKillCount() {

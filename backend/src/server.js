@@ -114,9 +114,9 @@ connectZkill({
     zkillStatus = s;
     fastify.log.info({ zkill: s }, 'upstream status');
   },
-  onKill: (raw) => {
+  onKill: async (raw) => {
     seenTotal++;
-    const classification = classifyKill(raw);
+    const classification = await classifyKill(raw);
     if (!classification) return;
     seenAnoikis++;
     const kill = compactKill(raw, classification);

@@ -1,13 +1,14 @@
-// Anoikis filter with typeID-kind awareness.
+// Anoikis kill filter with ESI fallback for unknown typeIDs.
 //
-// In-scope when BOTH:
+// A kill is in-scope when BOTH:
 //   1. solar_system_id falls inside Anoikis (31000000 <= id < 32000000)
 //   2. victim.ship_type_id resolves to one of our tracked kinds
-//      (ship / structure / tower / fighter / deployable).
+//      (ship / structure / tower / fighter / deployable)
 //
-// The type-kinds table is baked at build time from the SDE — see
-// build/build_types.py. Any typeID not in the table is silently dropped,
-// which keeps the feed focused on the five categories we actually render.
+// Kind resolution order:
+//   1. type-kinds.json (built from SDE at deploy time) — instant, covers ~600 types
+//   2. ESI /universe/types/{id}/ — for types added after the last SDE build
+//      Results are cached in memory for the lifetime of the worker.
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -16,12 +17,43 @@ import { dirname, resolve } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rawKinds = JSON.parse(readFileSync(resolve(__dirname, 'type-kinds.json'), 'utf-8'));
 
-// Rebuild as a plain object keyed by number for fast lookup. JSON forces
-// string keys on us; flipping them to numbers once at boot is cheaper than
-// coercing on every kill.
 const KIND_BY_TYPE_ID = new Map();
 for (const [k, v] of Object.entries(rawKinds.kinds)) {
   KIND_BY_TYPE_ID.set(Number(k), v);
+}
+
+// ESI category ID → kind label. Mirrors the same mapping used in build_types.py.
+const KIND_BY_CATEGORY = new Map([
+  [6,  'ship'],
+  [65, 'structure'],
+  [22, 'deployable'],
+  [87, 'fighter'],
+]);
+// Control towers: category 23 group 365 — handled separately after ESI lookup.
+const TOWER_CATEGORY = 23;
+const TOWER_GROUP    = 365;
+
+// In-memory cache for ESI-resolved types so each unknown is only fetched once.
+const esiKindCache = new Map();
+
+async function kindFromEsi(typeId) {
+  if (esiKindCache.has(typeId)) return esiKindCache.get(typeId);
+  try {
+    const res = await fetch(`https://esi.evetech.net/latest/universe/types/${typeId}/`, {
+      headers: { 'User-Agent': process.env.ZKILL_USER_AGENT || 'map-anoikis/0.1' }
+    });
+    if (!res.ok) { esiKindCache.set(typeId, null); return null; }
+    const data = await res.json();
+    const catId   = data.category_id;
+    const groupId = data.group_id;
+    let kind = KIND_BY_CATEGORY.get(catId) || null;
+    if (catId === TOWER_CATEGORY && groupId === TOWER_GROUP) kind = 'tower';
+    esiKindCache.set(typeId, kind);
+    return kind;
+  } catch {
+    esiKindCache.set(typeId, null);
+    return null;
+  }
 }
 
 export const ANOIKIS_MIN = 31000000;
@@ -31,7 +63,7 @@ export function kindForType(typeId) {
   return KIND_BY_TYPE_ID.get(typeId) || null;
 }
 
-export function classifyKill(msg) {
+export async function classifyKill(msg) {
   const esi = msg?.esi;
   if (!esi) return null;
   const systemId = esi.solar_system_id;
@@ -39,7 +71,11 @@ export function classifyKill(msg) {
     return null;
   }
   const shipTypeId = esi.victim?.ship_type_id;
-  const kind = kindForType(shipTypeId);
+  if (!shipTypeId) return null;
+
+  let kind = kindForType(shipTypeId);
+  if (!kind) kind = await kindFromEsi(shipTypeId);
   if (!kind) return null;
+
   return { systemId, shipTypeId, kind };
 }
