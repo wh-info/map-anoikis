@@ -16,6 +16,7 @@
     <div class="brand-dot"></div>
     <div style="flex: 1;">
       <div class="brand-title">map.anoikis.info<span class="cursor-blink">_</span></div>
+      <div class="brand-sub" id="star-count">0 systems</div>
     </div>
     <button class="panel-hide-btn" id="hide-left" title="Hide panel">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -58,16 +59,6 @@
   <div id="kill-list"></div>
 </div>
 
-<!-- BOTTOM PANEL: zoom + status -->
-<div id="panel-bottom" class="panel">
-  <button class="ctrl" id="zoom-out" title="Zoom out">&minus;</button>
-  <span id="zoom-val">1.00x</span>
-  <button class="ctrl" id="zoom-in" title="Zoom in">+</button>
-  <div class="sep"></div>
-  <span id="star-count">0 systems</span>
-  <div class="sep"></div>
-  <button class="ctrl" id="reset-view" title="Reset view" style="width: auto; padding: 0 10px;">Reset</button>
-</div>
 
 <!-- Restore buttons (visible when panels are hidden) -->
 <button class="panel-restore-btn" id="restore-left" title="Show search &amp; system info">
@@ -87,6 +78,18 @@
 
 <!-- Settings slide-up panel -->
 <div id="settings-panel">
+  <div class="settings-row">
+    <span>Zoom</span>
+    <div style="display: flex; gap: 4px; align-items: center;">
+      <button class="ctrl" id="zoom-out" title="Zoom out">&minus;</button>
+      <span id="zoom-val" style="font-size: 11px; min-width: 40px; text-align: center;">1.00x</span>
+      <button class="ctrl" id="zoom-in" title="Zoom in">+</button>
+    </div>
+  </div>
+  <div class="settings-row">
+    <span>View</span>
+    <button class="ctrl" id="reset-view" title="Reset view" style="width: auto; padding: 0 10px;">Reset</button>
+  </div>
   <div class="settings-row">
     <span>Labels</span>
     <button class="ctrl off" id="toggle-labels" title="Toggle system name labels" style="width: auto; padding: 0 10px;">Off</button>
