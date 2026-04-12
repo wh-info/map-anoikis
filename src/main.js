@@ -342,7 +342,7 @@ function drawOrrery(star) {
 
   if (orreryProjection === 'map') {
     // True XZ projection: linear scale, outermost planet at 90% of half-canvas.
-    const maxR    = planets.reduce((m, p) => Math.max(m, p.r || 0), 0) || 1;
+    const maxR     = Math.max(planets.reduce((m, p) => Math.max(m, p.r || 0), 0), 14.3);
     const mapScale = (cx * 0.90) / maxR;
     refRingPx = 14.3 * mapScale;
     positions = planets.map((p, i) => {
