@@ -100,11 +100,17 @@
     </div>
   </div>
   <div id="intel-body">
-    <div class="intel-section-label">Last 24 Hours</div>
+    <div class="intel-section-label">
+      <span>Last 24 Hours</span>
+      <span id="intel-count-24h" class="intel-section-count"></span>
+    </div>
     <div id="intel-hm24"></div>
     <div id="intel-hm24-labels" class="intel-hlabels"></div>
 
-    <div class="intel-section-label">60-Day Activity Pattern <span class="intel-utc">(UTC)</span></div>
+    <div class="intel-section-label">
+      <span>60-Day Activity Pattern <span class="intel-utc">(UTC)</span></span>
+      <span id="intel-count-60d" class="intel-section-count"></span>
+    </div>
     <div class="intel-hm60-wrap">
       <div id="intel-dlabels" class="intel-dlabels"></div>
       <div class="intel-hm60-right">
@@ -112,6 +118,9 @@
         <div id="intel-hm60-labels" class="intel-hlabels"></div>
       </div>
     </div>
+
+    <div class="intel-separator"></div>
+    <div class="intel-section-label" style="margin-top:10px;">Activity List</div>
 
     <div class="intel-lists">
       <div class="intel-list-col">

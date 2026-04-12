@@ -623,6 +623,9 @@ function renderHm24(hourly24, rgb) {
   const labels = document.getElementById('intel-hm24-labels');
   grid.innerHTML = labels.innerHTML = '';
   const max = Math.max(...hourly24, 1);
+  const total = hourly24.reduce((s, v) => s + v, 0);
+  document.getElementById('intel-count-24h').textContent =
+    `${total} kill${total !== 1 ? 's' : ''}`;
   const now = new Date();
   const curH = now.getUTCHours();
   for (let i = 0; i < 24; i++) {
@@ -696,6 +699,8 @@ function renderIntel(star, data) {
   document.getElementById('intel-body').style.display    = '';
   document.getElementById('intel-subtitle').textContent  =
     `${data.killCount} kill${data.killCount !== 1 ? 's' : ''} in last 60 days`;
+  document.getElementById('intel-count-60d').textContent =
+    `${data.killCount} kill${data.killCount !== 1 ? 's' : ''}`;
   const rgb = CLASS_COLORS[star.whClass] || [0, 200, 200];
   renderHm24(data.hourly24, rgb);
   renderHm60(data.matrix60, rgb);
@@ -728,8 +733,9 @@ function openIntel(star) {
     displayName(star) + ' · ' + displayClass(star);
   document.getElementById('intel-subtitle').textContent = '';
   document.getElementById('intel-loading').style.display = '';
-  document.getElementById('intel-loading').textContent   = 'Loading\u2026';
   document.getElementById('intel-body').style.display    = 'none';
+  document.getElementById('intel-count-24h').textContent = '';
+  document.getElementById('intel-count-60d').textContent = '';
   document.getElementById('si-intel').classList.add('active');
   loadIntel(star);
 }
