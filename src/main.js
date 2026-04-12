@@ -653,26 +653,10 @@ function utcToLocalHour(utcH) {
   return ((utcH - offsetMin / 60) % 24 + 24) % 24;
 }
 
-function buildBarCell(count, max, rgb, tipText) {
-  const col = document.createElement('div');
-  col.style.cssText = 'flex:1;display:flex;align-items:flex-end;min-width:0;';
-  col.dataset.tip = tipText;
-  const bar = document.createElement('div');
-  const h = max > 0 ? Math.max(count > 0 ? 8 : 0, Math.round((count / max) * 100)) : 0;
-  const alpha = count > 0 ? 0.45 + 0.55 * (count / max) : 0;
-  bar.style.cssText =
-    `width:100%;height:${h}%;` +
-    `background:${count > 0 ? `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha.toFixed(2)})` : 'rgba(13,31,31,1)'};` +
-    `border-radius:2px 2px 0 0;transition:opacity 0.1s;`;
-  col.appendChild(bar);
-  return col;
-}
-
 function renderHm24(hourly24, rgb) {
   const grid   = document.getElementById('intel-hm24');
   const labels = document.getElementById('intel-hm24-labels');
   grid.innerHTML = labels.innerHTML = '';
-  grid.style.alignItems = 'stretch';
   const max = Math.max(...hourly24, 1);
   const total24 = hourly24.reduce((s, v) => s + v, 0);
   document.getElementById('intel-count-24h').textContent =
@@ -684,97 +668,13 @@ function renderHm24(hourly24, rgb) {
     const hStr = String(h).padStart(2, '0');
     const locH = String(Math.floor(utcToLocalHour(h))).padStart(2, '0');
     const c    = hourly24[i];
-    grid.appendChild(buildBarCell(c, max, rgb,
+    grid.appendChild(buildHmCell(c, max, rgb,
       `EVE Time  ${hStr}:00\nLocal     ${locH}:00\n${c} kill${c !== 1 ? 's' : ''}`));
     const lbl = document.createElement('div');
     lbl.className = 'intel-hlabel';
     lbl.textContent = (h % 6 === 0) ? hStr : '';
     labels.appendChild(lbl);
   }
-}
-
-function renderMarginals(matrix60, rgb) {
-  // Compute marginals from the 60-day matrix.
-  const hourTotals = new Array(24).fill(0);
-  const dowTotals  = new Array(7).fill(0);
-  for (let d = 0; d < 7; d++) {
-    for (let h = 0; h < 24; h++) {
-      const c = matrix60[d][h];
-      hourTotals[h] += c;
-      dowTotals[d]  += c;
-    }
-  }
-  const hourMax = Math.max(...hourTotals, 1);
-  const dowMax  = Math.max(...dowTotals, 1);
-
-  // Inject container after the 60×24 wrap if not present.
-  let box = document.getElementById('intel-marginals');
-  if (!box) {
-    box = document.createElement('div');
-    box.id = 'intel-marginals';
-    box.style.cssText = 'margin-top:10px;';
-    const wrap = document.querySelector('.intel-hm60-wrap');
-    wrap.parentNode.insertBefore(box, wrap.nextSibling);
-  }
-  box.innerHTML = '';
-
-  // --- Hour-of-day bar chart (aligned under the 60×24 grid) ---
-  const hourLabel = document.createElement('div');
-  hourLabel.className = 'intel-section-label';
-  hourLabel.style.marginTop = '8px';
-  hourLabel.innerHTML = '<span>By Hour of Day</span>';
-  box.appendChild(hourLabel);
-
-  const hourWrap = document.createElement('div');
-  hourWrap.style.cssText = 'display:flex;gap:4px;align-items:flex-start;';
-  const hourSpacer = document.createElement('div');
-  hourSpacer.style.cssText = 'width:26px;flex-shrink:0;'; // match .intel-dlabel width
-  hourWrap.appendChild(hourSpacer);
-
-  const hourBars = document.createElement('div');
-  hourBars.style.cssText = 'flex:1;display:flex;gap:2px;height:36px;align-items:stretch;min-width:0;';
-  for (let h = 0; h < 24; h++) {
-    const hStr = String(h).padStart(2, '0');
-    const locH = String(Math.floor(utcToLocalHour(h))).padStart(2, '0');
-    hourBars.appendChild(buildBarCell(hourTotals[h], hourMax, rgb,
-      `EVE Time  ${hStr}:00\nLocal     ${locH}:00\n${hourTotals[h]} kill${hourTotals[h] !== 1 ? 's' : ''} (60d)`));
-  }
-  hourWrap.appendChild(hourBars);
-  box.appendChild(hourWrap);
-
-  // --- Day-of-week horizontal bar chart ---
-  const dowLabel = document.createElement('div');
-  dowLabel.className = 'intel-section-label';
-  dowLabel.innerHTML = '<span>By Day of Week</span>';
-  box.appendChild(dowLabel);
-
-  const dowBox = document.createElement('div');
-  dowBox.style.cssText = 'display:flex;flex-direction:column;gap:3px;';
-  for (const dow of DAY_ORDER) {
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:6px;height:14px;';
-    const lbl = document.createElement('div');
-    lbl.style.cssText = 'width:26px;font-size:9px;color:var(--dim);text-align:right;';
-    lbl.textContent = DAY_LABELS[dow];
-    row.appendChild(lbl);
-    const track = document.createElement('div');
-    track.style.cssText = 'flex:1;height:100%;background:rgba(13,31,31,1);border-radius:2px;overflow:hidden;';
-    const bar = document.createElement('div');
-    const w = Math.round((dowTotals[dow] / dowMax) * 100);
-    const alpha = 0.45 + 0.55 * (dowTotals[dow] / dowMax);
-    bar.style.cssText =
-      `width:${w}%;height:100%;` +
-      `background:rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha.toFixed(2)});`;
-    track.appendChild(bar);
-    row.appendChild(track);
-    const cnt = document.createElement('div');
-    cnt.style.cssText = 'width:30px;font-size:9px;color:var(--muted);text-align:right;';
-    cnt.textContent = dowTotals[dow];
-    row.appendChild(cnt);
-    row.dataset.tip = `${DAY_LABELS[dow]} — ${dowTotals[dow]} kill${dowTotals[dow] !== 1 ? 's' : ''} (60d)`;
-    dowBox.appendChild(row);
-  }
-  box.appendChild(dowBox);
 }
 
 function renderHm60(matrix60, rgb) {
@@ -840,8 +740,6 @@ function renderIntel(star, data) {
   const rgb = starColor(star);
   renderHm24(data.hourly24, rgb);
   renderHm60(data.matrix60, rgb);
-  try { renderMarginals(data.matrix60, rgb); }
-  catch (e) { console.error('renderMarginals failed:', e); }
   renderEntityList('intel-corps',     data.corps,     'corporation');
   renderEntityList('intel-alliances', data.alliances, 'alliance');
 }
