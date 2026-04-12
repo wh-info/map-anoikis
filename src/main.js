@@ -34,7 +34,13 @@ const PALETTES = {
 
 const CLASS_COLORS = { ...PALETTES.ghost };
 
+// 'ghost' | 'ember' | 'anoikis' | 'whtype' → class-based colouring.
+// 'eve'   → per-star colouring from SUN_COLORS[sunTypeId].
+let currentPalette = 'ghost';
+
 function applyPalette(name) {
+  currentPalette = name;
+  if (name === 'eve') return; // eve doesn't touch CLASS_COLORS / spriteCache
   const p = PALETTES[name];
   for (const k of Object.keys(p)) CLASS_COLORS[k] = p[k];
   for (const cls of Object.keys(CLASS_COLORS)) spriteCache[cls] = buildSprite(CLASS_COLORS[cls]);
@@ -302,6 +308,29 @@ const SUN_NAMES = {
 
 function planetRGB(typeId) { return (PLANET_TYPES[typeId] || {}).rgb || [160, 160, 160]; }
 function planetTypeName(typeId) { return (PLANET_TYPES[typeId] || {}).name || 'Unknown'; }
+
+// Sun-coloured sprite cache for the 'eve' palette. One sprite per unique sun
+// typeID in SUN_COLORS. Built lazily so unused types don't allocate.
+const EVE_FALLBACK = [255, 228, 110];
+const sunSpriteCache = {};
+function sunSpriteFor(sunTypeId) {
+  const key = sunTypeId != null && SUN_COLORS[sunTypeId] ? sunTypeId : '_';
+  if (!sunSpriteCache[key]) {
+    sunSpriteCache[key] = buildSprite(SUN_COLORS[sunTypeId] || EVE_FALLBACK);
+  }
+  return sunSpriteCache[key];
+}
+function sunColorFor(sunTypeId) {
+  return SUN_COLORS[sunTypeId] || EVE_FALLBACK;
+}
+
+// Star → sprite / RGB, branched on the active palette.
+function starSprite(star) {
+  return currentPalette === 'eve' ? sunSpriteFor(star.sunTypeId) : spriteCache[star.whClass];
+}
+function starColor(star) {
+  return currentPalette === 'eve' ? sunColorFor(star.sunTypeId) : (CLASS_COLORS[star.whClass] || [0, 200, 200]);
+}
 
 function drawOrrery(star) {
   const DPR_O = Math.min(window.devicePixelRatio || 1, 2);
@@ -708,7 +737,7 @@ function renderIntel(star, data) {
   document.getElementById('intel-body').style.display    = '';
   document.getElementById('intel-count-60d').textContent =
     `${data.killCount} kill${data.killCount !== 1 ? 's' : ''}`;
-  const rgb = CLASS_COLORS[star.whClass] || [0, 200, 200];
+  const rgb = starColor(star);
   renderHm24(data.hourly24, rgb);
   renderHm60(data.matrix60, rgb);
   renderEntityList('intel-corps',     data.corps,     'corporation');
@@ -805,8 +834,8 @@ function draw() {
     if (s.x < topLeft.x || s.x > botRight.x) continue;
     if (s.y < topLeft.y || s.y > botRight.y) continue;
     const p = worldToScreen(s.x, s.y);
-    const spr = spriteCache[s.whClass];
-    const color = CLASS_COLORS[s.whClass];
+    const spr = starSprite(s);
+    const color = starColor(s);
 
     const twinkle = 0.94 + Math.sin(now * 0.0012 * s.twinkleSpeed + s.twinklePhase) * 0.06;
     const flare = s.flareUntil > now ? Math.pow((s.flareUntil - now) / FLARE_MS, 0.72) : 0;
@@ -850,7 +879,7 @@ function draw() {
     const zoomK = clamp(camera.scale, 0.5, 1.8);
     const radius = (10 + t * 70) * zoomK;
     const alpha = Math.pow(1 - t, 1.6);
-    const color = CLASS_COLORS[a.star.whClass];
+    const color = starColor(a.star);
     ctx.strokeStyle = rgba(color, 0.70 * alpha);
     ctx.lineWidth = 1.7 + alpha * 1.3;
     ctx.beginPath();
@@ -880,10 +909,10 @@ function draw() {
     const bx = rect.left + rect.width / 2;
     const by = rect.top + rect.height / 2;
     const sp = worldToScreen(locateHover.star.x, locateHover.star.y);
-    const starColor = CLASS_COLORS[locateHover.star.whClass] ?? [0, 200, 200];
+    const traceColor = starColor(locateHover.star);
     const grad = ctx.createLinearGradient(bx, by, sp.x, sp.y);
     grad.addColorStop(0, 'rgba(0,200,200,0.80)');
-    grad.addColorStop(1, rgba(starColor, 0.80));
+    grad.addColorStop(1, rgba(traceColor, 0.80));
     ctx.globalCompositeOperation = 'source-over';
     ctx.strokeStyle = grad;
     ctx.lineWidth = 1.5;
@@ -1307,17 +1336,20 @@ const paletteEmberBtn   = document.getElementById('palette-ember');
 const paletteAnoikisBtn = document.getElementById('palette-anoikis');
 const paletteWhtypeBtn  = document.getElementById('palette-whtype');
 const paletteGhostBtn   = document.getElementById('palette-ghost');
+const paletteEveBtn     = document.getElementById('palette-eve');
 function setPalette(name) {
   applyPalette(name);
   paletteEmberBtn.classList.toggle('on',   name === 'ember');
   paletteAnoikisBtn.classList.toggle('on', name === 'anoikis');
   paletteWhtypeBtn.classList.toggle('on',  name === 'whtype');
   paletteGhostBtn.classList.toggle('on',   name === 'ghost');
+  paletteEveBtn.classList.toggle('on',     name === 'eve');
 }
 paletteEmberBtn.addEventListener('click',   () => setPalette('ember'));
 paletteAnoikisBtn.addEventListener('click', () => setPalette('anoikis'));
 paletteWhtypeBtn.addEventListener('click',  () => setPalette('whtype'));
 paletteGhostBtn.addEventListener('click',   () => setPalette('ghost'));
+paletteEveBtn.addEventListener('click',     () => setPalette('eve'));
 
 // --- Panel visibility toggles ------------------------------------
 document.getElementById('hide-left').addEventListener('click', () => {
