@@ -1276,9 +1276,9 @@ function selectStar(s, focus) {
   siEl.classList.remove('empty');
   const dd = drifterDisplay(s);
   document.getElementById('si-name').textContent = displayName(s);
-  const jcodeEl = document.getElementById('si-jcode');
-  jcodeEl.style.display = dd ? '' : 'none';
-  if (dd) jcodeEl.textContent = dd.jcode;
+  const jcodeRow = document.getElementById('si-jcode-row');
+  jcodeRow.style.display = dd ? '' : 'none';
+  if (dd) document.getElementById('si-jcode').textContent = dd.jcode;
   const rawClass = displayClass(s);
   const longClass = /^C(\d+)$/.test(rawClass) ? 'Class ' + rawClass.slice(1) : rawClass;
   document.getElementById('si-class').textContent = longClass;

@@ -96,7 +96,7 @@ html, body {
 }
 
 .brand {
-  display: flex; align-items: baseline; gap: 10px;
+  display: block;
   margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
@@ -107,7 +107,6 @@ html, body {
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--accent);
-  flex: 1;
 }
 .brand-sub {
   font-size: 10px;
@@ -115,7 +114,7 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   text-align: right;
-  margin-bottom: 8px;
+  margin-top: 4px;
 }
 
 /* ================================================================ */
@@ -220,9 +219,17 @@ html, body {
 .sys-name {
   font-size: 15px;
   font-weight: 700;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
   color: var(--highlight);
   letter-spacing: 0.06em;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.sys-name #si-class {
+  font-size: 12px;
+  color: var(--highlight);
 }
 .sys-region {
   font-size: 10px;
