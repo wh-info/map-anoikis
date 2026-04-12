@@ -793,7 +793,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   position: fixed;
   left: 326px;
   top: 16px;
-  width: 520px;
+  width: 680px;
   max-height: calc(100vh - 32px);
   background: var(--panel);
   border: 1px solid var(--border);
@@ -823,10 +823,50 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 }
 
 #intel-loading {
-  color: var(--dim);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 36px 0;
+}
+.intel-load-text {
   font-size: 11px;
-  padding: 24px 0;
-  text-align: center;
+  color: var(--dim);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.intel-load-segs {
+  display: flex;
+  gap: 4px;
+}
+.intel-load-seg {
+  width: 14px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--border);
+  animation: intel-seg-wave 2s steps(1, end) infinite;
+}
+.intel-load-seg:nth-child(1)  { animation-delay: 0.00s; }
+.intel-load-seg:nth-child(2)  { animation-delay: 0.10s; }
+.intel-load-seg:nth-child(3)  { animation-delay: 0.20s; }
+.intel-load-seg:nth-child(4)  { animation-delay: 0.30s; }
+.intel-load-seg:nth-child(5)  { animation-delay: 0.40s; }
+.intel-load-seg:nth-child(6)  { animation-delay: 0.50s; }
+.intel-load-seg:nth-child(7)  { animation-delay: 0.60s; }
+.intel-load-seg:nth-child(8)  { animation-delay: 0.70s; }
+.intel-load-seg:nth-child(9)  { animation-delay: 0.80s; }
+.intel-load-seg:nth-child(10) { animation-delay: 0.90s; }
+.intel-load-seg:nth-child(11) { animation-delay: 1.00s; }
+.intel-load-seg:nth-child(12) { animation-delay: 1.10s; }
+.intel-load-seg:nth-child(13) { animation-delay: 1.20s; }
+.intel-load-seg:nth-child(14) { animation-delay: 1.30s; }
+.intel-load-seg:nth-child(15) { animation-delay: 1.40s; }
+.intel-load-seg:nth-child(16) { animation-delay: 1.50s; }
+@keyframes intel-seg-wave {
+  0%   { background: var(--border); box-shadow: none; }
+  8%   { background: #00c8c8; box-shadow: 0 0 6px rgba(0,200,200,0.7); }
+  16%  { background: var(--border); box-shadow: none; }
+  100% { background: var(--border); box-shadow: none; }
 }
 
 #intel-body {
@@ -848,7 +888,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 #intel-hm24 {
   display: flex;
   gap: 2px;
-  height: 30px;
+  height: 40px;
 }
 
 /* 60-day heatmap */
@@ -864,8 +904,8 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   padding-top: 0;
 }
 .intel-dlabel {
-  height: 14px;
-  line-height: 14px;
+  height: 18px;
+  line-height: 18px;
   font-size: 9px;
   color: var(--dim);
   width: 26px;
@@ -874,7 +914,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 }
 .intel-hm60-right { flex: 1; min-width: 0; }
 #intel-hm60 { display: flex; flex-direction: column; gap: 2px; }
-.intel-hm60-row { display: flex; gap: 2px; height: 14px; }
+.intel-hm60-row { display: flex; gap: 2px; height: 18px; }
 
 /* Shared heatmap cell */
 .intel-hm-cell {
@@ -1071,4 +1111,25 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   background: rgba(0,200,200,0.1);
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* ================================================================ */
+/* CUSTOM TOOLTIP                                                    */
+/* ================================================================ */
+#custom-tip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  display: none;
+  padding: 5px 9px;
+  background: rgba(8, 18, 18, 0.96);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.7);
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  max-width: 260px;
+  white-space: normal;
+  line-height: 1.4;
 }

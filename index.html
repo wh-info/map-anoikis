@@ -25,7 +25,7 @@
       <div class="brand-title">map.anoikis.info<span class="cursor-blink">_</span></div>
       <div class="brand-sub" id="star-count">0 systems</div>
     </div>
-    <button class="panel-hide-btn" id="hide-left" title="Hide panel">
+    <button class="panel-hide-btn" id="hide-left" data-tip="Hide panel">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
     </button>
   </div>
@@ -61,7 +61,7 @@
       <button class="orrery-ctrl on" id="orrery-proj-orrery">Orrery</button>
       <button class="orrery-ctrl"    id="orrery-proj-map">Map</button>
     </div>
-    <button class="panel-hide-btn" id="close-orrery" title="Close">
+    <button class="panel-hide-btn" id="close-orrery" data-tip="Close">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
     </button>
   </div>
@@ -82,11 +82,23 @@
       <div class="title" style="margin:0;" id="intel-title">—</div>
       <div id="intel-subtitle"></div>
     </div>
-    <button class="panel-hide-btn" id="close-intel" title="Close">
+    <button class="panel-hide-btn" id="close-intel" data-tip="Close">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
     </button>
   </div>
-  <div id="intel-loading">Loading…</div>
+  <div id="intel-loading">
+    <div class="intel-load-text">Scanning<span class="cursor-blink">_</span></div>
+    <div class="intel-load-segs">
+      <div class="intel-load-seg"></div><div class="intel-load-seg"></div>
+      <div class="intel-load-seg"></div><div class="intel-load-seg"></div>
+      <div class="intel-load-seg"></div><div class="intel-load-seg"></div>
+      <div class="intel-load-seg"></div><div class="intel-load-seg"></div>
+      <div class="intel-load-seg"></div><div class="intel-load-seg"></div>
+      <div class="intel-load-seg"></div><div class="intel-load-seg"></div>
+      <div class="intel-load-seg"></div><div class="intel-load-seg"></div>
+      <div class="intel-load-seg"></div><div class="intel-load-seg"></div>
+    </div>
+  </div>
   <div id="intel-body">
     <div class="intel-section-label">Last 24 Hours</div>
     <div id="intel-hm24"></div>
@@ -120,7 +132,7 @@
     <div class="title" style="margin: 0;">Live Kills<span class="live-dots"><span>.</span><span>.</span><span>.</span></span></div>
     <div style="display: flex; align-items: center; gap: 8px;">
       <div style="font-size: 10px; color: var(--dim);" id="kill-count">0 shown</div>
-      <button class="panel-hide-btn" id="hide-right" title="Hide panel">
+      <button class="panel-hide-btn" id="hide-right" data-tip="Hide panel">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
@@ -134,26 +146,26 @@
       </svg>
     </button>
     <div id="kill-filters">
-      <span class="kind-chip on" data-kind="ship"       title="Ships (frigates through titans, pods)">Ships</span>
-      <span class="kind-chip on" data-kind="structure"  title="Upwell structures (Citadels, Engineering Complexes, Refineries, …)">Structures</span>
-      <span class="kind-chip" data-kind="tower"      title="POS Control Towers">Towers</span>
-      <span class="kind-chip" data-kind="fighter"    title="Carrier / supercarrier fighters">Fighters</span>
-      <span class="kind-chip" data-kind="deployable" title="Mobile Depots, MTUs, Cyno Inhibitors, …">Deployables</span>
+      <span class="kind-chip on" data-kind="ship"       data-tip="Ships (frigates through titans, pods)">Ships</span>
+      <span class="kind-chip on" data-kind="structure"  data-tip="Upwell structures (Citadels, Engineering Complexes, Refineries, …)">Structures</span>
+      <span class="kind-chip" data-kind="tower"      data-tip="POS Control Towers">Towers</span>
+      <span class="kind-chip" data-kind="fighter"    data-tip="Carrier / supercarrier fighters">Fighters</span>
+      <span class="kind-chip" data-kind="deployable" data-tip="Mobile Depots, MTUs, Cyno Inhibitors, …">Deployables</span>
     </div>
   </div>
 </div>
 
 
 <!-- Restore buttons (visible when panels are hidden) -->
-<button class="panel-restore-btn" id="restore-left" title="Show search &amp; system info">
+<button class="panel-restore-btn" id="restore-left" data-tip="Show search &amp; system info">
   <span class="cursor-blink restore-cursor">_</span>
 </button>
-<button class="panel-restore-btn" id="restore-right" title="Show kill feed">
+<button class="panel-restore-btn" id="restore-right" data-tip="Show kill feed">
   <span class="live-lines"><span></span><span></span><span></span></span>
 </button>
 
 <!-- Settings gear (bottom-left) -->
-<button id="settings-btn" title="Settings">
+<button id="settings-btn" data-tip="Settings">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="12" cy="12" r="3"/>
     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -165,18 +177,18 @@
   <div class="settings-row">
     <span>Zoom</span>
     <div style="display: flex; gap: 4px; align-items: center;">
-      <button class="ctrl" id="zoom-out" title="Zoom out">&minus;</button>
+      <button class="ctrl" id="zoom-out" data-tip="Zoom out">&minus;</button>
       <span id="zoom-val" style="font-size: 11px; min-width: 40px; text-align: center;">1.00x</span>
-      <button class="ctrl" id="zoom-in" title="Zoom in">+</button>
+      <button class="ctrl" id="zoom-in" data-tip="Zoom in">+</button>
     </div>
   </div>
   <div class="settings-row">
     <span>View</span>
-    <button class="ctrl" id="reset-view" title="Reset view" style="width: auto; padding: 0 10px;">Reset</button>
+    <button class="ctrl" id="reset-view" data-tip="Reset view" style="width: auto; padding: 0 10px;">Reset</button>
   </div>
   <div class="settings-row">
     <span>Labels</span>
-    <button class="ctrl off" id="toggle-labels" title="Toggle system name labels" style="width: auto; padding: 0 10px;">Off</button>
+    <button class="ctrl off" id="toggle-labels" data-tip="Toggle system name labels" style="width: auto; padding: 0 10px;">Off</button>
   </div>
   <div class="settings-row">
     <span>Colors</span>
@@ -193,6 +205,8 @@
   <div class="tt-name"></div>
   <div class="tt-class"></div>
 </div>
+
+<div id="custom-tip"></div>
 
 <script src="./data/anoikis-systems.js"></script>
 <script src="./data/type-kinds.js"></script>

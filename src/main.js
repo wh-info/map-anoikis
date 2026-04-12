@@ -614,7 +614,7 @@ function buildHmCell(count, max, rgb, tipText) {
   const cell = document.createElement('div');
   cell.className = 'intel-hm-cell';
   cell.style.background = heatColor(count, max, rgb);
-  cell.title = tipText;
+  cell.dataset.tip = tipText;
   return cell;
 }
 
@@ -1039,6 +1039,35 @@ function handleHover(sx, sy) {
   }
 }
 
+// --- Custom tooltip (replaces browser title= tooltips) ----------
+const customTip = document.getElementById('custom-tip');
+let customTipTarget = null;
+
+document.addEventListener('mouseover', (e) => {
+  const el = e.target.closest('[data-tip]');
+  if (!el) return;
+  customTipTarget = el;
+  customTip.textContent = el.dataset.tip;
+  customTip.style.display = 'block';
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!customTipTarget) return;
+  const x = e.clientX + 14;
+  const y = e.clientY + 14;
+  const tipW = customTip.offsetWidth;
+  const tipH = customTip.offsetHeight;
+  customTip.style.left = (x + tipW > window.innerWidth  ? e.clientX - tipW - 6 : x) + 'px';
+  customTip.style.top  = (y + tipH > window.innerHeight ? e.clientY - tipH - 6 : y) + 'px';
+});
+
+document.addEventListener('mouseout', (e) => {
+  const el = e.target.closest('[data-tip]');
+  if (!el) return;
+  customTipTarget = null;
+  customTip.style.display = 'none';
+});
+
 // --- Corner brackets --------------------------------------------
 const cornerEls = {
   tl: document.querySelector('.corner--tl'),
@@ -1431,7 +1460,7 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
   if (!activeKinds.has(kindKey)) el.style.display = 'none';
 
   el.innerHTML = `
-    <button class="kill-btn kill-btn--locate locate-btn" title="Locate ${escapeHtml(starDisplayName)}" aria-label="Locate ${escapeHtml(starDisplayName)}">
+    <button class="kill-btn kill-btn--locate locate-btn" data-tip="Locate ${escapeHtml(starDisplayName)}" aria-label="Locate ${escapeHtml(starDisplayName)}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <circle cx="12" cy="12" r="4"></circle>
         <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
@@ -1450,13 +1479,13 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
       <div class="kill-pilot${ownerLoading ? ' loading' : ''}">${ownerInitial}</div>
       <div class="kill-sys">${escapeHtml(starDisplayName)} · <span class="kill-sys-class">${escapeHtml(starDisplayClass)}</span></div>
       <div class="kill-meta">
-        ${hasImplants ? `<span class="implant-badge" title="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
+        ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
         <span class="kill-value">${formatIsk(value)} ISK</span>
         <span class="kill-age" data-ts="${ts || ''}">· ${formatAge(ts)}</span>
       </div>
     </div>
     ${zkbHref ? `
-    <a class="kill-btn kill-btn--zkb zkb-link" href="${zkbHref}" target="_blank" rel="noopener noreferrer" title="Open on zKillboard" aria-label="Open on zKillboard">
+    <a class="kill-btn kill-btn--zkb zkb-link" href="${zkbHref}" target="_blank" rel="noopener noreferrer" data-tip="Open on zKillboard" aria-label="Open on zKillboard">
       <img src="./img/graphic/zkb.svg" class="zkb-img" alt="" aria-hidden="true" />
     </a>` : ''}
   `;
