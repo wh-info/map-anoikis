@@ -104,13 +104,13 @@ document.getElementById('star-count').textContent = stars.length + ' systems';
 // systemID -> star, used by the live kill feed to resolve incoming IDs.
 const starById = new Map(stars.map((s) => [s.id, s]));
 
-// Named Drifter systems — custom display names and subclasses
+// Named Drifter systems — keyed by SDE name; carries lore J-code + subclass.
 const DRIFTER_INFO = {
-  'J055520': { displayName: 'Sentinel MZ',       subclass: 'C14' },
-  'J110145': { displayName: 'Liberated Barbican', subclass: 'C15' },
-  'J164710': { displayName: 'Sanctified Vidette', subclass: 'C16' },
-  'J200727': { displayName: 'Conflux Eyrie',      subclass: 'C17' },
-  'J174618': { displayName: 'Azdaja Redoubt',     subclass: 'C18' },
+  'Sentinel MZ':        { jcode: 'J055520', subclass: 'C14' },
+  'Liberated Barbican': { jcode: 'J110145', subclass: 'C15' },
+  'Sanctified Vidette': { jcode: 'J164710', subclass: 'C16' },
+  'Conflux Eyrie':      { jcode: 'J200727', subclass: 'C17' },
+  'Azdaja Redoubt':     { jcode: 'J174618', subclass: 'C18' },
 };
 function drifterDisplay(star) { return DRIFTER_INFO[star.name] ?? null; }
 
@@ -121,7 +121,7 @@ function displayClass(star) {
   return CLASS_OVERRIDES[star.name] ?? star.whClass;
 }
 function displayName(star) {
-  return drifterDisplay(star)?.displayName ?? star.name;
+  return star.name;
 }
 
 // Star bounds — used by resetView().
@@ -1142,7 +1142,7 @@ function selectStar(s, focus) {
   const dd = drifterDisplay(s);
   document.getElementById('si-name').textContent = displayName(s);
   document.getElementById('si-jcode-row').style.display = dd ? '' : 'none';
-  if (dd) document.getElementById('si-jcode').textContent = s.name;
+  if (dd) document.getElementById('si-jcode').textContent = dd.jcode;
   document.getElementById('si-class').textContent = displayClass(s);
   document.getElementById('si-region').textContent = s.regionName;
   document.getElementById('si-const').textContent = s.constellation;
@@ -1201,7 +1201,8 @@ searchEl.addEventListener('input', () => {
   const matches = [];
   for (const s of stars) {
     const dn = displayName(s).toLowerCase();
-    if (s.name.toLowerCase().includes(q) || dn.includes(q) || s.regionName.toLowerCase().includes(q)) {
+    const jc = drifterDisplay(s)?.jcode.toLowerCase() ?? '';
+    if (s.name.toLowerCase().includes(q) || dn.includes(q) || jc.includes(q) || s.regionName.toLowerCase().includes(q)) {
       matches.push(s);
       if (matches.length >= 20) break;
     }
