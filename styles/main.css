@@ -394,7 +394,7 @@ html, body {
 .kill {
   position: relative;
   display: flex; gap: 8px; align-items: center;
-  padding: 26px 10px 10px 10px;
+  padding: 28px 10px 10px 10px;
   background: var(--panel-dark);
   border: 1px solid var(--border);
   border-radius: 0;
@@ -452,14 +452,16 @@ html, body {
 
 .kill-header {
   position: absolute;
-  top: 6px;
+  top: 8px;
   left: 40px;
-  right: 40px;
+  right: 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  pointer-events: none;
 }
+.kill-header > * { pointer-events: auto; }
 .kill-sys {
   font-size: 13px;
   font-weight: 700;
@@ -514,23 +516,30 @@ html, body {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--dim);
-  margin-top: 3px;
+  margin-top: 4px;
 }
-.kill-value { color: var(--highlight); font-weight: 400; }
+.kill-value { color: var(--highlight); font-weight: 400; font-size: 13px; }
 .kill-value b { font-weight: 700; }
 
 /* --- compact kill list ----------------------------------------- */
 .kill-list--compact .kill {
-  padding: 6px 8px;
+  padding: 22px 8px 6px 8px;
 }
+.kill-list--compact .kill-header {
+  top: 5px;
+  left: 36px;
+  right: 8px;
+}
+.kill-list--compact .kill-sys       { font-size: 11px; }
 .kill-list--compact .kill-img       { display: none; }
 .kill-list--compact .kill-icon      { display: block; }
 .kill-list--compact .kill-tech-badge{ width: 12px; height: 12px; }
-.kill-list--compact .kill-ship      { font-size: 12px; }
+.kill-list--compact .kill-ship      { font-size: 11px; }
 .kill-list--compact .kill-pilot     { font-size: 11px; }
-.kill-list--compact .kill-footer    { font-size: 10px; gap: 5px; }
+.kill-list--compact .kill-footer    { font-size: 11px; gap: 5px; margin-top: 2px; }
+.kill-list--compact .kill-value     { font-size: 11px; }
 
 .kill-delayed-badge {
   display: inline-flex;
