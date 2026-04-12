@@ -7,6 +7,10 @@ const MIN_SCALE = 0.56;
 const MAX_SCALE = 35;
 const FLARE_MS = 1100;
 const RING_MS  = 2000;
+// Kills whose killmail_time is older than this when we receive them are
+// treated as "delayed" — the backend feed sometimes emits hours/days-old kills
+// in bulk when zKillboard catches up after falling behind CCP's killmail delay.
+const DELAYED_KILL_MS = 60 * 60 * 1000;
 
 // WH class palettes
 const PALETTES = {
@@ -792,10 +796,10 @@ document.getElementById('si-intel').addEventListener('click', () => {
 
 // --- Kill animations --------------------------------------------
 const activeAnims = [];
-function triggerKillAnim(star) {
+function triggerKillAnim(star, delayed) {
   const now = performance.now();
-  star.flareUntil = now + FLARE_MS;
-  activeAnims.push({ star, t0: now, dur: RING_MS });
+  if (!delayed) star.flareUntil = now + FLARE_MS;
+  activeAnims.push({ star, t0: now, dur: RING_MS, delayed: !!delayed });
 }
 
 // --- Render ------------------------------------------------------
@@ -879,9 +883,9 @@ function draw() {
     const zoomK = clamp(camera.scale, 0.5, 1.8);
     const radius = (10 + t * 70) * zoomK;
     const alpha = Math.pow(1 - t, 1.6);
-    const color = starColor(a.star);
-    ctx.strokeStyle = rgba(color, 0.70 * alpha);
-    ctx.lineWidth = 1.7 + alpha * 1.3;
+    const color = a.delayed ? [160, 170, 180] : starColor(a.star);
+    ctx.strokeStyle = rgba(color, (a.delayed ? 0.45 : 0.70) * alpha);
+    ctx.lineWidth = (a.delayed ? 1.2 : 1.7) + alpha * (a.delayed ? 0.8 : 1.3);
     ctx.beginPath();
     ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
     ctx.stroke();
@@ -1494,7 +1498,8 @@ function resolveEntityName(kind, id) {
 }
 
 function spawnKill({ star, killId, typeId, kind, characterId, corporationId, value, ts, hasImplants, animated }) {
-  if (animated) triggerKillAnim(star);
+  const isDelayed = ts ? (Date.now() - ts * 1000 > DELAYED_KILL_MS) : false;
+  if (animated) triggerKillAnim(star, isDelayed);
   const name = typeNameFor(typeId); // synchronous best-effort; ESI fills in below if unknown
   const img = typeId != null
     ? `https://images.evetech.net/types/${typeId}/render?size=64`
@@ -1512,7 +1517,7 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
     : 'Unknown';
 
   const el = document.createElement('div');
-  el.className = 'kill';
+  el.className = 'kill' + (isDelayed ? ' kill--delayed' : '');
   el.dataset.kind = kindKey;
   if (!activeKinds.has(kindKey)) el.style.display = 'none';
 
@@ -1537,6 +1542,7 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
       <div class="kill-sys">${escapeHtml(starDisplayName)} · <span class="kill-sys-class">${escapeHtml(starDisplayClass)}</span></div>
       <div class="kill-meta">
         ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
+        ${isDelayed ? `<span class="kill-delayed-badge" data-tip="Kill published by zKillboard after a delay — not live activity">DELAYED</span>` : ''}
         <span class="kill-value">${formatIsk(value)} ISK</span>
         <span class="kill-age" data-ts="${ts || ''}">· ${formatAge(ts)}</span>
       </div>
