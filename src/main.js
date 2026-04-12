@@ -618,6 +618,11 @@ function buildHmCell(count, max, rgb, tipText) {
   return cell;
 }
 
+function utcToLocalHour(utcH) {
+  const offsetMin = new Date().getTimezoneOffset();
+  return ((utcH - offsetMin / 60) % 24 + 24) % 24;
+}
+
 function renderHm24(hourly24, rgb) {
   const grid   = document.getElementById('intel-hm24');
   const labels = document.getElementById('intel-hm24-labels');
@@ -629,11 +634,12 @@ function renderHm24(hourly24, rgb) {
   const now = new Date();
   const curH = now.getUTCHours();
   for (let i = 0; i < 24; i++) {
-    const h   = (curH - 23 + i + 24) % 24;
+    const h    = (curH - 23 + i + 24) % 24;
     const hStr = String(h).padStart(2, '0');
-    const c   = hourly24[i];
+    const locH = String(Math.floor(utcToLocalHour(h))).padStart(2, '0');
+    const c    = hourly24[i];
     grid.appendChild(buildHmCell(c, max, rgb,
-      `${hStr}:00 UTC — ${c} kill${c !== 1 ? 's' : ''}`));
+      `EVE Time  ${hStr}:00\nLocal     ${locH}:00\n${c} kill${c !== 1 ? 's' : ''}`));
     const lbl = document.createElement('div');
     lbl.className = 'intel-hlabel';
     lbl.textContent = (h % 6 === 0) ? hStr : '';
@@ -655,9 +661,11 @@ function renderHm60(matrix60, rgb) {
     const row = document.createElement('div');
     row.className = 'intel-hm60-row';
     for (let hr = 0; hr < 24; hr++) {
-      const c = matrix60[dow][hr];
+      const c    = matrix60[dow][hr];
+      const hStr = String(hr).padStart(2, '0');
+      const locH = String(Math.floor(utcToLocalHour(hr))).padStart(2, '0');
       row.appendChild(buildHmCell(c, flatMax, rgb,
-        `${DAY_LABELS[dow]} ${String(hr).padStart(2,'0')}:00 UTC — ${c} kill${c !== 1 ? 's' : ''}`));
+        `EVE Time  ${DAY_LABELS[dow]} ${hStr}:00\nLocal     ${locH}:00\n${c} kill${c !== 1 ? 's' : ''}`));
     }
     grid.appendChild(row);
   }
