@@ -57,7 +57,10 @@ async function fetchKills(systemId) {
     if (!Array.isArray(batch) || batch.length === 0) break;
     let exhausted = false;
     for (const k of batch) {
-      if (new Date(k.killmail_time).getTime() < cutoff) { exhausted = true; break; }
+      if (!k.killmail_time) continue;
+      const ts = new Date(k.killmail_time).getTime();
+      if (!Number.isFinite(ts)) continue;
+      if (ts < cutoff) { exhausted = true; break; }
       kills.push(k);
     }
     if (exhausted) break;
@@ -75,8 +78,10 @@ function aggregate(kills) {
   const aMap     = new Map();
 
   for (const k of kills) {
+    if (!k.killmail_time) continue;
     const d   = new Date(k.killmail_time);
     const ts  = d.getTime();
+    if (!Number.isFinite(ts)) continue;
     const hr  = d.getUTCHours();
     const dow = d.getUTCDay();
 
