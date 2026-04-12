@@ -665,7 +665,7 @@ function renderHm60(matrix60, rgb) {
       const hStr = String(hr).padStart(2, '0');
       const locH = String(Math.floor(utcToLocalHour(hr))).padStart(2, '0');
       row.appendChild(buildHmCell(c, flatMax, rgb,
-        `EVE Time  ${DAY_LABELS[dow]} ${hStr}:00\nLocal     ${locH}:00\n${c} kill${c !== 1 ? 's' : ''}`));
+        `EVE Time  ${hStr}:00\nLocal     ${locH}:00\n${DAY_LABELS[dow]} — ${c} kill${c !== 1 ? 's' : ''}`));
     }
     grid.appendChild(row);
   }
