@@ -469,11 +469,11 @@ function drawOrrery(star) {
         ? `rgba(${(SUN_COLORS[orreryListHover.typeId] || [255,220,100]).join(',')},0.55)`
         : `rgba(${planetRGB(orreryListHover.typeId).join(',')},0.55)`;
       const grad = oc.createLinearGradient(bx, by, hit.x, hit.y);
-      grad.addColorStop(0, 'rgba(0,200,200,0.55)');
-      grad.addColorStop(1, endColor);
+      grad.addColorStop(0, 'rgba(0,200,200,0.85)');
+      grad.addColorStop(1, endColor.replace(/[\d.]+\)$/, '0.85)'));
       oc.strokeStyle = grad;
-      oc.lineWidth = 1;
-      oc.setLineDash([4, 7]);
+      oc.lineWidth = 1.5;
+      oc.setLineDash([5, 5]);
       oc.beginPath();
       oc.moveTo(bx, by);
       oc.lineTo(hit.x, hit.y);
@@ -873,12 +873,12 @@ function draw() {
     const sp = worldToScreen(locateHover.star.x, locateHover.star.y);
     const starColor = CLASS_COLORS[locateHover.star.whClass] ?? [0, 200, 200];
     const grad = ctx.createLinearGradient(bx, by, sp.x, sp.y);
-    grad.addColorStop(0, 'rgba(0,200,200,0.45)');
-    grad.addColorStop(1, rgba(starColor, 0.45));
+    grad.addColorStop(0, 'rgba(0,200,200,0.80)');
+    grad.addColorStop(1, rgba(starColor, 0.80));
     ctx.globalCompositeOperation = 'source-over';
     ctx.strokeStyle = grad;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 7]);
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 5]);
     ctx.lineDashOffset = 0;
     ctx.beginPath();
     ctx.moveTo(bx, by);
