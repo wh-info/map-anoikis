@@ -623,9 +623,6 @@ function renderHm24(hourly24, rgb) {
   const labels = document.getElementById('intel-hm24-labels');
   grid.innerHTML = labels.innerHTML = '';
   const max = Math.max(...hourly24, 1);
-  const total = hourly24.reduce((s, v) => s + v, 0);
-  document.getElementById('intel-count-24h').textContent =
-    `${total} kill${total !== 1 ? 's' : ''}`;
   const now = new Date();
   const curH = now.getUTCHours();
   for (let i = 0; i < 24; i++) {
@@ -734,7 +731,6 @@ function openIntel(star) {
   document.getElementById('intel-subtitle').textContent = '';
   document.getElementById('intel-loading').style.display = '';
   document.getElementById('intel-body').style.display    = 'none';
-  document.getElementById('intel-count-24h').textContent = '';
   document.getElementById('intel-count-60d').textContent = '';
   document.getElementById('si-intel').classList.add('active');
   loadIntel(star);

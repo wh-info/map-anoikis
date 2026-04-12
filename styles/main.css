@@ -871,9 +871,14 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 
 #intel-body {
   overflow-y: auto;
-  overflow-x: hidden;
   flex: 1;
   padding-right: 4px;
+  min-width: 0;
+}
+
+#intel-hm24,
+.intel-hm60-row {
+  overflow: hidden;
 }
 
 .intel-section-label {
