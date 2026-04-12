@@ -52,9 +52,19 @@ async function fetchKills(systemId) {
   for (let page = 1; page <= MAX_PAGES; page++) {
     let batch;
     try {
-      batch = await jFetch(`${ZKB_BASE}/kills/solarSystemID/${systemId}/page/${page}/`);
-    } catch { break; }
-    if (!Array.isArray(batch) || batch.length === 0) break;
+      const url = `${ZKB_BASE}/kills/solarSystemID/${systemId}/page/${page}/`;
+      const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' } });
+      console.log(`[intel] zKB GET ${url} → ${res.status} ${res.headers.get('content-type')}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      console.log(`[intel] page ${page} raw (first 200): ${text.slice(0, 200)}`);
+      batch = JSON.parse(text);
+    } catch (e) { console.log(`[intel] page ${page} fetch error: ${e.message}`); break; }
+    if (!Array.isArray(batch) || batch.length === 0) {
+      console.log(`[intel] page ${page} empty or non-array, stopping`);
+      break;
+    }
+    console.log(`[intel] page ${page}: ${batch.length} kills`);
     let exhausted = false;
     for (const k of batch) {
       if (!k.killmail_time) continue;
