@@ -955,6 +955,8 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   margin: 14px 0 0;
 }
 
+#intel-parties-section { margin-top: 18px; }
+
 /* 24h heatmap */
 #intel-hm24 {
   display: flex;
