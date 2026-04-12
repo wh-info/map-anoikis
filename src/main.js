@@ -1661,7 +1661,7 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
         ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
         ${isDelayed ? `<span class="kill-delayed-badge" data-tip="Kill published by zKillboard after a delay — not live activity">DELAYED</span>` : ''}
         <span class="kill-value">${formatIsk(value)} ISK</span>
-        <span class="kill-age" data-ts="${ts || ''}">· ${formatAge(ts)}</span>
+        <span class="kill-age" data-ts="${ts || ''}">${formatAge(ts)}</span>
       </div>
     </div>
     ${zkbHref ? `

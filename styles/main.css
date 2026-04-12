@@ -392,6 +392,7 @@ html, body {
 }
 
 .kill {
+  position: relative;
   display: flex; gap: 10px; align-items: center;
   padding: 10px;
   background: var(--panel-dark);
@@ -458,6 +459,8 @@ html, body {
 .kill-list--compact .kill-pilot     { font-size: 11px; margin-top: 1px; }
 .kill-list--compact .kill-sys       { display: none; }
 .kill-list--compact .kill-meta      { font-size: 10px; margin-top: 2px; gap: 5px; }
+.kill-list--compact .kill-age { top: 6px; right: 8px; }
+.kill-ship { padding-right: 44px; }
 
 /* Compact-view toggle button: two icons, one for each state. */
 #kill-compact-toggle .kill-compact-icon-compact { display: none; }
@@ -502,7 +505,16 @@ html, body {
   display: flex; gap: 6px; align-items: center;
 }
 .kill-value { color: var(--highlight); font-weight: 700; }
-.kill-age   { cursor: default; padding: 3px 0; }
+.kill-age {
+  cursor: default;
+  padding: 0;
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 10px;
+  color: var(--dim);
+}
+.kill-list--compact .kill-age::before { content: ''; }
 
 .kill-delayed-badge {
   display: inline-flex;
