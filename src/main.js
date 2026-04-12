@@ -1416,6 +1416,10 @@ async function showSdePanel() {
 
 }
 
+// Zoom indicator was removed from the settings panel along with the +/- buttons,
+// but wheel/pinch zoom still drives camera.scale. This is a no-op stub kept so
+// other callers (wheel handler, animated reset, etc.) don't need edits.
+function updateZoomLabel() {}
 document.getElementById('reset-view').addEventListener('click', animatedResetView);
 document.getElementById('toggle-labels').addEventListener('click', (e) => {
   showLabels = !showLabels;
