@@ -1376,7 +1376,7 @@ function formatKillTimeTip(ts) {
   const eveDate = `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
   const locH = pad(d.getHours()), locM = pad(d.getMinutes());
   const locDate = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  return `EVE Time   ${eveDate} ${eveH}:${eveM}&#10;Local      ${locDate} ${locH}:${locM}`;
+  return `EVE Time   ${eveDate} ${eveH}:${eveM}\nLocal      ${locDate} ${locH}:${locM}`;
 }
 
 // ESI cache for type names not in the local SDE table (e.g. new ships on patch day).
@@ -1496,7 +1496,7 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
       <div class="kill-meta">
         ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
         <span class="kill-value">${formatIsk(value)} ISK</span>
-        <span class="kill-age" data-ts="${ts || ''}" data-tip="${formatKillTimeTip(ts)}">· ${formatAge(ts)}</span>
+        <span class="kill-age" data-ts="${ts || ''}">· ${formatAge(ts)}</span>
       </div>
     </div>
     ${zkbHref ? `
@@ -1504,6 +1504,7 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
       <img src="./img/graphic/zkb.svg" class="zkb-img" alt="" aria-hidden="true" />
     </a>` : ''}
   `;
+  if (ts) el.querySelector('.kill-age').dataset.tip = formatKillTimeTip(ts);
   const zkbEl = el.querySelector('.zkb-link');
   if (zkbEl) zkbEl.addEventListener('click', (ev) => ev.stopPropagation());
   const locateBtn = el.querySelector('.locate-btn');
