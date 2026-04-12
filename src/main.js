@@ -736,34 +736,117 @@ function renderEntityList(containerId, items, kind) {
   }
 }
 
-function renderIntel(star, data) {
-  document.getElementById('intel-loading').style.display = 'none';
-  document.getElementById('intel-body').style.display    = '';
-  document.getElementById('intel-count-60d').textContent =
-    `${data.killCount} kill${data.killCount !== 1 ? 's' : ''}`;
-  const rgb = starColor(star);
-  renderHm24(data.hourly24, rgb);
-  renderHm60(data.matrix60, rgb);
-  renderEntityList('intel-corps',     data.corps,     'corporation');
-  renderEntityList('intel-alliances', data.alliances, 'alliance');
-}
-
-async function loadIntel(star) {
-  const base = (location.hostname === 'localhost' ||
-                location.hostname === '127.0.0.1' ||
-                location.protocol === 'file:')
+function intelApiBase() {
+  return (location.hostname === 'localhost' ||
+          location.hostname === '127.0.0.1' ||
+          location.protocol === 'file:')
     ? 'http://localhost:8080'
     : 'https://ws.anoikis.info';
+}
+
+// 16-segment animated loading bar — same visual as the legacy full-panel
+// #intel-loading, now reused per section. CSS handles the staggered wave
+// via nth-child animation delays.
+function buildLoadBar() {
+  let segs = '';
+  for (let i = 0; i < 16; i++) segs += '<div class="intel-load-seg"></div>';
+  return '<div class="intel-load-text">Loading<span class="cursor-blink">_</span></div>' +
+         `<div class="intel-load-segs">${segs}</div>`;
+}
+
+// Wrap a section container with its own animated loading placeholder. The
+// existing heatmap/entity renderers all call innerHTML='' before rebuilding,
+// so the placeholder is auto-replaced when real data arrives.
+function markSectionLoading(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = `<div class="intel-section-loading">${buildLoadBar()}</div>`;
+}
+function markSectionError(containerId, msg) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = `<div class="intel-section-error">${msg}</div>`;
+}
+
+// Parties section has two columns (corps + alliances) that share a single
+// loading bar. Replaces the .intel-lists children entirely and rebuilds
+// them when data arrives.
+function renderPartiesColumns() {
+  const lists = document.querySelector('.intel-lists');
+  lists.innerHTML =
+    '<div class="intel-list-col">' +
+      '<div class="intel-section-label">Corporations</div>' +
+      '<div id="intel-corps"></div>' +
+    '</div>' +
+    '<div class="intel-list-col">' +
+      '<div class="intel-section-label">Alliances</div>' +
+      '<div id="intel-alliances"></div>' +
+    '</div>';
+}
+function markPartiesLoading() {
+  const lists = document.querySelector('.intel-lists');
+  lists.innerHTML = `<div class="intel-section-loading intel-parties-loading">${buildLoadBar()}</div>`;
+}
+function markPartiesError(msg) {
+  const lists = document.querySelector('.intel-lists');
+  lists.innerHTML = `<div class="intel-section-error">${msg}</div>`;
+}
+
+// Three parallel loaders. Each is independent so a slow one (60d) never
+// blocks a fast one (24h), and a single failure only blanks its own section.
+async function loadIntel24h(star, token) {
+  markSectionLoading('intel-hm24');
+  document.getElementById('intel-hm24-labels').innerHTML = '';
+  document.getElementById('intel-count-24h').textContent = '';
   try {
-    const res = await fetch(`${base}/intel/${star.id}`);
+    const res = await fetch(`${intelApiBase()}/intel/24h/${star.id}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    renderIntel(star, data);
+    if (token !== intelLoadToken) return; // user moved on to another system
+    renderHm24(data.hourly24, starColor(star));
   } catch {
-    const el = document.getElementById('intel-loading');
-    el.textContent = 'Failed to load. Try again later.';
+    if (token !== intelLoadToken) return;
+    markSectionError('intel-hm24', 'Failed to load.');
   }
 }
+
+// 30-day heatmap + corps/alliances share the same underlying kill fetch on
+// the backend, so they resolve together. One combined loader shows a single
+// bar in the 30-day section and hides the parties block until both land.
+async function loadIntelLong(star, token) {
+  markSectionLoading('intel-hm60');
+  document.getElementById('intel-dlabels').innerHTML = '';
+  document.getElementById('intel-hm60-labels').innerHTML = '';
+  document.getElementById('intel-count-60d').textContent = '';
+  const parties = document.getElementById('intel-parties-section');
+  parties.style.display = 'none';
+  try {
+    const [d60Res, partiesRes] = await Promise.all([
+      fetch(`${intelApiBase()}/intel/60d/${star.id}`),
+      fetch(`${intelApiBase()}/intel/parties/${star.id}`),
+    ]);
+    if (!d60Res.ok || !partiesRes.ok) throw new Error('HTTP');
+    const [d60, partiesData] = await Promise.all([d60Res.json(), partiesRes.json()]);
+    if (token !== intelLoadToken) return;
+    document.getElementById('intel-count-60d').textContent =
+      `${d60.killCount} kill${d60.killCount !== 1 ? 's' : ''}`;
+    renderHm60(d60.matrix60, starColor(star));
+    parties.style.display = '';
+    renderPartiesColumns();
+    renderEntityList('intel-corps',     partiesData.corps,     'corporation');
+    renderEntityList('intel-alliances', partiesData.alliances, 'alliance');
+  } catch {
+    if (token !== intelLoadToken) return;
+    markSectionError('intel-hm60', 'Failed to load.');
+    parties.style.display = '';
+    markPartiesError('Failed to load.');
+  }
+}
+
+// Monotonic token cancels stale loaders when the user switches systems
+// mid-fetch — without it, a slow 60d response for a previous system could
+// land on top of the current system's freshly-rendered data.
+let intelLoadToken = 0;
 
 function openIntel(star) {
   if (orreryOpen) closeOrrery();
@@ -772,12 +855,13 @@ function openIntel(star) {
   document.getElementById('intel-title').textContent =
     displayName(star) + ' · ' + displayClass(star);
   document.getElementById('intel-subtitle').textContent = '';
-  document.getElementById('intel-loading').style.display = '';
-  document.getElementById('intel-body').style.display    = 'none';
-  document.getElementById('intel-count-24h').textContent = '';
-  document.getElementById('intel-count-60d').textContent = '';
+  // Show body immediately; each section manages its own loading state.
+  document.getElementById('intel-loading').style.display = 'none';
+  document.getElementById('intel-body').style.display    = '';
   document.getElementById('si-intel').classList.add('active');
-  loadIntel(star);
+  const token = ++intelLoadToken;
+  loadIntel24h(star, token);
+  loadIntelLong(star, token);
 }
 
 function closeIntel() {

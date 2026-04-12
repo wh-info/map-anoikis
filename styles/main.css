@@ -904,6 +904,27 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   min-width: 0;
 }
 
+/* Per-section placeholder shown while that section's fetch is in flight.
+   Replaces the former full-panel #intel-loading overlay so each section
+   (24h, 60d, corps/alliances) can render independently as its call lands.
+   Uses the same 16-segment wave animation as the legacy overlay. */
+.intel-section-loading,
+.intel-section-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 14px 0;
+  min-height: 40px;
+  flex: 1;
+}
+.intel-section-error { color: #c76a6a; }
+
 #intel-hm24,
 .intel-hm60-row {
   overflow: hidden;

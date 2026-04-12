@@ -10,7 +10,7 @@ import { WebSocketServer } from 'ws';
 import { createRing } from './ring.js';
 import { classifyKill } from './filter.js';
 import { connectZkill } from './zkill.js';
-import { getIntel } from './intel.js';
+import { getIntel24h, getIntel60d, getIntelParties } from './intel.js';
 
 const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -93,16 +93,25 @@ fastify.get('/health', async () => ({
   zkill: zkillStatus
 }));
 
-fastify.get('/intel/:systemId', async (req, reply) => {
-  const systemId = parseInt(req.params.systemId, 10);
-  if (!Number.isFinite(systemId)) return reply.code(400).send({ error: 'bad systemId' });
-  try {
-    return await getIntel(systemId);
-  } catch (err) {
-    req.log.error(err, 'intel fetch failed');
-    return reply.code(502).send({ error: 'upstream fetch failed' });
-  }
-});
+// Three narrow intel endpoints so the frontend can render the panel section
+// by section. The 24h call hits zKB page 1 only (fast); the 60d and parties
+// calls share a single underlying kill fetch via an in-flight promise, so
+// firing them in parallel does not double up on zKB.
+function intelRoute(handler) {
+  return async (req, reply) => {
+    const systemId = parseInt(req.params.systemId, 10);
+    if (!Number.isFinite(systemId)) return reply.code(400).send({ error: 'bad systemId' });
+    try {
+      return await handler(systemId);
+    } catch (err) {
+      req.log.error(err, 'intel fetch failed');
+      return reply.code(502).send({ error: 'upstream fetch failed' });
+    }
+  };
+}
+fastify.get('/intel/24h/:systemId',     intelRoute(getIntel24h));
+fastify.get('/intel/60d/:systemId',     intelRoute(getIntel60d));
+fastify.get('/intel/parties/:systemId', intelRoute(getIntelParties));
 
 await fastify.listen({ port: PORT, host: HOST });
 
