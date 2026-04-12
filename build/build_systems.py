@@ -16,6 +16,7 @@ Run:
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 ROOT      = Path(__file__).resolve().parent.parent
@@ -77,8 +78,8 @@ def en(name_field) -> str:
     return str(name_field) if name_field else ""
 
 
-def load_lookups() -> tuple[dict, dict, dict]:
-    """Return (regions, constellations, effects) lookup dicts."""
+def load_lookups() -> tuple[dict, dict, dict, dict, dict]:
+    """Return (regions, constellations, effects, planets_by_id, star_type_by_system) lookup dicts."""
     # regionID → {name, wormholeClassID}
     regions: dict[int, dict] = {}
     for rid, rec in iter_jsonl(SDE_CACHE / "mapRegions.jsonl"):
@@ -104,11 +105,46 @@ def load_lookups() -> tuple[dict, dict, dict]:
             if label:
                 effects[int(sid)] = label
 
-    return regions, constellations, effects
+    # planetID → {typeId, r (AU), moons} — loaded from mapPlanets.jsonl if present.
+    planets_by_id: dict[int, dict] = {}
+    planets_path = SDE_CACHE / "mapPlanets.jsonl"
+    if planets_path.exists():
+        AU = 1.496e11
+        for pid, rec in iter_jsonl(planets_path):
+            if pid is None:
+                continue
+            type_id = rec.get("typeID")
+            if type_id is None:
+                continue
+            pos = rec.get("position") or {}
+            px, py, pz = float(pos.get("x", 0)), float(pos.get("y", 0)), float(pos.get("z", 0))
+            orbit_au = round(math.sqrt(px*px + py*py + pz*pz) / AU, 2)
+            angle    = round(math.atan2(pz, px), 4)  # XZ plane, same projection as starmap
+            ci       = rec.get("celestialIndex") or 0  # 1-based planet index (I, II, III…)
+            moon_count = len(rec.get("moonIDs") or [])
+            planets_by_id[int(pid)] = {"typeId": type_id, "r": orbit_au, "a": angle, "ci": ci, "moons": moon_count}
+
+    # solarSystemID → star typeID — loaded from mapStars.jsonl if present.
+    star_type_by_system: dict[int, int] = {}
+    stars_path = SDE_CACHE / "mapStars.jsonl"
+    if stars_path.exists():
+        for _, rec in iter_jsonl(stars_path):
+            sid = rec.get("solarSystemID")
+            tid = rec.get("typeID")
+            if sid is not None and tid is not None:
+                star_type_by_system[int(sid)] = int(tid)
+
+    return regions, constellations, effects, planets_by_id, star_type_by_system
 
 
-def load_systems(regions: dict, constellations: dict, effects: dict) -> list[dict]:
-    """Load every wspace solar system and attach region/constellation/effect."""
+def load_systems(
+    regions: dict,
+    constellations: dict,
+    effects: dict,
+    planets_by_id: dict,
+    star_type_by_system: dict,
+) -> list[dict]:
+    """Load every wspace solar system and attach region/constellation/effect/planets."""
     required = [
         SDE_CACHE / "mapSolarSystems.jsonl",
         SDE_CACHE / "mapRegions.jsonl",
@@ -141,15 +177,27 @@ def load_systems(regions: dict, constellations: dict, effects: dict) -> list[dic
         wh_class  = WH_CLASS_LABEL.get(class_id)
 
         pos = rec.get("position", {})
+        sys_id = int(sid)
+
+        # Planets: look up each planetID in the pre-built planet dict.
+        planets = []
+        for pid in (rec.get("planetIDs") or []):
+            p_data = planets_by_id.get(int(pid))
+            if p_data:
+                planets.append(p_data)
+        planets.sort(key=lambda p: p["r"])
+
         rows.append({
-            "id":            int(sid),
+            "id":            sys_id,
             "name":          en(rec.get("name")),
             "region":        region.get("name", ""),
             "constellation": const_name,
             "wh_class":      wh_class,
-            "effect":        effects.get(int(sid)),
+            "effect":        effects.get(sys_id),
             "sx":            float(pos.get("x", 0)),
             "sz":            float(pos.get("z", 0)),
+            "sun_type_id":   star_type_by_system.get(sys_id),
+            "planets":       planets,
         })
     return rows
 
@@ -186,6 +234,8 @@ def transform(rows: list[dict]) -> list[dict]:
             "x":             row["x"],
             "y":             row["y"],
             "r":             DEFAULT_RADIUS,
+            "sunTypeId":     row.get("sun_type_id"),
+            "planets":       row.get("planets", []),
         })
     if dropped:
         print(f"warning: dropped {dropped} systems with no resolvable class")
@@ -206,8 +256,8 @@ def write_js(systems: list[dict]) -> None:
 
 
 def main() -> None:
-    regions, constellations, effects = load_lookups()
-    rows = load_systems(regions, constellations, effects)
+    regions, constellations, effects, planets_by_id, star_type_by_system = load_lookups()
+    rows = load_systems(regions, constellations, effects, planets_by_id, star_type_by_system)
     project(rows)
     systems = transform(rows)
     with_effect = sum(1 for s in systems if s["effect"])

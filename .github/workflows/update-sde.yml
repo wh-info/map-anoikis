@@ -63,6 +63,8 @@ jobs:
             "mapRegions.jsonl" \
             "mapConstellations.jsonl" \
             "mapSecondarySuns.jsonl" \
+            "mapPlanets.jsonl" \
+            "mapStars.jsonl" \
             -d build/sde_cache/
           rm /tmp/sde.zip
           echo "Extracted files:"

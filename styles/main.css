@@ -819,6 +819,12 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   margin-top: 2px;
 }
 
+.orrery-view-toggle {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
 .orrery-body {
   display: flex;
   flex-direction: row;

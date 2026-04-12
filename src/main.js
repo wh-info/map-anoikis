@@ -238,10 +238,11 @@ const orreryPanel  = document.getElementById('panel-orrery');
 const orreryCanvas = document.getElementById('orrery-canvas');
 const orreryTip    = document.getElementById('orrery-tip');
 const orreryCtx    = orreryCanvas.getContext('2d');
-let orreryOpen      = false;
-let orreryRotate    = false;
-let orreryHits      = []; // [{x,y,hitR,typeId,ci,moons,isSun}] — rebuilt each draw frame
-let orreryListHover = null; // { imgEl, isSun, ci } — set when hovering a list row
+let orreryOpen       = false;
+let orreryRotate     = false;
+let orreryProjection = 'orrery'; // 'orrery' (log-scaled) | 'map' (true XZ projection)
+let orreryHits       = []; // [{x,y,hitR,typeId,ci,moons,isSun}] — rebuilt each draw frame
+let orreryListHover  = null; // { imgEl, isSun, ci } — set when hovering a list row
 
 const ROMAN = ['','I','II','III','IV','V','VI','VII','VIII','IX','X',
                'XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX'];
@@ -333,55 +334,78 @@ function drawOrrery(star) {
     return;
   }
 
-  // Log-scale orbit radii → pixel ring radii.
-  const logRs  = planets.map((p) => Math.log10(Math.max(p.r, 0.01)));
-  const logMin = Math.min(...logRs);
-  const logMax = Math.max(...logRs);
-  const innerPx = Math.round(CSS * 0.085);
-  const outerPx = Math.round(cx - CSS * 0.04);
+  // --- Compute per-planet orbit radius (px) and angular position ---
+  const t = now * 0.0001; // slow time base for optional rotation
 
-  function orbitPx(logR) {
-    if (logMax === logMin) return (innerPx + outerPx) / 2;
-    return innerPx + ((logR - logMin) / (logMax - logMin)) * (outerPx - innerPx);
+  let positions; // [{px, py, rr}] — planet screen pos + orbit-circle radius
+  let refRingPx; // pixel radius of the 14.3 AU reference ring
+
+  if (orreryProjection === 'map') {
+    // True XZ projection: linear scale, outermost planet at 90% of half-canvas.
+    const maxR    = planets.reduce((m, p) => Math.max(m, p.r || 0), 0) || 1;
+    const mapScale = (cx * 0.90) / maxR;
+    refRingPx = 14.3 * mapScale;
+    positions = planets.map((p, i) => {
+      const base  = p.a != null ? p.a : (i / planets.length) * Math.PI * 2;
+      const omega = 1.0 / Math.pow(Math.max(p.r, 0.1), 0.75);
+      const angle = orreryRotate ? base + t * omega : base;
+      const rr    = (p.r || 0) * mapScale;
+      return { px: cx + Math.cos(angle) * rr, py: cy + Math.sin(angle) * rr, rr };
+    });
+  } else {
+    // Orrery: log-scaled so all planets are visually separated.
+    const logRs  = planets.map(p => Math.log10(Math.max(p.r, 0.01)));
+    const logMin = Math.min(...logRs);
+    const logMax = Math.max(...logRs);
+    const innerPx = Math.round(CSS * 0.085);
+    const outerPx = Math.round(cx - CSS * 0.04);
+    const orbitPx = logR => {
+      if (logMax === logMin) return (innerPx + outerPx) / 2;
+      return innerPx + ((logR - logMin) / (logMax - logMin)) * (outerPx - innerPx);
+    };
+    refRingPx = orbitPx(Math.log10(14.3));
+    positions = planets.map((p, i) => {
+      const rr    = orbitPx(logRs[i]);
+      const base  = p.a != null ? p.a : (i / planets.length) * Math.PI * 2;
+      const omega = 1.0 / Math.pow(Math.max(p.r, 0.1), 0.75);
+      const angle = orreryRotate ? base + t * omega : base;
+      return { px: cx + Math.cos(angle) * rr, py: cy + Math.sin(angle) * rr, rr };
+    });
   }
 
   // Orbit tracks.
   oc.strokeStyle = 'rgba(0,200,200,0.32)';
   oc.lineWidth   = 1;
-  for (let i = 0; i < planets.length; i++) {
-    const rr = orbitPx(logRs[i]);
+  for (const pos of positions) {
     oc.beginPath();
-    oc.arc(cx, cy, rr, 0, Math.PI * 2);
+    oc.arc(cx, cy, pos.rr, 0, Math.PI * 2);
     oc.stroke();
   }
 
   // 14.3 AU scan-range reference circle.
-  const refLogR = Math.log10(14.3);
-  const refPx   = orbitPx(refLogR);
-  if (refPx > 4) {
+  if (refRingPx > 4) {
     oc.save();
     oc.strokeStyle = 'rgba(255,195,60,0.65)';
     oc.lineWidth   = 1.2;
     oc.setLineDash([5, 4]);
     oc.beginPath();
-    oc.arc(cx, cy, refPx, 0, Math.PI * 2);
+    oc.arc(cx, cy, refRingPx, 0, Math.PI * 2);
     oc.stroke();
     oc.setLineDash([]);
-    // Label near the top of the circle (only if it fits inside the canvas).
-    if (refPx < outerPx + 24) {
-      oc.fillStyle  = 'rgba(255,195,60,0.80)';
-      oc.font       = '9px Roboto Mono, monospace';
-      oc.textAlign  = 'center';
+    if (refRingPx < cx - CSS * 0.04 + 24) {
+      oc.fillStyle    = 'rgba(255,195,60,0.80)';
+      oc.font         = '9px Roboto Mono, monospace';
+      oc.textAlign    = 'center';
       oc.textBaseline = 'bottom';
-      oc.fillText('14.3 AU', cx, cy - refPx - 2);
+      oc.fillText('14.3 AU', cx, cy - refRingPx - 2);
     }
     oc.restore();
   }
 
-  // Sun glow — color driven by spectral type.
-  const sc      = SUN_COLORS[star.sunTypeId] || [255, 228, 110];
-  const sunR    = Math.round(CSS * 0.054);  // scales with canvas
-  const sunG    = oc.createRadialGradient(cx, cy, 0, cx, cy, sunR);
+  // Sun glow — colour driven by spectral type.
+  const sc   = SUN_COLORS[star.sunTypeId] || [255, 228, 110];
+  const sunR = Math.round(CSS * 0.054);
+  const sunG = oc.createRadialGradient(cx, cy, 0, cx, cy, sunR);
   sunG.addColorStop(0,    'rgba(255,255,255,1)');
   sunG.addColorStop(0.22, rgba(sc, 0.9));
   sunG.addColorStop(0.65, rgba(sc, 0.35));
@@ -394,23 +418,16 @@ function drawOrrery(star) {
   oc.beginPath();
   oc.arc(cx, cy, Math.max(2, CSS * 0.013), 0, Math.PI * 2);
   oc.fill();
-  // Sun hit (added last so planets take hover priority).
   orreryHits.push({ x: cx, y: cy, hitR: sunR * 0.55, isSun: true, sunTypeId: star.sunTypeId });
 
   // Planets.
-  const t = now * 0.0001; // slow time base used only when rotation is on
   for (let i = 0; i < planets.length; i++) {
-    const p     = planets[i];
-    const rr    = orbitPx(logRs[i]);
-    const base  = p.a != null ? p.a : (i / planets.length) * Math.PI * 2;
-    const omega = 1.0 / Math.pow(Math.max(p.r, 0.1), 0.75);
-    const angle = orreryRotate ? base + t * omega : base;
-    const px    = cx + Math.cos(angle) * rr;
-    const py    = cy + Math.sin(angle) * rr;
-    const [pr, pg, pb] = planetRGB(p.typeId);
-    const pR = 4;
+    const p             = planets[i];
+    const { px, py }    = positions[i];
+    const [pr, pg, pb]  = planetRGB(p.typeId);
+    const pR            = 4;
+    const omega         = 1.0 / Math.pow(Math.max(p.r, 0.1), 0.75);
 
-    // Outer glow.
     const glow = oc.createRadialGradient(px, py, 0, px, py, pR * 3);
     glow.addColorStop(0, `rgba(${pr},${pg},${pb},0.5)`);
     glow.addColorStop(1, 'rgba(0,0,0,0)');
@@ -419,13 +436,11 @@ function drawOrrery(star) {
     oc.arc(px, py, pR * 3, 0, Math.PI * 2);
     oc.fill();
 
-    // Planet body — solid flat color.
     oc.fillStyle = `rgb(${pr},${pg},${pb})`;
     oc.beginPath();
     oc.arc(px, py, pR, 0, Math.PI * 2);
     oc.fill();
 
-    // Moons as tiny dots.
     const moonCount = Math.min(p.moons || 0, 6);
     for (let m = 0; m < moonCount; m++) {
       const mBase  = (m / moonCount) * Math.PI * 2;
@@ -532,6 +547,17 @@ function closeOrrery() {
 }
 
 document.getElementById('close-orrery').addEventListener('click', closeOrrery);
+
+document.getElementById('orrery-proj-orrery').addEventListener('click', () => {
+  orreryProjection = 'orrery';
+  document.getElementById('orrery-proj-orrery').classList.add('on');
+  document.getElementById('orrery-proj-map').classList.remove('on');
+});
+document.getElementById('orrery-proj-map').addEventListener('click', () => {
+  orreryProjection = 'map';
+  document.getElementById('orrery-proj-map').classList.add('on');
+  document.getElementById('orrery-proj-orrery').classList.remove('on');
+});
 
 document.getElementById('si-system-view').addEventListener('click', () => {
   if (!selected) return;
