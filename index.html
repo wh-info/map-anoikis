@@ -25,10 +25,8 @@
       <div class="brand-title">map.anoikis.info<span class="cursor-blink">_</span></div>
       <div class="brand-sub" id="star-count">0 systems</div>
     </div>
-    <button class="panel-hide-btn" id="hide-left" data-tip="Hide panel">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-    </button>
   </div>
+  <button class="panel-minimize-corner panel-minimize-corner--tl" id="hide-left" data-tip="Hide panel" aria-label="Hide panel"></button>
   <input id="search" type="text" placeholder="Search system (e.g. J123456)" autocomplete="off" spellcheck="false" />
   <div id="search-results"></div>
 
@@ -146,11 +144,9 @@
         <svg class="kill-compact-icon-compact" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6"  x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <div style="font-size: 10px; color: var(--dim);" id="kill-count">0 shown</div>
-      <button class="panel-hide-btn" id="hide-right" data-tip="Hide panel">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-      </button>
     </div>
   </div>
+  <button class="panel-minimize-corner panel-minimize-corner--tr" id="hide-right" data-tip="Hide panel" aria-label="Hide panel"></button>
   <div id="kill-list"></div>
   <div id="kill-footer">
     <button class="kill-footer-hdr" id="kill-footer-toggle">

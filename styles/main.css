@@ -702,6 +702,39 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 .panel-hide-btn:hover { color: var(--accent); }
 .panel-hide-btn svg { width: 11px; height: 11px; display: block; }
 
+/* Corner-triangle minimize button (left panel top-left, right panel top-right). */
+.panel-minimize-corner {
+  position: absolute;
+  top: 0;
+  width: 16px;
+  height: 16px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  z-index: 3;
+}
+.panel-minimize-corner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--dim);
+  transition: background 0.12s;
+}
+.panel-minimize-corner:hover::before { background: var(--accent); }
+.panel-minimize-corner--tl {
+  left: 0;
+}
+.panel-minimize-corner--tl::before {
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+.panel-minimize-corner--tr {
+  right: 0;
+}
+.panel-minimize-corner--tr::before {
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
 .panel-restore-btn {
   position: fixed;
   width: 32px; height: 32px;
