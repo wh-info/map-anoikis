@@ -115,6 +115,7 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   text-align: right;
+  margin-bottom: 8px;
 }
 
 /* ================================================================ */
@@ -208,12 +209,13 @@ html, body {
   font-weight: 700;
 }
 .info-row--jcode {
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 10px;
   font-size: 12px;
   padding-bottom: 6px;
 }
 .info-row--jcode .v { color: var(--highlight); }
+.info-row--jcode #si-class { text-align: right; }
 
 .sys-name {
   font-size: 15px;
