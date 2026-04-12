@@ -20,11 +20,8 @@
 <!-- LEFT PANEL: search + system info -->
 <div id="panel-left" class="panel">
   <div class="brand">
-    <div class="brand-dot"></div>
-    <div style="flex: 1;">
-      <div class="brand-title">map.anoikis.info<span class="cursor-blink">_</span></div>
-      <div class="brand-sub" id="star-count">0 systems</div>
-    </div>
+    <div class="brand-title">map.anoikis.info<span class="cursor-blink">_</span></div>
+    <div class="brand-sub" id="star-count">0 wormhole systems</div>
   </div>
   <button class="panel-minimize-corner panel-minimize-corner--tl" id="hide-left" data-tip="Hide panel" aria-label="Hide panel"></button>
   <input id="search" type="text" placeholder="Search system (e.g. J123456)" autocomplete="off" spellcheck="false" />
@@ -34,8 +31,10 @@
     <div class="title">System</div>
     <div class="info-body">
       <div class="sys-name" id="si-name">—</div>
-      <div class="info-row" id="si-jcode-row" style="display:none;"><span class="k">J-code</span><span class="v" id="si-jcode">—</span></div>
-      <div class="info-row"><span class="k">Class</span><span class="v" id="si-class">—</span></div>
+      <div class="info-row info-row--jcode">
+        <span class="v" id="si-jcode" style="display:none;">—</span>
+        <span class="v" id="si-class">—</span>
+      </div>
       <div class="info-row"><span class="k">Region</span><span class="v" id="si-region">—</span></div>
       <div class="info-row"><span class="k">Constellation</span><span class="v" id="si-const">—</span></div>
       <div class="info-row"><span class="k">Effect</span><span class="v" id="si-effect">—</span></div>

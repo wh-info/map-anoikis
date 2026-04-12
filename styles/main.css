@@ -96,17 +96,10 @@ html, body {
 }
 
 .brand {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: baseline; gap: 10px;
   margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
-}
-
-/* Solid cyan square — terminal status indicator */
-.brand-dot {
-  width: 7px; height: 7px;
-  background: var(--accent);
-  flex-shrink: 0;
 }
 
 .brand-title {
@@ -121,6 +114,7 @@ html, body {
   color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.1em;
+  text-align: right;
 }
 
 /* ================================================================ */
@@ -213,6 +207,13 @@ html, body {
   color: var(--text);
   font-weight: 700;
 }
+.info-row--jcode {
+  justify-content: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  padding-bottom: 6px;
+}
+.info-row--jcode .v { color: var(--highlight); }
 
 .sys-name {
   font-size: 15px;

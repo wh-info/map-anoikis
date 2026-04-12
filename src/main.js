@@ -110,7 +110,7 @@ const stars = window.ANOIKIS_SYSTEMS.map((s) => ({
   twinkleSpeed: 0.55 + Math.random() * 0.9,
   flareUntil: 0
 }));
-document.getElementById('star-count').textContent = stars.length + ' systems';
+document.getElementById('star-count').textContent = stars.length + ' wormhole systems';
 // systemID -> star, used by the live kill feed to resolve incoming IDs.
 const starById = new Map(stars.map((s) => [s.id, s]));
 
@@ -1276,9 +1276,12 @@ function selectStar(s, focus) {
   siEl.classList.remove('empty');
   const dd = drifterDisplay(s);
   document.getElementById('si-name').textContent = displayName(s);
-  document.getElementById('si-jcode-row').style.display = dd ? '' : 'none';
-  if (dd) document.getElementById('si-jcode').textContent = dd.jcode;
-  document.getElementById('si-class').textContent = displayClass(s);
+  const jcodeEl = document.getElementById('si-jcode');
+  jcodeEl.style.display = dd ? '' : 'none';
+  if (dd) jcodeEl.textContent = dd.jcode;
+  const rawClass = displayClass(s);
+  const longClass = /^C(\d+)$/.test(rawClass) ? 'Class ' + rawClass.slice(1) : rawClass;
+  document.getElementById('si-class').textContent = longClass;
   document.getElementById('si-region').textContent = s.regionName;
   document.getElementById('si-const').textContent = s.constellation;
   document.getElementById('si-effect').textContent = s.effect || 'None';
