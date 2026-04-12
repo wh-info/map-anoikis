@@ -1504,7 +1504,26 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
       <img src="./img/graphic/zkb.svg" class="zkb-img" alt="" aria-hidden="true" />
     </a>` : ''}
   `;
-  if (ts) el.querySelector('.kill-age').dataset.tip = formatKillTimeTip(ts);
+  const ageEl = el.querySelector('.kill-age');
+  if (ts) {
+    const timeTip = formatKillTimeTip(ts);
+    ageEl.addEventListener('mouseenter', (e) => {
+      customTip.textContent = timeTip;
+      customTip.style.left = (e.clientX + 14) + 'px';
+      customTip.style.top  = (e.clientY + 14) + 'px';
+      customTip.style.display = 'block';
+    });
+    ageEl.addEventListener('mousemove', (e) => {
+      const x = e.clientX + 14;
+      const y = e.clientY + 14;
+      customTip.style.left = (x + customTip.offsetWidth  > window.innerWidth  ? e.clientX - customTip.offsetWidth  - 6 : x) + 'px';
+      customTip.style.top  = (y + customTip.offsetHeight > window.innerHeight ? e.clientY - customTip.offsetHeight - 6 : y) + 'px';
+    });
+    ageEl.addEventListener('mouseleave', () => {
+      customTip.style.display = 'none';
+      customTipTarget = null;
+    });
+  }
   const zkbEl = el.querySelector('.zkb-link');
   if (zkbEl) zkbEl.addEventListener('click', (ev) => ev.stopPropagation());
   const locateBtn = el.querySelector('.locate-btn');

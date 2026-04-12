@@ -470,6 +470,7 @@ html, body {
   display: flex; gap: 6px; align-items: center;
 }
 .kill-value { color: var(--highlight); font-weight: 700; }
+.kill-age   { cursor: default; padding: 3px 0; }
 
 /* all icon buttons */
 .kill-btn {
