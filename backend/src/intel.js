@@ -1,6 +1,10 @@
 // Intel endpoint — fetches recent kill history from zKillboard for an
 // Anoikis system and returns aggregated stats for the frontend Intel panel.
 //
+// zKillboard REST returns slim kills (killmail_id + zkb metadata only).
+// Full killmail data (killmail_time, victim, attackers) is fetched from ESI
+// using killmail_id + zkb.hash, in parallel batches of ESI_CONCURRENCY.
+//
 // Returned shape:
 //   hourly24  {number[24]}     kills per hour, last 24 h (index 0 = oldest hour)
 //   matrix60  {number[7][24]}  [UTCday 0-6][UTChour 0-23] counts over last 60 days
@@ -8,13 +12,14 @@
 //   alliances {Array<{id,name,count}>}  top 10 alliances by kill participation
 //   killCount {number}          total kills in the 60-day window
 
-const CACHE_TTL  = 15 * 60 * 1000;            // 15 min
-const CUTOFF_60D = 60 * 24 * 60 * 60 * 1000;  // 60 days in ms
-const MAX_PAGES  = 20;                          // hard cap to avoid runaway fetches
-const PAGE_PAUSE = 150;                         // ms between zKB pages (polite)
-const UA         = process.env.ZKILL_USER_AGENT || 'map.anoikis.info intel/1.0';
-const ESI_BASE   = 'https://esi.evetech.net/latest';
-const ZKB_BASE   = 'https://zkillboard.com/api';
+const CACHE_TTL      = 15 * 60 * 1000;           // 15 min
+const CUTOFF_60D     = 60 * 24 * 60 * 60 * 1000; // 60 days in ms
+const MAX_PAGES      = 20;                         // hard cap to avoid runaway fetches
+const PAGE_PAUSE     = 200;                        // ms between zKB pages (polite)
+const ESI_CONCURRENCY = 10;                        // parallel ESI killmail fetches per chunk
+const UA             = process.env.ZKILL_USER_AGENT || 'map.anoikis.info intel/1.0';
+const ESI_BASE       = 'https://esi.evetech.net/latest';
+const ZKB_BASE       = 'https://zkillboard.com/api';
 
 const intelCache = new Map(); // systemId → { data, fetchedAt }
 const corpNames  = new Map(); // id → resolved name
@@ -46,28 +51,52 @@ async function resolveAlliName(id) {
   return alliNames.get(id);
 }
 
+// Fetch a single full killmail from ESI given a slim zKB entry.
+async function fetchEsiKill(slim) {
+  const { killmail_id, zkb } = slim;
+  if (!killmail_id || !zkb?.hash) return null;
+  try {
+    return await jFetch(
+      `${ESI_BASE}/killmails/${killmail_id}/${zkb.hash}/?datasource=tranquility`
+    );
+  } catch { return null; }
+}
+
+// Resolve a page of slim kills to full ESI killmails, ESI_CONCURRENCY at a time.
+async function fetchEsiBatch(slimKills) {
+  const results = [];
+  for (let i = 0; i < slimKills.length; i += ESI_CONCURRENCY) {
+    const chunk = slimKills.slice(i, i + ESI_CONCURRENCY);
+    const batch = await Promise.all(chunk.map(fetchEsiKill));
+    results.push(...batch);
+  }
+  return results;
+}
+
 async function fetchKills(systemId) {
   const cutoff = Date.now() - CUTOFF_60D;
   const kills  = [];
+
   for (let page = 1; page <= MAX_PAGES; page++) {
-    let batch;
+    let slimBatch;
     try {
       const url = `${ZKB_BASE}/kills/solarSystemID/${systemId}/page/${page}/`;
       const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' } });
-      console.log(`[intel] zKB GET ${url} → ${res.status} ${res.headers.get('content-type')}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      console.log(`[intel] page ${page} raw (first 200): ${text.slice(0, 200)}`);
-      batch = JSON.parse(text);
-    } catch (e) { console.log(`[intel] page ${page} fetch error: ${e.message}`); break; }
-    if (!Array.isArray(batch) || batch.length === 0) {
-      console.log(`[intel] page ${page} empty or non-array, stopping`);
+      slimBatch = await res.json();
+    } catch (e) {
+      console.log(`[intel] page ${page} fetch error: ${e.message}`);
       break;
     }
-    console.log(`[intel] page ${page}: ${batch.length} kills`);
+
+    if (!Array.isArray(slimBatch) || slimBatch.length === 0) break;
+
+    // Resolve slim kills → full ESI killmails for this page.
+    const fullKills = await fetchEsiBatch(slimBatch);
+
     let exhausted = false;
-    for (const k of batch) {
-      if (!k.killmail_time) continue;
+    for (const k of fullKills) {
+      if (!k || !k.killmail_time) continue;
       const ts = new Date(k.killmail_time).getTime();
       if (!Number.isFinite(ts)) continue;
       if (ts < cutoff) { exhausted = true; break; }
