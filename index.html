@@ -155,11 +155,16 @@
       </svg>
     </button>
     <div id="kill-filters">
-      <span class="kind-chip on" data-kind="ship"       data-tip="Ships (frigates through titans, pods)">Ships</span>
-      <span class="kind-chip on" data-kind="structure"  data-tip="Upwell structures (Citadels, Engineering Complexes, Refineries, …)">Structures</span>
-      <span class="kind-chip" data-kind="tower"      data-tip="POS Control Towers">Towers</span>
-      <span class="kind-chip" data-kind="fighter"    data-tip="Carrier / supercarrier fighters">Fighters</span>
-      <span class="kind-chip" data-kind="deployable" data-tip="Mobile Depots, MTUs, Cyno Inhibitors, …">Deployables</span>
+      <div class="kill-filters-group kill-filters-kinds" data-label="Type">
+        <span class="kind-chip on" data-kind="ship"       data-tip="Ships (frigates through titans, pods)">Ships</span>
+        <span class="kind-chip on" data-kind="structure"  data-tip="Upwell structures (Citadels, Engineering Complexes, Refineries, …)">Structures</span>
+        <span class="kind-chip" data-kind="tower"      data-tip="POS Control Towers">Towers</span>
+        <span class="kind-chip" data-kind="fighter"    data-tip="Carrier / supercarrier fighters">Fighters</span>
+        <span class="kind-chip" data-kind="deployable" data-tip="Mobile Depots, MTUs, Cyno Inhibitors, …">Deployables</span>
+      </div>
+      <div class="kill-filters-group kill-filters-tags" data-label="Tags">
+        <span class="kind-chip on" data-tag="npc" data-tip="Kills where NPCs were involved (ratting losses, Drifter response fleets, …)">NPC</span>
+      </div>
     </div>
   </div>
 </div>
@@ -184,14 +189,6 @@
 <!-- Settings slide-up panel -->
 <div id="settings-panel">
   <div class="settings-row">
-    <span>Zoom</span>
-    <div style="display: flex; gap: 4px; align-items: center;">
-      <button class="ctrl" id="zoom-out" data-tip="Zoom out">&minus;</button>
-      <span id="zoom-val" style="font-size: 11px; min-width: 40px; text-align: center;">1.00x</span>
-      <button class="ctrl" id="zoom-in" data-tip="Zoom in">+</button>
-    </div>
-  </div>
-  <div class="settings-row">
     <span>View</span>
     <button class="ctrl" id="reset-view" data-tip="Reset view" style="width: auto; padding: 0 10px;">Reset</button>
   </div>
@@ -199,14 +196,13 @@
     <span>Labels</span>
     <button class="ctrl off" id="toggle-labels" data-tip="Toggle system name labels" style="width: auto; padding: 0 10px;">Off</button>
   </div>
-  <div class="settings-row">
+  <div class="settings-row settings-row--colors">
     <span>Colors</span>
-    <div style="display: flex; gap: 4px;">
-      <button class="ctrl on" id="palette-ghost"   style="width: auto; padding: 0 10px;">Default</button>
-      <button class="ctrl"    id="palette-ember"   style="width: auto; padding: 0 10px;">Ember</button>
-      <button class="ctrl"    id="palette-anoikis" style="width: auto; padding: 0 10px;">anoik.is</button>
-      <button class="ctrl"    id="palette-whtype"  style="width: auto; padding: 0 10px;">whtype</button>
-      <button class="ctrl"    id="palette-eve"     style="width: auto; padding: 0 10px;">eve</button>
+    <div class="settings-palette-grid">
+      <button class="ctrl on" id="palette-ghost"  style="width: auto; padding: 0 10px;">Default</button>
+      <button class="ctrl"    id="palette-ember"  style="width: auto; padding: 0 10px;">Ember</button>
+      <button class="ctrl"    id="palette-whtype" style="width: auto; padding: 0 10px;">whtype</button>
+      <button class="ctrl"    id="palette-eve"    style="width: auto; padding: 0 10px;">eve</button>
     </div>
   </div>
 </div>

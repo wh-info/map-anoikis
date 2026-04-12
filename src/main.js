@@ -1416,23 +1416,6 @@ async function showSdePanel() {
 
 }
 
-// --- Zoom controls ----------------------------------------------
-function updateZoomLabel() {
-  document.getElementById('zoom-val').textContent = camera.scale.toFixed(2) + 'x';
-}
-updateZoomLabel();
-function buttonZoom(factor) {
-  const cw = window.innerWidth, ch = window.innerHeight;
-  const cx = cw / 2, cy = ch / 2;
-  const before = screenToWorld(cx, cy);
-  camera.scale = clamp(camera.scale * factor, MIN_SCALE, MAX_SCALE);
-  camera.offsetX = cx - before.x * camera.scale;
-  camera.offsetY = cy - before.y * camera.scale;
-  camera.focusAnim = null;
-  updateZoomLabel();
-}
-document.getElementById('zoom-in').addEventListener('click', () => buttonZoom(1.25));
-document.getElementById('zoom-out').addEventListener('click', () => buttonZoom(0.8));
 document.getElementById('reset-view').addEventListener('click', animatedResetView);
 document.getElementById('toggle-labels').addEventListener('click', (e) => {
   showLabels = !showLabels;
@@ -1441,6 +1424,9 @@ document.getElementById('toggle-labels').addEventListener('click', (e) => {
   btn.textContent = showLabels ? 'On' : 'Off';
 });
 
+// NOTE: The anoik.is palette ('palette-anoikis') has been removed from the
+// settings panel UI but the palette data and this handler are preserved so
+// the button can be re-added later without touching src/main.js.
 const paletteEmberBtn   = document.getElementById('palette-ember');
 const paletteAnoikisBtn = document.getElementById('palette-anoikis');
 const paletteWhtypeBtn  = document.getElementById('palette-whtype');
@@ -1448,17 +1434,17 @@ const paletteGhostBtn   = document.getElementById('palette-ghost');
 const paletteEveBtn     = document.getElementById('palette-eve');
 function setPalette(name) {
   applyPalette(name);
-  paletteEmberBtn.classList.toggle('on',   name === 'ember');
-  paletteAnoikisBtn.classList.toggle('on', name === 'anoikis');
-  paletteWhtypeBtn.classList.toggle('on',  name === 'whtype');
-  paletteGhostBtn.classList.toggle('on',   name === 'ghost');
-  paletteEveBtn.classList.toggle('on',     name === 'eve');
+  paletteEmberBtn?.classList.toggle('on',   name === 'ember');
+  paletteAnoikisBtn?.classList.toggle('on', name === 'anoikis');
+  paletteWhtypeBtn?.classList.toggle('on',  name === 'whtype');
+  paletteGhostBtn?.classList.toggle('on',   name === 'ghost');
+  paletteEveBtn?.classList.toggle('on',     name === 'eve');
 }
-paletteEmberBtn.addEventListener('click',   () => setPalette('ember'));
-paletteAnoikisBtn.addEventListener('click', () => setPalette('anoikis'));
-paletteWhtypeBtn.addEventListener('click',  () => setPalette('whtype'));
-paletteGhostBtn.addEventListener('click',   () => setPalette('ghost'));
-paletteEveBtn.addEventListener('click',     () => setPalette('eve'));
+paletteEmberBtn?.addEventListener('click',   () => setPalette('ember'));
+paletteAnoikisBtn?.addEventListener('click', () => setPalette('anoikis'));
+paletteWhtypeBtn?.addEventListener('click',  () => setPalette('whtype'));
+paletteGhostBtn?.addEventListener('click',   () => setPalette('ghost'));
+paletteEveBtn?.addEventListener('click',     () => setPalette('eve'));
 
 // --- Panel visibility toggles ------------------------------------
 document.getElementById('hide-left').addEventListener('click', () => {
@@ -1599,6 +1585,12 @@ function techBadge(typeId) {
 }
 
 const activeKinds = new Set(['ship', 'structure']);
+const activeTags = new Set(['npc']);
+function isKillVisible(kind, isNpc) {
+  if (!activeKinds.has(kind)) return false;
+  if (isNpc && !activeTags.has('npc')) return false;
+  return true;
+}
 let locateHover = null;
 
 function escapeHtml(s) {
@@ -1632,7 +1624,7 @@ function resolveEntityName(kind, id) {
   return p;
 }
 
-function spawnKill({ star, killId, typeId, kind, characterId, corporationId, value, ts, hasImplants, animated }) {
+function spawnKill({ star, killId, typeId, kind, characterId, corporationId, value, ts, hasImplants, isNpc, animated }) {
   const isDelayed = ts ? (Date.now() - ts * 1000 > DELAYED_KILL_MS) : false;
   if (animated) triggerKillAnim(star, isDelayed);
   const name = typeNameFor(typeId); // synchronous best-effort; ESI fills in below if unknown
@@ -1656,7 +1648,8 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
   const el = document.createElement('div');
   el.className = 'kill' + (isDelayed ? ' kill--delayed' : '');
   el.dataset.kind = kindKey;
-  if (!activeKinds.has(kindKey)) el.style.display = 'none';
+  if (isNpc) el.dataset.npc = '1';
+  if (!isKillVisible(kindKey, !!isNpc)) el.style.display = 'none';
 
   el.innerHTML = `
     <button class="kill-btn kill-btn--locate locate-btn" data-tip="Locate ${escapeHtml(starDisplayName)}" aria-label="Locate ${escapeHtml(starDisplayName)}">
@@ -1768,25 +1761,31 @@ function handleBackendKill(kill, animated) {
     value: kill.value,
     ts: kill.ts,
     hasImplants: !!kill.hasImplants,
+    isNpc: !!kill.isNpc,
     animated
   });
   if (animated) flashRestoreRight();
 }
 
+function applyKillFilters() {
+  for (const el of killList.children) {
+    el.style.display = isKillVisible(el.dataset.kind, el.dataset.npc === '1') ? '' : 'none';
+  }
+  updateKillCount();
+}
 document.querySelectorAll('#kill-filters .kind-chip').forEach((chip) => {
   chip.addEventListener('click', () => {
     const kind = chip.dataset.kind;
-    if (activeKinds.has(kind)) {
-      activeKinds.delete(kind);
-      chip.classList.remove('on');
-    } else {
-      activeKinds.add(kind);
-      chip.classList.add('on');
+    const tag  = chip.dataset.tag;
+    if (kind) {
+      if (activeKinds.has(kind)) activeKinds.delete(kind);
+      else activeKinds.add(kind);
+    } else if (tag) {
+      if (activeTags.has(tag)) activeTags.delete(tag);
+      else activeTags.add(tag);
     }
-    for (const el of killList.children) {
-      el.style.display = activeKinds.has(el.dataset.kind) ? '' : 'none';
-    }
-    updateKillCount();
+    chip.classList.toggle('on');
+    applyKillFilters();
   });
 });
 

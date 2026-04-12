@@ -50,6 +50,7 @@ function compactKill(raw, classification) {
     corporationId: victim.corporation_id ?? null,
     value: raw.zkb?.totalValue ?? 0,
     hasImplants,
+    isNpc: !!raw.zkb?.npc,
     ts
   };
 }

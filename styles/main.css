@@ -298,17 +298,40 @@ html, body {
 /* filters — animate open/close with max-height */
 #kill-filters {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  flex-direction: column;
+  gap: 6px;
   padding: 0 14px;
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.24s ease, padding 0.24s ease;
 }
 #kill-footer.open #kill-filters {
-  max-height: 80px;
-  padding: 0 14px 10px;
+  max-height: 160px;
+  padding: 4px 14px 10px;
 }
+.kill-filters-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.kill-filters-group:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+.kill-filters-group::before {
+  content: attr(data-label);
+  display: block;
+  width: 100%;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 3px;
+}
+.kill-filters-kinds { }
+.kill-filters-tags  { }
 
 /* Filter chips — flat rectangles, no pill shape */
 .kind-chip {
@@ -830,6 +853,16 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+.settings-row--colors {
+  align-items: flex-start;
+}
+.settings-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  width: 150px;
+}
+.settings-palette-grid .ctrl { width: auto !important; padding: 0 10px !important; }
 
 /* ================================================================ */
 /* vSDE SECRET PANEL                                                */
