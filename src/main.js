@@ -1011,17 +1011,20 @@ function draw() {
     ctx.lineTo(sp.x, sp.y);
     ctx.stroke();
     ctx.setLineDash([]);
-    // Highlight the target star with a pulsing ring in its own color.
-    const pulse = 0.5 + 0.5 * Math.sin(now * 0.006);
-    ctx.fillStyle = rgba(traceColor, 0.85);
+    // Highlight the target star with a subtle glowing dot in its own color.
+    ctx.globalCompositeOperation = 'lighter';
+    const glow = ctx.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, 14);
+    glow.addColorStop(0, rgba(traceColor, 0.55));
+    glow.addColorStop(1, rgba(traceColor, 0));
+    ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(sp.x, sp.y, 4, 0, Math.PI * 2);
+    ctx.arc(sp.x, sp.y, 14, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = rgba(traceColor, 0.4 + 0.5 * pulse);
-    ctx.lineWidth = 1.5;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = rgba(traceColor, 0.95);
     ctx.beginPath();
-    ctx.arc(sp.x, sp.y, 9 + pulse * 4, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.arc(sp.x, sp.y, 3.5, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   if (selected) {
