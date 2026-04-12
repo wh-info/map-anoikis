@@ -93,6 +93,8 @@ const stars = window.ANOIKIS_SYSTEMS.map((s) => ({
   r: s.r,
   whClass: s.class,
   effect: s.effect || null,
+  sunTypeId: s.sunTypeId || null,
+  planets: s.planets || [],
   statics: [],
   twinklePhase: Math.random() * Math.PI * 2,
   twinkleSpeed: 0.55 + Math.random() * 0.9,
@@ -230,6 +232,343 @@ function buildSprite(color) {
   return c;
 }
 for (const cls of Object.keys(CLASS_COLORS)) spriteCache[cls] = buildSprite(CLASS_COLORS[cls]);
+
+// --- Orrery (solar system view) ----------------------------------
+const orreryPanel  = document.getElementById('panel-orrery');
+const orreryCanvas = document.getElementById('orrery-canvas');
+const orreryTip    = document.getElementById('orrery-tip');
+const orreryCtx    = orreryCanvas.getContext('2d');
+let orreryOpen      = false;
+let orreryRotate    = false;
+let orreryHits      = []; // [{x,y,hitR,typeId,ci,moons,isSun}] — rebuilt each draw frame
+let orreryListHover = null; // { imgEl, isSun, ci } — set when hovering a list row
+
+const ROMAN = ['','I','II','III','IV','V','VI','VII','VIII','IX','X',
+               'XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX'];
+function toRoman(n) { return ROMAN[n] || String(n); }
+
+// Hardcoded EVE planet typeID → {name, rgb}.
+// TYPE_NAMES only covers ships/structures — planet types aren't included there.
+// Colors approximate the EVE icon sphere for each planet type.
+const PLANET_TYPES = {
+  11:    { name: 'Temperate', rgb: [ 82, 112,  70] },  // muted blue-green, Earth-like
+  12:    { name: 'Ice',       rgb: [188, 215, 228] },  // pale icy blue-white
+  13:    { name: 'Gas',       rgb: [148, 122,  90] },  // grey-brown, Jupiter-ish
+  2014:  { name: 'Oceanic',   rgb: [ 38,  95, 162] },  // deep ocean blue
+  2015:  { name: 'Lava',      rgb: [212,  55,  16] },  // fiery orange-red
+  2016:  { name: 'Barren',    rgb: [122,  92,  68] },  // dusty brown, Mars-like
+  2017:  { name: 'Storm',     rgb: [ 62,  82, 128] },  // dark stormy blue-grey
+  2063:  { name: 'Plasma',    rgb: [222, 192,  38] },  // bright glowing yellow
+  30889: { name: 'Shattered', rgb: [ 86,  82,  78] },  // dark fractured grey
+};
+
+// Sun typeID → RGB. Grouped by spectral class.
+const SUN_COLORS = {
+  // G5 Yellow
+  6: [255,228,110], 3802: [255,228,110], 45030: [255,228,110], 45041: [255,228,110], 45047: [255,228,110],
+  // K Orange
+  7: [255,152,52], 45031: [255,152,52], 45032: [255,152,52],
+  3798: [255,162,62], 3800: [255,142,48], 45037: [255,162,62], 45039: [255,142,48], 45040: [255,142,48],
+  // K5 Red Giant
+  8: [255,72,22], 45033: [255,72,22],
+  // B0 Blue
+  9: [112,182,255], 45034: [112,182,255], 45046: [112,182,255],
+  // F0 White
+  10: [255,250,218], 45035: [255,250,218],
+  // O1 Bright Blue
+  3796: [72,142,255],
+  // G5 Pink
+  3797: [255,168,188], 3799: [255,162,182], 45036: [255,168,188], 45038: [255,162,182],
+  // A0 Blue Small
+  3801: [152,192,255], 34331: [128,175,255],
+  // B5 White Dwarf
+  3803: [192,218,255], 45042: [192,218,255],
+};
+
+// Sun typeID → display name (from SDE types.jsonl).
+const SUN_NAMES = {
+  6: 'Sun G5 (Yellow)', 7: 'Sun K7 (Orange)', 8: 'Sun K5 (Red Giant)',
+  9: 'Sun B0 (Blue)', 10: 'Sun F0 (White)', 3796: 'Sun O1 (Bright Blue)',
+  3797: 'Sun G5 (Pink)', 3798: 'Sun K5 (Orange Bright)', 3799: 'Sun G3 (Pink Small)',
+  3800: 'Sun M0 (Orange Radiant)', 3801: 'Sun A0 (Blue Small)', 3802: 'Sun K3 (Yellow Small)',
+  3803: 'Sun B5 (White Dwarf)', 34331: 'Sun A0IV (Turbulent Blue Subgiant)',
+  45030: 'Sun G5 (Yellow)', 45031: 'Sun K7 (Orange)', 45032: 'Sun K7 (Orange)',
+  45033: 'Sun K5 (Red Giant)', 45034: 'Sun B0 (Blue)', 45035: 'Sun F0 (White)',
+  45036: 'Sun G5 (Pink)', 45037: 'Sun K5 (Orange Bright)', 45038: 'Sun G3 (Pink Small)',
+  45039: 'Sun M0 (Orange Radiant)', 45040: 'Sun M0 (Orange Radiant)', 45041: 'Sun K3 (Yellow Small)',
+  45042: 'Sun B5 (White Dwarf)', 45046: 'Sun B0 (Blue)', 45047: 'Sun G5 (Yellow)',
+};
+
+function planetRGB(typeId) { return (PLANET_TYPES[typeId] || {}).rgb || [160, 160, 160]; }
+function planetTypeName(typeId) { return (PLANET_TYPES[typeId] || {}).name || 'Unknown'; }
+
+function drawOrrery(star) {
+  const DPR_O = Math.min(window.devicePixelRatio || 1, 2);
+  const CSS   = Math.round(orreryCanvas.clientWidth) || 260;
+  if (orreryCanvas.width !== CSS * DPR_O || orreryCanvas.height !== CSS * DPR_O) {
+    orreryCanvas.width  = CSS * DPR_O;
+    orreryCanvas.height = CSS * DPR_O;
+  }
+
+  const oc  = orreryCtx;
+  const cx  = CSS / 2;
+  const cy  = CSS / 2;
+  const now = Date.now();
+
+  oc.save();
+  oc.scale(DPR_O, DPR_O);
+  oc.clearRect(0, 0, CSS, CSS);
+
+  const planets = star.planets;
+  orreryHits = [];
+
+  if (!planets || !planets.length) {
+    oc.fillStyle = '#3d8888';
+    oc.font = '11px Roboto Mono, monospace';
+    oc.textAlign = 'center';
+    oc.textBaseline = 'middle';
+    oc.fillText('No planet data', cx, cy - 8);
+    oc.fillText('Rebuild SDE to enable', cx, cy + 10);
+    oc.restore();
+    return;
+  }
+
+  // Log-scale orbit radii → pixel ring radii.
+  const logRs  = planets.map((p) => Math.log10(Math.max(p.r, 0.01)));
+  const logMin = Math.min(...logRs);
+  const logMax = Math.max(...logRs);
+  const innerPx = Math.round(CSS * 0.085);
+  const outerPx = Math.round(cx - CSS * 0.04);
+
+  function orbitPx(logR) {
+    if (logMax === logMin) return (innerPx + outerPx) / 2;
+    return innerPx + ((logR - logMin) / (logMax - logMin)) * (outerPx - innerPx);
+  }
+
+  // Orbit tracks.
+  oc.strokeStyle = 'rgba(0,200,200,0.32)';
+  oc.lineWidth   = 1;
+  for (let i = 0; i < planets.length; i++) {
+    const rr = orbitPx(logRs[i]);
+    oc.beginPath();
+    oc.arc(cx, cy, rr, 0, Math.PI * 2);
+    oc.stroke();
+  }
+
+  // 14.3 AU scan-range reference circle.
+  const refLogR = Math.log10(14.3);
+  const refPx   = orbitPx(refLogR);
+  if (refPx > 4) {
+    oc.save();
+    oc.strokeStyle = 'rgba(255,195,60,0.65)';
+    oc.lineWidth   = 1.2;
+    oc.setLineDash([5, 4]);
+    oc.beginPath();
+    oc.arc(cx, cy, refPx, 0, Math.PI * 2);
+    oc.stroke();
+    oc.setLineDash([]);
+    // Label near the top of the circle (only if it fits inside the canvas).
+    if (refPx < outerPx + 24) {
+      oc.fillStyle  = 'rgba(255,195,60,0.80)';
+      oc.font       = '9px Roboto Mono, monospace';
+      oc.textAlign  = 'center';
+      oc.textBaseline = 'bottom';
+      oc.fillText('14.3 AU', cx, cy - refPx - 2);
+    }
+    oc.restore();
+  }
+
+  // Sun glow — color driven by spectral type.
+  const sc      = SUN_COLORS[star.sunTypeId] || [255, 228, 110];
+  const sunR    = Math.round(CSS * 0.054);  // scales with canvas
+  const sunG    = oc.createRadialGradient(cx, cy, 0, cx, cy, sunR);
+  sunG.addColorStop(0,    'rgba(255,255,255,1)');
+  sunG.addColorStop(0.22, rgba(sc, 0.9));
+  sunG.addColorStop(0.65, rgba(sc, 0.35));
+  sunG.addColorStop(1,    rgba(sc, 0));
+  oc.fillStyle = sunG;
+  oc.beginPath();
+  oc.arc(cx, cy, sunR, 0, Math.PI * 2);
+  oc.fill();
+  oc.fillStyle = 'rgba(255,255,255,0.97)';
+  oc.beginPath();
+  oc.arc(cx, cy, Math.max(2, CSS * 0.013), 0, Math.PI * 2);
+  oc.fill();
+  // Sun hit (added last so planets take hover priority).
+  orreryHits.push({ x: cx, y: cy, hitR: sunR * 0.55, isSun: true, sunTypeId: star.sunTypeId });
+
+  // Planets.
+  const t = now * 0.0001; // slow time base used only when rotation is on
+  for (let i = 0; i < planets.length; i++) {
+    const p     = planets[i];
+    const rr    = orbitPx(logRs[i]);
+    const base  = p.a != null ? p.a : (i / planets.length) * Math.PI * 2;
+    const omega = 1.0 / Math.pow(Math.max(p.r, 0.1), 0.75);
+    const angle = orreryRotate ? base + t * omega : base;
+    const px    = cx + Math.cos(angle) * rr;
+    const py    = cy + Math.sin(angle) * rr;
+    const [pr, pg, pb] = planetRGB(p.typeId);
+    const pR = 4;
+
+    // Outer glow.
+    const glow = oc.createRadialGradient(px, py, 0, px, py, pR * 3);
+    glow.addColorStop(0, `rgba(${pr},${pg},${pb},0.5)`);
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    oc.fillStyle = glow;
+    oc.beginPath();
+    oc.arc(px, py, pR * 3, 0, Math.PI * 2);
+    oc.fill();
+
+    // Planet body — solid flat color.
+    oc.fillStyle = `rgb(${pr},${pg},${pb})`;
+    oc.beginPath();
+    oc.arc(px, py, pR, 0, Math.PI * 2);
+    oc.fill();
+
+    // Moons as tiny dots.
+    const moonCount = Math.min(p.moons || 0, 6);
+    for (let m = 0; m < moonCount; m++) {
+      const mBase  = (m / moonCount) * Math.PI * 2;
+      const mAngle = orreryRotate ? mBase + t * omega * 6 : mBase;
+      const mDist  = pR + 5 + m * 2.5;
+      oc.fillStyle = 'rgba(160,160,160,0.65)';
+      oc.beginPath();
+      oc.arc(px + Math.cos(mAngle) * mDist, py + Math.sin(mAngle) * mDist, 1.5, 0, Math.PI * 2);
+      oc.fill();
+    }
+
+    orreryHits.push({ x: px, y: py, hitR: pR + 5, typeId: p.typeId, ci: p.ci || 0, moons: p.moons || 0 });
+  }
+
+  // List-row hover trace: dashed line from the hovered row's image to the matching hit.
+  if (orreryListHover) {
+    const hit = orreryListHover.isSun
+      ? orreryHits.find(h => h.isSun)
+      : orreryHits.find(h => !h.isSun && h.ci === orreryListHover.ci);
+    if (hit) {
+      const canvRect = orreryCanvas.getBoundingClientRect();
+      const imgRect  = orreryListHover.imgEl.getBoundingClientRect();
+      const bx = imgRect.left + imgRect.width  / 2 - canvRect.left;
+      const by = imgRect.top  + imgRect.height / 2 - canvRect.top;
+      const endColor = orreryListHover.isSun
+        ? `rgba(${(SUN_COLORS[orreryListHover.typeId] || [255,220,100]).join(',')},0.55)`
+        : `rgba(${planetRGB(orreryListHover.typeId).join(',')},0.55)`;
+      const grad = oc.createLinearGradient(bx, by, hit.x, hit.y);
+      grad.addColorStop(0, 'rgba(0,200,200,0.55)');
+      grad.addColorStop(1, endColor);
+      oc.strokeStyle = grad;
+      oc.lineWidth = 1;
+      oc.setLineDash([4, 7]);
+      oc.beginPath();
+      oc.moveTo(bx, by);
+      oc.lineTo(hit.x, hit.y);
+      oc.stroke();
+      oc.setLineDash([]);
+    }
+  }
+
+  oc.restore();
+}
+
+function updateOrreryHeader(star) {
+  document.getElementById('orrery-title').textContent = displayName(star) + ' · ' + displayClass(star);
+  document.getElementById('orrery-planet-count').textContent = star.planets.length + ' planet' + (star.planets.length !== 1 ? 's' : '');
+}
+
+function buildOrreryList(star) {
+  const el = document.getElementById('orrery-list');
+  el.innerHTML = '';
+
+  function attachRowHover(row, hoverData) {
+    const img = row.querySelector('.olist-img');
+    row.addEventListener('mouseenter', () => { orreryListHover = { imgEl: img, ...hoverData }; });
+    row.addEventListener('mouseleave', () => { orreryListHover = null; });
+  }
+
+  // Sun row.
+  if (star.sunTypeId) {
+    const row = document.createElement('div');
+    row.className = 'olist-row';
+    row.innerHTML =
+      `<img class="olist-img" src="https://images.evetech.net/types/${star.sunTypeId}/icon?size=64" alt="" loading="lazy">` +
+      `<div><div class="olist-name">${escapeHtml(star.name)} Star</div>` +
+      `<div class="olist-sub">Sun</div></div>`;
+    el.appendChild(row);
+    attachRowHover(row, { isSun: true });
+  }
+
+  // Planet rows sorted by celestialIndex.
+  const sorted = [...star.planets].sort((a, b) => (a.ci || 0) - (b.ci || 0));
+  for (const p of sorted) {
+    const roman   = p.ci ? toRoman(p.ci) : '?';
+    const type    = planetTypeName(p.typeId);
+    const moons   = p.moons || 0;
+    const moonStr = moons === 0 ? 'no moons' : moons + ' moon' + (moons !== 1 ? 's' : '');
+    const row = document.createElement('div');
+    row.className = 'olist-row';
+    row.innerHTML =
+      `<img class="olist-img" src="https://images.evetech.net/types/${p.typeId}/icon?size=64" alt="" loading="lazy">` +
+      `<div><div class="olist-name">${escapeHtml(star.name)} ${roman}</div>` +
+      `<div class="olist-sub">${escapeHtml(type)} · ${moonStr}</div></div>`;
+    el.appendChild(row);
+    attachRowHover(row, { isSun: false, ci: p.ci, typeId: p.typeId });
+  }
+}
+
+function openOrrery(star) {
+  orreryOpen = true;
+  orreryPanel.classList.add('open');
+  updateOrreryHeader(star);
+  buildOrreryList(star);
+  document.getElementById('si-system-view').classList.add('active');
+}
+
+function closeOrrery() {
+  orreryOpen      = false;
+  orreryListHover = null;
+  orreryPanel.classList.remove('open');
+  orreryTip.textContent = '';
+  document.getElementById('si-system-view').classList.remove('active');
+}
+
+document.getElementById('close-orrery').addEventListener('click', closeOrrery);
+
+document.getElementById('si-system-view').addEventListener('click', () => {
+  if (!selected) return;
+  if (orreryOpen) closeOrrery();
+  else openOrrery(selected);
+});
+
+document.getElementById('orrery-rotate-btn').addEventListener('click', (e) => {
+  orreryRotate = !orreryRotate;
+  e.currentTarget.textContent = orreryRotate ? 'Rotation: On' : 'Rotation: Off';
+  e.currentTarget.classList.toggle('on', orreryRotate);
+});
+
+orreryCanvas.addEventListener('mousemove', (e) => {
+  const rect = orreryCanvas.getBoundingClientRect();
+  const mx   = e.clientX - rect.left;
+  const my   = e.clientY - rect.top;
+  let hit = null;
+  for (const h of orreryHits) {
+    const dx = mx - h.x, dy = my - h.y;
+    if (dx*dx + dy*dy < h.hitR * h.hitR) { hit = h; break; }
+  }
+  if (hit) {
+    if (hit.isSun) {
+      orreryTip.textContent = SUN_NAMES[hit.sunTypeId] || 'Star';
+    } else {
+      const sysName = selected ? selected.name : '';
+      const roman   = hit.ci ? toRoman(hit.ci) : '?';
+      const moonStr = hit.moons === 0 ? 'no moons' : hit.moons + ' moon' + (hit.moons !== 1 ? 's' : '');
+      orreryTip.textContent = sysName + ' ' + roman + ' · ' + planetTypeName(hit.typeId) + ' · ' + moonStr;
+    }
+  } else {
+    orreryTip.textContent = '';
+  }
+});
+
+orreryCanvas.addEventListener('mouseleave', () => { orreryTip.textContent = ''; });
 
 // --- Kill animations --------------------------------------------
 const activeAnims = [];
@@ -420,6 +759,7 @@ function draw() {
 
   ctx.restore();
   updateCorners(cw, ch);
+  if (orreryOpen && selected) drawOrrery(selected);
   requestAnimationFrame(draw);
 }
 
@@ -450,6 +790,11 @@ window.addEventListener('mousemove', (e) => {
       camera.offsetX = dragStart.ox + dx;
       camera.offsetY = dragStart.oy + dy;
     }
+  }
+  // Suppress map tooltip when hovering over any UI element other than the map canvas.
+  if (e.target !== canvas) {
+    tooltip.classList.remove('visible');
+    return;
   }
   handleHover(e.clientX, e.clientY);
 });
@@ -566,6 +911,7 @@ function deselectStar() {
   selected = null;
   siEl.classList.add('empty');
   for (const el of Object.values(cornerEls)) el.classList.remove('corner--active');
+  closeOrrery();
 }
 
 function selectStar(s, focus) {
@@ -591,6 +937,11 @@ function selectStar(s, focus) {
   if (focus) {
     flyTo(s.x, s.y, 10, 520);
     searchMarker = { star: s, start: performance.now(), duration: 2600 };
+  }
+  // If orrery was open for a previous system, refresh it for the new one.
+  if (orreryOpen) {
+    updateOrreryHeader(s);
+    buildOrreryList(s);
   }
 }
 

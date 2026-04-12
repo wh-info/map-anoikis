@@ -42,7 +42,29 @@
       <div class="info-row"><span class="k">Constellation</span><span class="v" id="si-const">—</span></div>
       <div class="info-row"><span class="k">Effect</span><span class="v" id="si-effect">—</span></div>
       <div class="statics" id="si-statics"></div>
+      <button id="si-system-view" class="si-view-btn">&#9654; System View</button>
     </div>
+  </div>
+</div>
+
+<!-- ORRERY PANEL: solar system view -->
+<div id="panel-orrery">
+  <div class="orrery-header">
+    <div class="orrery-header-info">
+      <span class="title" style="margin:0;" id="orrery-title">—</span>
+      <span id="orrery-planet-count"></span>
+    </div>
+    <button class="panel-hide-btn" id="close-orrery" title="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="orrery-body">
+    <canvas id="orrery-canvas"></canvas>
+    <div id="orrery-list"></div>
+  </div>
+  <div class="orrery-footer" id="orrery-footer">
+    <div id="orrery-tip"></div>
+    <button id="orrery-rotate-btn" class="orrery-ctrl">Rotation: Off</button>
   </div>
 </div>
 

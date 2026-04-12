@@ -748,3 +748,165 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 .corner--tr { top: 10px;    right: 10px;   border-top:    1px solid var(--border); border-right:  1px solid var(--border); }
 .corner--bl { bottom: 10px; left: 10px;    border-bottom: 1px solid var(--border); border-left:   1px solid var(--border); }
 .corner--br { bottom: 10px; right: 10px;   border-bottom: 1px solid var(--border); border-right:  1px solid var(--border); }
+
+/* ================================================================ */
+/* SYSTEM VIEW BUTTON (inside system-info panel)                    */
+/* ================================================================ */
+.si-view-btn {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: left;
+  background: rgba(0, 200, 200, 0.06);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.si-view-btn:hover {
+  background: rgba(0, 200, 200, 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.si-view-btn.active {
+  background: rgba(0, 200, 200, 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ================================================================ */
+/* ORRERY (solar system view) PANEL                                 */
+/* ================================================================ */
+#panel-orrery {
+  position: fixed;
+  left: 326px;
+  top: 16px;
+  width: 648px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75);
+  display: none;
+  flex-direction: column;
+  padding: 10px 12px 8px;
+  gap: 8px;
+  z-index: 10;
+  transition: opacity 0.18s ease;
+}
+#panel-orrery.open { display: flex; }
+
+.orrery-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.orrery-header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+#orrery-planet-count {
+  display: block;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.orrery-body {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+#orrery-canvas {
+  display: block;
+  width: 410px;
+  height: 410px;
+  flex-shrink: 0;
+}
+
+#orrery-list {
+  display: flex;
+  width: 200px;
+  height: 410px;
+  overflow-y: auto;
+  flex-direction: column;
+}
+
+.olist-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.olist-row:last-child { border-bottom: none; }
+
+.olist-img {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  object-fit: cover;
+  background: var(--panel-dark);
+  image-rendering: auto;
+}
+
+.olist-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--highlight);
+  letter-spacing: 0.04em;
+}
+
+.olist-sub {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+.orrery-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 20px;
+}
+
+#orrery-tip {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  flex: 1;
+}
+
+.orrery-ctrl {
+  font: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+  flex-shrink: 0;
+}
+.orrery-ctrl:hover { border-color: var(--muted); color: var(--muted); }
+.orrery-ctrl.on {
+  background: rgba(0,200,200,0.1);
+  border-color: var(--accent);
+  color: var(--accent);
+}
