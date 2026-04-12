@@ -94,15 +94,23 @@ async function fetchKills(systemId) {
     // Resolve slim kills → full ESI killmails for this page.
     const fullKills = await fetchEsiBatch(slimBatch);
 
-    let exhausted = false;
+    // Don't break on a single out-of-order old kill — zKB orders by
+    // killmail_id, not killmail_time, so a stray old entry near the top of
+    // a page can otherwise abort the whole scan for sparse systems. Only
+    // stop paging when a page yields *no* fresh kills AND contained at
+    // least one entry older than the cutoff (i.e. we've genuinely walked
+    // past the 60-day boundary).
+    let pagePushed = 0;
+    let sawOld = false;
     for (const k of fullKills) {
       if (!k || !k.killmail_time) continue;
       const ts = new Date(k.killmail_time).getTime();
       if (!Number.isFinite(ts)) continue;
-      if (ts < cutoff) { exhausted = true; break; }
+      if (ts < cutoff) { sawOld = true; continue; }
       kills.push(k);
+      pagePushed++;
     }
-    if (exhausted) break;
+    if (sawOld && pagePushed === 0) break;
     if (page < MAX_PAGES) await new Promise(r => setTimeout(r, PAGE_PAUSE));
   }
   return kills;
