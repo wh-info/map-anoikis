@@ -1370,6 +1370,17 @@ function formatAge(ts) {
   return Math.floor(delta / 86400) + 'd ago';
 }
 
+function formatKillTimeTip(ts) {
+  if (!ts) return '';
+  const d = new Date(ts * 1000);
+  const pad = n => String(n).padStart(2, '0');
+  const eveH = pad(d.getUTCHours()), eveM = pad(d.getUTCMinutes());
+  const eveDate = `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
+  const locH = pad(d.getHours()), locM = pad(d.getMinutes());
+  const locDate = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  return `EVE Time   ${eveDate} ${eveH}:${eveM}\nLocal      ${locDate} ${locH}:${locM}`;
+}
+
 // ESI cache for type names not in the local SDE table (e.g. new ships on patch day).
 const esiTypeNameCache = new Map();
 
@@ -1487,7 +1498,7 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
       <div class="kill-meta">
         ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
         <span class="kill-value">${formatIsk(value)} ISK</span>
-        <span class="kill-age" data-ts="${ts || ''}">· ${formatAge(ts)}</span>
+        <span class="kill-age" data-ts="${ts || ''}" data-tip="${formatKillTimeTip(ts)}">· ${formatAge(ts)}</span>
       </div>
     </div>
     ${zkbHref ? `

@@ -1144,9 +1144,8 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   box-shadow: 0 4px 16px rgba(0,0,0,0.7);
   color: var(--muted);
   font-size: 10px;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-  max-width: 260px;
-  white-space: normal;
-  line-height: 1.4;
+  letter-spacing: 0.04em;
+  white-space: pre-line;
+  max-width: 300px;
+  line-height: 1.6;
 }
