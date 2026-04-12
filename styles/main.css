@@ -752,10 +752,17 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 /* ================================================================ */
 /* SYSTEM VIEW BUTTON (inside system-info panel)                    */
 /* ================================================================ */
-.si-view-btn {
-  display: block;
-  width: 100%;
+.si-actions {
+  display: flex;
+  gap: 6px;
   margin-top: 10px;
+}
+
+.si-view-btn {
+  flex: 1;
+  display: block;
+  width: auto;
+  margin-top: 0;
   padding: 6px 10px;
   font: inherit;
   font-size: 11px;
@@ -777,6 +784,155 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   background: rgba(0, 200, 200, 0.12);
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* ================================================================ */
+/* INTEL PANEL                                                      */
+/* ================================================================ */
+#panel-intel {
+  position: fixed;
+  left: 326px;
+  top: 16px;
+  width: 520px;
+  max-height: calc(100vh - 32px);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.75);
+  display: none;
+  flex-direction: column;
+  padding: 10px 12px 12px;
+  gap: 0;
+  z-index: 10;
+  overflow: hidden;
+}
+#panel-intel.open { display: flex; }
+
+.intel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+.intel-header-info { flex: 1; min-width: 0; }
+
+#intel-subtitle {
+  font-size: 10px;
+  color: var(--dim);
+  margin-top: 2px;
+}
+
+#intel-loading {
+  color: var(--dim);
+  font-size: 11px;
+  padding: 24px 0;
+  text-align: center;
+}
+
+#intel-body {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.intel-section-label {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 12px 0 5px;
+}
+.intel-section-label:first-child { margin-top: 0; }
+.intel-utc { text-transform: none; letter-spacing: 0; font-size: 9px; }
+
+/* 24h heatmap */
+#intel-hm24 {
+  display: flex;
+  gap: 2px;
+  height: 30px;
+}
+
+/* 60-day heatmap */
+.intel-hm60-wrap {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+}
+.intel-dlabels {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 0;
+}
+.intel-dlabel {
+  height: 14px;
+  line-height: 14px;
+  font-size: 9px;
+  color: var(--dim);
+  width: 26px;
+  text-align: right;
+  padding-right: 3px;
+}
+.intel-hm60-right { flex: 1; min-width: 0; }
+#intel-hm60 { display: flex; flex-direction: column; gap: 2px; }
+.intel-hm60-row { display: flex; gap: 2px; height: 14px; }
+
+/* Shared heatmap cell */
+.intel-hm-cell {
+  flex: 1;
+  border-radius: 2px;
+  cursor: default;
+  transition: opacity 0.1s;
+}
+.intel-hm-cell:hover { opacity: 0.75; outline: 1px solid rgba(0,200,200,0.5); }
+
+/* Hour labels */
+.intel-hlabels {
+  display: flex;
+  margin-top: 3px;
+}
+.intel-hlabel {
+  flex: 1;
+  font-size: 9px;
+  color: var(--dim);
+  text-align: left;
+  line-height: 1;
+}
+
+/* Corp / alliance lists */
+.intel-lists {
+  display: flex;
+  gap: 14px;
+  margin-top: 4px;
+}
+.intel-list-col { flex: 1; min-width: 0; }
+
+.intel-entity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 6px;
+}
+.intel-entity-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.intel-entity-link:hover { text-decoration: underline; }
+.intel-entity-count {
+  font-size: 11px;
+  color: var(--dim);
+  flex-shrink: 0;
+}
+.intel-empty {
+  font-size: 11px;
+  color: var(--dim);
+  padding: 6px 0;
 }
 
 /* ================================================================ */

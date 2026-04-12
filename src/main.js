@@ -356,7 +356,7 @@ function drawOrrery(star) {
     // Orrery: log-scaled so all planets are visually separated.
     const logRs  = planets.map(p => Math.log10(Math.max(p.r, 0.01)));
     const logMin = Math.min(...logRs);
-    const logMax = Math.max(...logRs);
+    const logMax = Math.max(Math.max(...logRs), Math.log10(14.3));
     const innerPx = Math.round(CSS * 0.085);
     const outerPx = Math.round(cx - CSS * 0.04);
     const orbitPx = logR => {
@@ -507,7 +507,7 @@ function buildOrreryList(star) {
     row.innerHTML =
       `<img class="olist-img" src="https://images.evetech.net/types/${star.sunTypeId}/icon?size=64" alt="" loading="lazy">` +
       `<div><div class="olist-name">${escapeHtml(star.name)} Star</div>` +
-      `<div class="olist-sub">Sun</div></div>`;
+      `<div class="olist-sub">${escapeHtml((SUN_NAMES[star.sunTypeId] || 'Sun').replace(/\s*\(.*\)$/, ''))}</div></div>`;
     el.appendChild(row);
     attachRowHover(row, { isSun: true });
   }
@@ -595,6 +595,158 @@ orreryCanvas.addEventListener('mousemove', (e) => {
 });
 
 orreryCanvas.addEventListener('mouseleave', () => { orreryTip.textContent = ''; });
+
+// --- Intel panel ------------------------------------------------
+const intelPanel = document.getElementById('panel-intel');
+let intelOpen    = false;
+
+const DAY_LABELS  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAY_ORDER   = [1,2,3,4,5,6,0]; // Mon–Sun display order
+
+function heatColor(count, max, rgb) {
+  if (count === 0 || max === 0) return '#0d1f1f';
+  const t = Math.sqrt(count / max); // sqrt scale: small values still visible
+  const [r, g, b] = rgb;
+  return `rgb(${Math.round(13 + t*(r-13))},${Math.round(31 + t*(g-31))},${Math.round(31 + t*(b-31))})`;
+}
+
+function buildHmCell(count, max, rgb, tipText) {
+  const cell = document.createElement('div');
+  cell.className = 'intel-hm-cell';
+  cell.style.background = heatColor(count, max, rgb);
+  cell.title = tipText;
+  return cell;
+}
+
+function renderHm24(hourly24, rgb) {
+  const grid   = document.getElementById('intel-hm24');
+  const labels = document.getElementById('intel-hm24-labels');
+  grid.innerHTML = labels.innerHTML = '';
+  const max = Math.max(...hourly24, 1);
+  const now = new Date();
+  const curH = now.getUTCHours();
+  for (let i = 0; i < 24; i++) {
+    const h   = (curH - 23 + i + 24) % 24;
+    const hStr = String(h).padStart(2, '0');
+    const c   = hourly24[i];
+    grid.appendChild(buildHmCell(c, max, rgb,
+      `${hStr}:00 UTC — ${c} kill${c !== 1 ? 's' : ''}`));
+    const lbl = document.createElement('div');
+    lbl.className = 'intel-hlabel';
+    lbl.textContent = (h % 6 === 0) ? hStr : '';
+    labels.appendChild(lbl);
+  }
+}
+
+function renderHm60(matrix60, rgb) {
+  const grid   = document.getElementById('intel-hm60');
+  const labels = document.getElementById('intel-hm60-labels');
+  const dlbls  = document.getElementById('intel-dlabels');
+  grid.innerHTML = labels.innerHTML = dlbls.innerHTML = '';
+  const flatMax = Math.max(...matrix60.flat(), 1);
+  for (const dow of DAY_ORDER) {
+    const dlbl = document.createElement('div');
+    dlbl.className = 'intel-dlabel';
+    dlbl.textContent = DAY_LABELS[dow];
+    dlbls.appendChild(dlbl);
+    const row = document.createElement('div');
+    row.className = 'intel-hm60-row';
+    for (let hr = 0; hr < 24; hr++) {
+      const c = matrix60[dow][hr];
+      row.appendChild(buildHmCell(c, flatMax, rgb,
+        `${DAY_LABELS[dow]} ${String(hr).padStart(2,'0')}:00 UTC — ${c} kill${c !== 1 ? 's' : ''}`));
+    }
+    grid.appendChild(row);
+  }
+  for (let hr = 0; hr < 24; hr++) {
+    const lbl = document.createElement('div');
+    lbl.className = 'intel-hlabel';
+    lbl.textContent = (hr % 6 === 0) ? String(hr).padStart(2, '0') : '';
+    labels.appendChild(lbl);
+  }
+}
+
+function renderEntityList(containerId, items, kind) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  if (!items.length) {
+    el.innerHTML = '<div class="intel-empty">None</div>';
+    return;
+  }
+  for (const item of items) {
+    const row  = document.createElement('div');
+    row.className = 'intel-entity-row';
+    const link = document.createElement('a');
+    link.href      = `https://zkillboard.com/${kind}/${item.id}/`;
+    link.target    = '_blank';
+    link.rel       = 'noopener';
+    link.className = 'intel-entity-link';
+    link.textContent = item.name;
+    const cnt  = document.createElement('span');
+    cnt.className  = 'intel-entity-count';
+    cnt.textContent = item.count;
+    row.appendChild(link);
+    row.appendChild(cnt);
+    el.appendChild(row);
+  }
+}
+
+function renderIntel(star, data) {
+  document.getElementById('intel-loading').style.display = 'none';
+  document.getElementById('intel-body').style.display    = '';
+  document.getElementById('intel-subtitle').textContent  =
+    `${data.killCount} kill${data.killCount !== 1 ? 's' : ''} in last 60 days`;
+  const rgb = CLASS_COLORS[star.whClass] || [0, 200, 200];
+  renderHm24(data.hourly24, rgb);
+  renderHm60(data.matrix60, rgb);
+  renderEntityList('intel-corps',     data.corps,     'corporation');
+  renderEntityList('intel-alliances', data.alliances, 'alliance');
+}
+
+async function loadIntel(star) {
+  const base = (location.hostname === 'localhost' ||
+                location.hostname === '127.0.0.1' ||
+                location.protocol === 'file:')
+    ? 'http://localhost:8080'
+    : 'https://ws.anoikis.info';
+  try {
+    const res = await fetch(`${base}/intel/${star.id}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderIntel(star, data);
+  } catch {
+    const el = document.getElementById('intel-loading');
+    el.textContent = 'Failed to load. Try again later.';
+  }
+}
+
+function openIntel(star) {
+  if (orreryOpen) closeOrrery();
+  intelOpen = true;
+  intelPanel.classList.add('open');
+  document.getElementById('intel-title').textContent =
+    displayName(star) + ' · ' + displayClass(star);
+  document.getElementById('intel-subtitle').textContent = '';
+  document.getElementById('intel-loading').style.display = '';
+  document.getElementById('intel-loading').textContent   = 'Loading\u2026';
+  document.getElementById('intel-body').style.display    = 'none';
+  document.getElementById('si-intel').classList.add('active');
+  loadIntel(star);
+}
+
+function closeIntel() {
+  intelOpen = false;
+  intelPanel.classList.remove('open');
+  document.getElementById('si-intel').classList.remove('active');
+}
+
+document.getElementById('close-intel').addEventListener('click', closeIntel);
+
+document.getElementById('si-intel').addEventListener('click', () => {
+  if (!selected) return;
+  if (intelOpen) closeIntel();
+  else openIntel(selected);
+});
 
 // --- Kill animations --------------------------------------------
 const activeAnims = [];
@@ -938,6 +1090,7 @@ function deselectStar() {
   siEl.classList.add('empty');
   for (const el of Object.values(cornerEls)) el.classList.remove('corner--active');
   closeOrrery();
+  closeIntel();
 }
 
 function selectStar(s, focus) {
@@ -964,11 +1117,12 @@ function selectStar(s, focus) {
     flyTo(s.x, s.y, 10, 520);
     searchMarker = { star: s, start: performance.now(), duration: 2600 };
   }
-  // If orrery was open for a previous system, refresh it for the new one.
+  // If orrery or intel was open for a previous system, refresh for the new one.
   if (orreryOpen) {
     updateOrreryHeader(s);
     buildOrreryList(s);
   }
+  if (intelOpen) openIntel(s);
 }
 
 function locateStar(s) {

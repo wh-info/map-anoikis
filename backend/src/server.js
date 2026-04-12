@@ -10,6 +10,7 @@ import { WebSocketServer } from 'ws';
 import { createRing } from './ring.js';
 import { classifyKill } from './filter.js';
 import { connectZkill } from './zkill.js';
+import { getIntel } from './intel.js';
 
 const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -70,6 +71,18 @@ const fastify = Fastify({
   logger: { level: process.env.LOG_LEVEL || 'info' }
 });
 
+// CORS — applied to all HTTP responses so the frontend at map.anoikis.info
+// can call /intel/:systemId and /health directly from the browser.
+fastify.addHook('onSend', async (_req, reply) => {
+  reply.header('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+});
+fastify.options('/*', async (_req, reply) => {
+  reply.header('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  reply.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  reply.header('Access-Control-Allow-Headers', 'Content-Type');
+  return reply.code(204).send();
+});
+
 fastify.get('/health', async () => ({
   ok: true,
   uptime: Math.round(process.uptime()),
@@ -80,6 +93,16 @@ fastify.get('/health', async () => ({
   zkill: zkillStatus
 }));
 
+fastify.get('/intel/:systemId', async (req, reply) => {
+  const systemId = parseInt(req.params.systemId, 10);
+  if (!Number.isFinite(systemId)) return reply.code(400).send({ error: 'bad systemId' });
+  try {
+    return await getIntel(systemId);
+  } catch (err) {
+    req.log.error(err, 'intel fetch failed');
+    return reply.code(502).send({ error: 'upstream fetch failed' });
+  }
+});
 
 await fastify.listen({ port: PORT, host: HOST });
 

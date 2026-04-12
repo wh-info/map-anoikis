@@ -42,7 +42,10 @@
       <div class="info-row"><span class="k">Constellation</span><span class="v" id="si-const">—</span></div>
       <div class="info-row"><span class="k">Effect</span><span class="v" id="si-effect">—</span></div>
       <div class="statics" id="si-statics"></div>
-      <button id="si-system-view" class="si-view-btn">&#9654; System View</button>
+      <div class="si-actions">
+        <button id="si-system-view" class="si-view-btn">&#9654; System View</button>
+        <button id="si-intel"       class="si-view-btn">&#9654; Intel</button>
+      </div>
     </div>
   </div>
 </div>
@@ -69,6 +72,45 @@
   <div class="orrery-footer" id="orrery-footer">
     <div id="orrery-tip"></div>
     <button id="orrery-rotate-btn" class="orrery-ctrl">Rotation: Off</button>
+  </div>
+</div>
+
+<!-- INTEL PANEL -->
+<div id="panel-intel">
+  <div class="intel-header">
+    <div class="intel-header-info">
+      <div class="title" style="margin:0;" id="intel-title">—</div>
+      <div id="intel-subtitle"></div>
+    </div>
+    <button class="panel-hide-btn" id="close-intel" title="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div id="intel-loading">Loading…</div>
+  <div id="intel-body">
+    <div class="intel-section-label">Last 24 Hours</div>
+    <div id="intel-hm24"></div>
+    <div id="intel-hm24-labels" class="intel-hlabels"></div>
+
+    <div class="intel-section-label">60-Day Activity Pattern <span class="intel-utc">(UTC)</span></div>
+    <div class="intel-hm60-wrap">
+      <div id="intel-dlabels" class="intel-dlabels"></div>
+      <div class="intel-hm60-right">
+        <div id="intel-hm60"></div>
+        <div id="intel-hm60-labels" class="intel-hlabels"></div>
+      </div>
+    </div>
+
+    <div class="intel-lists">
+      <div class="intel-list-col">
+        <div class="intel-section-label">Corporations</div>
+        <div id="intel-corps"></div>
+      </div>
+      <div class="intel-list-col">
+        <div class="intel-section-label">Alliances</div>
+        <div id="intel-alliances"></div>
+      </div>
+    </div>
   </div>
 </div>
 
