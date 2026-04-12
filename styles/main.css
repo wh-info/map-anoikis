@@ -393,7 +393,7 @@ html, body {
 
 .kill {
   position: relative;
-  display: flex; gap: 8px; align-items: stretch;
+  display: flex; gap: 8px; align-items: center;
   padding: 8px 10px;
   background: var(--panel-dark);
   border: 1px solid var(--border);
@@ -464,9 +464,10 @@ html, body {
   gap: 8px;
 }
 .kill-sys {
-  font-size: 11px;
-  color: var(--muted);
-  letter-spacing: 0.02em;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--highlight);
+  letter-spacing: 0.04em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .kill-sys-class { font-weight: 700; }
@@ -491,14 +492,13 @@ html, body {
 .kill-info { min-width: 0; flex: 1; }
 
 .kill-ship {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
   display: flex; align-items: baseline; gap: 6px;
 }
 .kill-ship-name {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  color: var(--highlight);
-  letter-spacing: 0.04em;
+  color: var(--muted);
+  letter-spacing: 0.02em;
 }
 
 .kill-pilot {
@@ -516,8 +516,10 @@ html, body {
   gap: 6px;
   font-size: 11px;
   color: var(--dim);
+  margin-top: 3px;
 }
-.kill-value { color: var(--highlight); font-weight: 700; }
+.kill-value { color: var(--highlight); font-weight: 400; }
+.kill-value b { font-weight: 700; }
 
 /* --- compact kill list ----------------------------------------- */
 .kill-list--compact .kill {

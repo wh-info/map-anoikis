@@ -1482,9 +1482,9 @@ const killCountEl = document.getElementById('kill-count');
 const MAX_KILLS = 50;
 
 function formatIsk(v) {
-  if (v >= 1e9) return (v / 1e9).toFixed(1) + 'B';
-  if (v >= 1e6) return (v / 1e6).toFixed(0) + 'M';
-  if (v >= 1e3) return (v / 1e3).toFixed(0) + 'K';
+  if (v >= 1e9) return (v / 1e9).toFixed(1) + '<b>B</b>';
+  if (v >= 1e6) return (v / 1e6).toFixed(0) + '<b>M</b>';
+  if (v >= 1e3) return (v / 1e3).toFixed(0) + '<b>K</b>';
   return '' + v;
 }
 
@@ -1648,8 +1648,8 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
       <div class="kill-header">
         <div class="kill-sys">${escapeHtml(starDisplayName)} · <span class="kill-sys-class">${escapeHtml(starDisplayClass)}</span></div>
         <div class="kill-time-col">
-          <span class="kill-age" data-ts="${ts || ''}">${formatAge(ts)}</span>
           ${isDelayed ? `<span class="kill-delayed-badge" data-tip="Kill published by zKillboard after a delay — not live activity">DELAYED</span>` : ''}
+          <span class="kill-age" data-ts="${ts || ''}">${formatAge(ts)}</span>
         </div>
       </div>
       <div class="kill-content">
@@ -1661,11 +1661,11 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
         <div class="kill-info">
           <div class="kill-ship"><span class="kill-ship-name">${escapeHtml(name)}</span></div>
           <div class="kill-pilot${ownerLoading ? ' loading' : ''}">${ownerInitial}</div>
+          <div class="kill-footer">
+            <span class="kill-value">${formatIsk(value)} ISK</span>
+            ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
+          </div>
         </div>
-      </div>
-      <div class="kill-footer">
-        <span class="kill-value">${formatIsk(value)} ISK</span>
-        ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
       </div>
     </div>
     ${zkbHref ? `
@@ -1774,7 +1774,7 @@ document.querySelectorAll('#kill-filters .kind-chip').forEach((chip) => {
 setInterval(() => {
   for (const el of killList.querySelectorAll('.kill-age')) {
     const ts = Number(el.dataset.ts) || 0;
-    el.textContent = '· ' + formatAge(ts);
+    el.textContent = formatAge(ts);
   }
 }, 10000);
 
