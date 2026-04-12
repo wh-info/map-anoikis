@@ -4,9 +4,15 @@ Reads groups.jsonl and types.jsonl from build/sde_cache/ and produces:
 
   data/type-kinds.js
     window.SDE_BUILD_DATE = "2026-04-11 12:00 UTC"
-    window.TYPE_NAMES = { typeID: "Rifter", ... }
-    window.TYPE_KINDS = { typeID: "ship" | "structure" | "tower"
-                               | "fighter" | "deployable" }
+    window.TYPE_NAMES  = { typeID: "Rifter", ... }
+    window.TYPE_KINDS  = { typeID: "ship" | "structure" | "tower"
+                                | "fighter" | "deployable" }
+    window.TYPE_ICONS  = { typeID: "frigate" | "cruiser" | ... }   # ships only
+    window.GROUP_ICONS = { groupID: "frigate" | ... }              # used by
+                                                                   # the ESI
+                                                                   # fallback
+                                                                   # for new
+                                                                   # ships
 
   backend/src/type-kinds.json
     { "kinds": { "<typeID>": "ship" | ... } }
@@ -49,6 +55,73 @@ META_BADGE: dict[int, str] = {
     4:  "faction",
     14: "t3",
     15: "t3",
+}
+
+# Ship groupID → icon slug (resolves to img/icons/<slug>_64.png on the
+# frontend). Covers every groupID in category 6 that exists in the SDE
+# today; new ship groups added by CCP will fall back to the frontend's
+# ESI lookup which reuses this same mapping.
+GROUP_ICON: dict[int, str] = {
+    # Frigate-sized combat
+    25:   "frigate",           # Frigate
+    324:  "frigate",           # Assault Frigate
+    830:  "frigate",           # Covert Ops
+    831:  "frigate",           # Interceptor
+    834:  "frigate",           # Stealth Bomber
+    893:  "frigate",           # Electronic Attack Ship
+    1527: "frigate",           # Logistics Frigate
+    # Frigate-sized mining / starter
+    1283: "miningfrigate",     # Expedition Frigate (Venture, Prospect, Endurance)
+    237:  "rookie",            # Corvette
+    2001: "rookie",            # Citizen Ships
+    # Destroyer-sized
+    420:  "destroyer",         # Destroyer
+    541:  "destroyer",         # Interdictor
+    1022: "destroyer",         # Prototype Exploration Ship (Sunesis)
+    1305: "destroyer",         # Tactical Destroyer
+    1534: "destroyer",         # Command Destroyer
+    # Cruiser-sized
+    26:   "cruiser",           # Cruiser
+    358:  "cruiser",           # Heavy Assault Cruiser
+    832:  "cruiser",           # Logistics
+    833:  "cruiser",           # Force Recon Ship
+    894:  "cruiser",           # Heavy Interdiction Cruiser
+    906:  "cruiser",           # Combat Recon Ship
+    963:  "cruiser",           # Strategic Cruiser
+    1972: "cruiser",           # Flag Cruiser
+    # Battlecruiser-sized
+    419:  "battlecruiser",     # Combat Battlecruiser
+    540:  "battlecruiser",     # Command Ship
+    1201: "battlecruiser",     # Attack Battlecruiser
+    # Battleship-sized
+    27:   "battleship",        # Battleship
+    381:  "battleship",        # Elite Battleship
+    898:  "battleship",        # Black Ops
+    900:  "battleship",        # Marauder
+    # Capital
+    485:  "capital",           # Dreadnought
+    547:  "capital",           # Carrier
+    883:  "capital",           # Capital Industrial Ship (Rorqual)
+    1538: "capital",           # Force Auxiliary
+    4594: "capital",           # Lancer Dreadnought
+    # Super-capital (supers split by hull type: carrier vs titan)
+    659:  "supercarrier",      # Supercarrier
+    30:   "titan",             # Titan
+    # Haulers
+    28:   "industrial",        # Hauler
+    380:  "industrial",        # Deep Space Transport
+    1202: "industrial",        # Blockade Runner
+    513:  "freighter",         # Freighter
+    902:  "freighter",         # Jump Freighter
+    941:  "industrialcommand", # Industrial Command Ship (Orca, Porpoise)
+    4902: "industrialcommand", # Expedition Command Ship
+    # Mining
+    463:  "miningbarge",       # Mining Barge
+    543:  "miningbarge",       # Exhumer
+    # Misc
+    29:   "capsule",           # Capsule
+    31:   "shuttle",           # Shuttle
+    5087: "shuttle",           # Special Edition Yachts
 }
 
 
@@ -98,6 +171,8 @@ def main() -> None:
     names:  dict[int, str] = {}
     kinds:  dict[int, str] = {}
     meta:   dict[int, str] = {}
+    icons:  dict[int, str] = {}
+    unmapped_ship_groups: set[int] = set()
     counts: dict[str, int] = {k: 0 for k, *_ in KIND_RULES}
 
     for tid, rec in iter_jsonl(types_path):
@@ -118,6 +193,11 @@ def main() -> None:
                         badge = META_BADGE.get(int(mg))
                         if badge:
                             meta[int(tid)] = badge
+                    slug = GROUP_ICON.get(int(grp)) if grp is not None else None
+                    if slug:
+                        icons[int(tid)] = slug
+                    elif grp is not None:
+                        unmapped_ship_groups.add(int(grp))
                 break
 
     for kind_label, count in counts.items():
@@ -139,18 +219,31 @@ def main() -> None:
         print(f"warning: could not fetch remote build number: {exc}")
 
     OUT_JS.parent.mkdir(parents=True, exist_ok=True)
-    names_payload = json.dumps(names, separators=(",", ":"))
-    kinds_payload = json.dumps(kinds, separators=(",", ":"))
-    meta_payload  = json.dumps(meta,  separators=(",", ":"))
+    names_payload  = json.dumps(names, separators=(",", ":"))
+    kinds_payload  = json.dumps(kinds, separators=(",", ":"))
+    meta_payload   = json.dumps(meta,  separators=(",", ":"))
+    icons_payload  = json.dumps(icons, separators=(",", ":"))
+    groups_payload = json.dumps(
+        {str(k): v for k, v in GROUP_ICON.items()}, separators=(",", ":")
+    )
     print(f"  tech badges  {len(meta):>5}")
+    print(f"  ship icons   {len(icons):>5}")
+    if unmapped_ship_groups:
+        missing = ", ".join(str(g) for g in sorted(unmapped_ship_groups))
+        print(f"  WARNING: ship groups with no icon mapping: {missing}")
     OUT_JS.write_text(
         "// Auto-generated by build/build_types.py\n"
-        "// typeID -> name, kind, and tech-tier badge, used by the kill feed.\n"
+        "// typeID -> name, kind, tech-tier badge, and icon slug, used by\n"
+        "// the kill feed. GROUP_ICONS is the same groupID -> slug mapping,\n"
+        "// exposed so the frontend's ESI fallback can resolve icons for\n"
+        "// ships added after the last SDE build.\n"
         f"window.SDE_BUILD_DATE = {json.dumps(build_date)};\n"
         f"window.SDE_BUILD_NUMBER = {json.dumps(build_number)};\n"
-        f"window.TYPE_NAMES = {names_payload};\n"
-        f"window.TYPE_KINDS = {kinds_payload};\n"
-        f"window.TYPE_META  = {meta_payload};\n",
+        f"window.TYPE_NAMES  = {names_payload};\n"
+        f"window.TYPE_KINDS  = {kinds_payload};\n"
+        f"window.TYPE_META   = {meta_payload};\n"
+        f"window.TYPE_ICONS  = {icons_payload};\n"
+        f"window.GROUP_ICONS = {groups_payload};\n",
         encoding="utf-8",
     )
 

@@ -432,6 +432,38 @@ html, body {
   border: 1px solid var(--border);
   border-radius: 0;
 }
+/* Group-icon fallback used in compact mode. Hidden by default; .kill-list--compact
+   swaps it in place of the full render image. Image has no src until resolveType()
+   fills it in for unknown types. */
+.kill-icon {
+  display: none;
+  width: 36px; height: 36px;
+  background: #040c0c;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  object-fit: contain;
+  padding: 2px;
+  image-rendering: auto;
+}
+
+/* --- compact kill list ----------------------------------------- */
+.kill-list--compact .kill {
+  gap: 8px;
+  padding: 6px 8px;
+}
+.kill-list--compact .kill-img       { display: none; }
+.kill-list--compact .kill-icon      { display: block; }
+.kill-list--compact .kill-tech-badge{ width: 12px; height: 12px; }
+.kill-list--compact .kill-ship      { font-size: 12px; }
+.kill-list--compact .kill-pilot     { font-size: 11px; margin-top: 1px; }
+.kill-list--compact .kill-sys       { display: none; }
+.kill-list--compact .kill-meta      { font-size: 10px; margin-top: 2px; gap: 5px; }
+
+/* Compact-view toggle button: two icons, one for each state. */
+#kill-compact-toggle .kill-compact-icon-compact { display: none; }
+#kill-compact-toggle.on .kill-compact-icon-normal  { display: none; }
+#kill-compact-toggle.on .kill-compact-icon-compact { display: block; }
+#kill-compact-toggle.on { color: var(--accent); }
 
 .kill-body { flex: 1; min-width: 0; }
 

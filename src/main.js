@@ -1509,23 +1509,53 @@ function formatKillTimeTip(ts) {
   return `EVE Time   ${eveDate} ${eveH}:${eveM}\nLocal      ${locDate} ${locH}:${locM}`;
 }
 
-// ESI cache for type names not in the local SDE table (e.g. new ships on patch day).
-const esiTypeNameCache = new Map();
+// ESI cache for type metadata not in the local SDE table (e.g. new ships
+// added between SDE builds). Stores both name and icon slug from a single
+// /universe/types/{id}/ response so we don't fetch twice.
+const esiTypeCache = new Map(); // typeId → { name, iconSlug }
 
-async function resolveTypeName(typeId, nameEl) {
-  if (typeId == null) { nameEl.textContent = 'Unknown'; return; }
-  const local = window.TYPE_NAMES && window.TYPE_NAMES[typeId];
-  if (local) { nameEl.textContent = local; return; }
-  if (esiTypeNameCache.has(typeId)) { nameEl.textContent = esiTypeNameCache.get(typeId); return; }
-  nameEl.textContent = 'Type ' + typeId; // placeholder while fetching
+function iconSrc(slug) {
+  return slug ? `./img/icons/${slug}_64.png` : '';
+}
+
+function iconSlugFor(typeId) {
+  if (typeId == null) return null;
+  return (window.TYPE_ICONS && window.TYPE_ICONS[typeId]) || null;
+}
+
+// Resolve both the name and icon for a typeID. Fast path uses the SDE-built
+// window.TYPE_NAMES / window.TYPE_ICONS tables synchronously; if either is
+// missing we fall back to ESI /universe/types/{id}/ and use its group_id to
+// look up an icon slug via window.GROUP_ICONS. The same fetch fills both.
+async function resolveType(typeId, nameEl, iconEl) {
+  if (typeId == null) {
+    if (nameEl) nameEl.textContent = 'Unknown';
+    return;
+  }
+  const localName = window.TYPE_NAMES && window.TYPE_NAMES[typeId];
+  const localIcon = iconSlugFor(typeId);
+  if (nameEl && localName) nameEl.textContent = localName;
+  if (iconEl && localIcon) iconEl.src = iconSrc(localIcon);
+  if (localName && (localIcon || !iconEl)) return;
+
+  if (esiTypeCache.has(typeId)) {
+    const c = esiTypeCache.get(typeId);
+    if (nameEl && !localName && nameEl.isConnected) nameEl.textContent = c.name;
+    if (iconEl && !localIcon && c.iconSlug && iconEl.isConnected) iconEl.src = iconSrc(c.iconSlug);
+    return;
+  }
+  if (nameEl && !localName) nameEl.textContent = 'Type ' + typeId;
   try {
     const res = await fetch(`https://esi.evetech.net/latest/universe/types/${typeId}/`);
     const data = res.ok ? await res.json() : null;
     const name = data?.name || ('Type ' + typeId);
-    esiTypeNameCache.set(typeId, name);
-    if (nameEl.isConnected) nameEl.textContent = name;
+    const groupId = data?.group_id;
+    const slug = (groupId != null && window.GROUP_ICONS && window.GROUP_ICONS[groupId]) || null;
+    esiTypeCache.set(typeId, { name, iconSlug: slug });
+    if (nameEl && !localName && nameEl.isConnected) nameEl.textContent = name;
+    if (iconEl && !localIcon && slug && iconEl.isConnected) iconEl.src = iconSrc(slug);
   } catch {
-    esiTypeNameCache.set(typeId, 'Type ' + typeId);
+    esiTypeCache.set(typeId, { name: 'Type ' + typeId, iconSlug: null });
   }
 }
 
@@ -1588,6 +1618,8 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
   const img = typeId != null
     ? `https://images.evetech.net/types/${typeId}/render?size=64`
     : '';
+  const iconSlug = iconSlugFor(typeId);
+  const iconUrl  = iconSrc(iconSlug); // may be '' when unknown; resolveType fills src later
   const zkbHref = killId ? `https://zkillboard.com/kill/${killId}/` : null;
   const kindKey = kind || 'ship';
 
@@ -1615,6 +1647,7 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
     <div class="kill-left">
       <div class="kill-img-wrap">
         <div class="kill-img" style="background-image: url('${img}')"></div>
+        <img class="kill-icon" src="${iconUrl}" alt="" aria-hidden="true" />
         ${techBadge(typeId) ? `<img src="./img/graphic/${techBadge(typeId)}.png" class="kill-tech-badge" alt="" aria-hidden="true" />` : ''}
       </div>
     </div>
@@ -1682,9 +1715,12 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
   while (killList.children.length > MAX_KILLS) killList.removeChild(killList.lastChild);
   updateKillCount();
 
-  // If the name was a fallback placeholder, try ESI now that the element is in the DOM.
-  if (!window.TYPE_NAMES?.[typeId]) {
-    resolveTypeName(typeId, el.querySelector('.kill-ship-name'));
+  // If either the name or the icon was a fallback placeholder, ask the
+  // unified resolver to fill whatever is missing via ESI.
+  const nameKnown = !!window.TYPE_NAMES?.[typeId];
+  const iconKnown = !!iconSlugFor(typeId);
+  if (!nameKnown || !iconKnown) {
+    resolveType(typeId, el.querySelector('.kill-ship-name'), el.querySelector('.kill-icon'));
   }
 }
 
@@ -1741,6 +1777,19 @@ setInterval(() => {
 // --- Kill footer filter toggle -----------------------------------
 document.getElementById('kill-footer-toggle').addEventListener('click', () => {
   document.getElementById('kill-footer').classList.toggle('open');
+});
+
+// --- Kill list compact-view toggle (persisted) -------------------
+const COMPACT_KEY = 'anoikis-kill-compact';
+function applyKillCompactState(on) {
+  killList.classList.toggle('kill-list--compact', on);
+  document.getElementById('kill-compact-toggle').classList.toggle('on', on);
+}
+applyKillCompactState(localStorage.getItem(COMPACT_KEY) === '1');
+document.getElementById('kill-compact-toggle').addEventListener('click', () => {
+  const on = !killList.classList.contains('kill-list--compact');
+  applyKillCompactState(on);
+  localStorage.setItem(COMPACT_KEY, on ? '1' : '0');
 });
 
 // --- Live backend WS ---------------------------------------------
