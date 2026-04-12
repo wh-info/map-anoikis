@@ -531,6 +531,7 @@ function buildOrreryList(star) {
 }
 
 function openOrrery(star) {
+  if (intelOpen) closeIntel();
   orreryOpen = true;
   orreryPanel.classList.add('open');
   updateOrreryHeader(star);

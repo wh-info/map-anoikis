@@ -808,6 +808,12 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 }
 #panel-intel.open { display: flex; }
 
+#orrery-title, #intel-title {
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: var(--fg);
+}
+
 .intel-header {
   display: flex;
   align-items: center;
