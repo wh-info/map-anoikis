@@ -840,7 +840,8 @@ function renderIntel(star, data) {
   const rgb = starColor(star);
   renderHm24(data.hourly24, rgb);
   renderHm60(data.matrix60, rgb);
-  renderMarginals(data.matrix60, rgb);
+  try { renderMarginals(data.matrix60, rgb); }
+  catch (e) { console.error('renderMarginals failed:', e); }
   renderEntityList('intel-corps',     data.corps,     'corporation');
   renderEntityList('intel-alliances', data.alliances, 'alliance');
 }
