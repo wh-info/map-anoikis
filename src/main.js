@@ -259,14 +259,14 @@ const PLANET_TYPES = {
   2015:  { name: 'Lava',      rgb: [212,  55,  16] },  // fiery orange-red
   2016:  { name: 'Barren',    rgb: [122,  92,  68] },  // dusty brown, Mars-like
   2017:  { name: 'Storm',     rgb: [ 62,  82, 128] },  // dark stormy blue-grey
-  2063:  { name: 'Plasma',    rgb: [222, 192,  38] },  // bright glowing yellow
+  2063:  { name: 'Plasma',    rgb: [ 40, 150, 255] },  // electric blue
   30889: { name: 'Shattered', rgb: [ 86,  82,  78] },  // dark fractured grey
 };
 
 // Sun typeID → RGB. Grouped by spectral class.
 const SUN_COLORS = {
   // G5 Yellow
-  6: [255,228,110], 3802: [255,228,110], 45030: [255,228,110], 45041: [255,228,110], 45047: [255,228,110],
+  6: [255,228,110], 3802: [255,228,110], 45030: [255,228,110], 45041: [255,228,110], 45047: [255,170,60],
   // K Orange
   7: [255,152,52], 45031: [255,152,52], 45032: [255,152,52],
   3798: [255,162,62], 3800: [255,142,48], 45037: [255,162,62], 45039: [255,142,48], 45040: [255,142,48],
@@ -275,11 +275,11 @@ const SUN_COLORS = {
   // B0 Blue
   9: [112,182,255], 45034: [112,182,255], 45046: [112,182,255],
   // F0 White
-  10: [255,250,218], 45035: [255,250,218],
+  10: [255,255,250], 45035: [255,250,218],
   // O1 Bright Blue
   3796: [72,142,255],
   // G5 Pink
-  3797: [255,168,188], 3799: [255,162,182], 45036: [255,168,188], 45038: [255,162,182],
+  3797: [244,178,226], 3799: [238,170,222], 45036: [255,168,188], 45038: [255,162,182],
   // A0 Blue Small
   3801: [152,192,255], 34331: [128,175,255],
   // B5 White Dwarf
@@ -346,7 +346,7 @@ function drawOrrery(star) {
     const mapScale = (cx * 0.90) / maxR;
     refRingPx = 14.3 * mapScale;
     positions = planets.map((p, i) => {
-      const base  = p.a != null ? p.a : (i / planets.length) * Math.PI * 2;
+      const base  = (p.a != null ? p.a : (i / planets.length) * Math.PI * 2) + Math.PI;
       const omega = 1.0 / Math.pow(Math.max(p.r, 0.1), 0.75);
       const angle = orreryRotate ? base + t * omega : base;
       const rr    = (p.r || 0) * mapScale;
@@ -366,7 +366,7 @@ function drawOrrery(star) {
     refRingPx = orbitPx(Math.log10(14.3));
     positions = planets.map((p, i) => {
       const rr    = orbitPx(logRs[i]);
-      const base  = p.a != null ? p.a : (i / planets.length) * Math.PI * 2;
+      const base  = (p.a != null ? p.a : (i / planets.length) * Math.PI * 2) + Math.PI;
       const omega = 1.0 / Math.pow(Math.max(p.r, 0.1), 0.75);
       const angle = orreryRotate ? base + t * omega : base;
       return { px: cx + Math.cos(angle) * rr, py: cy + Math.sin(angle) * rr, rr };
