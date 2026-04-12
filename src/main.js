@@ -623,6 +623,9 @@ function renderHm24(hourly24, rgb) {
   const labels = document.getElementById('intel-hm24-labels');
   grid.innerHTML = labels.innerHTML = '';
   const max = Math.max(...hourly24, 1);
+  const total24 = hourly24.reduce((s, v) => s + v, 0);
+  document.getElementById('intel-count-24h').textContent =
+    `${total24} kill${total24 !== 1 ? 's' : ''}`;
   const now = new Date();
   const curH = now.getUTCHours();
   for (let i = 0; i < 24; i++) {
@@ -694,8 +697,6 @@ function renderEntityList(containerId, items, kind) {
 function renderIntel(star, data) {
   document.getElementById('intel-loading').style.display = 'none';
   document.getElementById('intel-body').style.display    = '';
-  document.getElementById('intel-subtitle').textContent  =
-    `${data.killCount} kill${data.killCount !== 1 ? 's' : ''} in last 60 days`;
   document.getElementById('intel-count-60d').textContent =
     `${data.killCount} kill${data.killCount !== 1 ? 's' : ''}`;
   const rgb = CLASS_COLORS[star.whClass] || [0, 200, 200];
@@ -731,6 +732,7 @@ function openIntel(star) {
   document.getElementById('intel-subtitle').textContent = '';
   document.getElementById('intel-loading').style.display = '';
   document.getElementById('intel-body').style.display    = 'none';
+  document.getElementById('intel-count-24h').textContent = '';
   document.getElementById('intel-count-60d').textContent = '';
   document.getElementById('si-intel').classList.add('active');
   loadIntel(star);
@@ -1374,7 +1376,7 @@ function formatKillTimeTip(ts) {
   const eveDate = `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
   const locH = pad(d.getHours()), locM = pad(d.getMinutes());
   const locDate = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  return `EVE Time   ${eveDate} ${eveH}:${eveM}\nLocal      ${locDate} ${locH}:${locM}`;
+  return `EVE Time   ${eveDate} ${eveH}:${eveM}&#10;Local      ${locDate} ${locH}:${locM}`;
 }
 
 // ESI cache for type names not in the local SDE table (e.g. new ships on patch day).
