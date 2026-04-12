@@ -1029,16 +1029,20 @@ function draw() {
 
   if (selected) {
     const p = worldToScreen(selected.x, selected.y);
+    const selColor = starColor(selected);
+    ctx.globalCompositeOperation = 'lighter';
+    const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 14);
+    glow.addColorStop(0, rgba(selColor, 0.55));
+    glow.addColorStop(1, rgba(selColor, 0));
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
+    ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
-    ctx.strokeStyle = 'rgba(0,200,200,0.85)';
-    ctx.lineWidth = 1.6;
+    ctx.fillStyle = rgba(selColor, 0.95);
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(0,200,200,0.35)';
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 22, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   if (searchMarker) {
