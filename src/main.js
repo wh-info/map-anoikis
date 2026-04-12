@@ -672,7 +672,7 @@ function renderHm24(hourly24, rgb) {
   const grid   = document.getElementById('intel-hm24');
   const labels = document.getElementById('intel-hm24-labels');
   grid.innerHTML = labels.innerHTML = '';
-  grid.style.alignItems = 'flex-end';
+  grid.style.alignItems = 'stretch';
   const max = Math.max(...hourly24, 1);
   const total24 = hourly24.reduce((s, v) => s + v, 0);
   document.getElementById('intel-count-24h').textContent =
@@ -732,7 +732,7 @@ function renderMarginals(matrix60, rgb) {
   hourWrap.appendChild(hourSpacer);
 
   const hourBars = document.createElement('div');
-  hourBars.style.cssText = 'flex:1;display:flex;gap:2px;height:36px;align-items:flex-end;min-width:0;';
+  hourBars.style.cssText = 'flex:1;display:flex;gap:2px;height:36px;align-items:stretch;min-width:0;';
   for (let h = 0; h < 24; h++) {
     const hStr = String(h).padStart(2, '0');
     const locH = String(Math.floor(utcToLocalHour(h))).padStart(2, '0');
