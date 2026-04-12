@@ -1644,24 +1644,28 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
         <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
       </svg>
     </button>
-    <div class="kill-left">
-      <div class="kill-img-wrap">
-        <div class="kill-img" style="background-image: url('${img}')"></div>
-        <img class="kill-icon" src="${iconUrl}" alt="" aria-hidden="true" />
-        ${techBadge(typeId) ? `<img src="./img/graphic/${techBadge(typeId)}.png" class="kill-tech-badge" alt="" aria-hidden="true" />` : ''}
-      </div>
-    </div>
     <div class="kill-body">
-      <div class="kill-ship">
-        <span class="kill-ship-name">${escapeHtml(name)}</span>
+      <div class="kill-header">
+        <div class="kill-sys">${escapeHtml(starDisplayName)} · <span class="kill-sys-class">${escapeHtml(starDisplayClass)}</span></div>
+        <div class="kill-time-col">
+          <span class="kill-age" data-ts="${ts || ''}">${formatAge(ts)}</span>
+          ${isDelayed ? `<span class="kill-delayed-badge" data-tip="Kill published by zKillboard after a delay — not live activity">DELAYED</span>` : ''}
+        </div>
       </div>
-      <div class="kill-pilot${ownerLoading ? ' loading' : ''}">${ownerInitial}</div>
-      <div class="kill-sys">${escapeHtml(starDisplayName)} · <span class="kill-sys-class">${escapeHtml(starDisplayClass)}</span></div>
-      <div class="kill-meta">
-        ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
-        ${isDelayed ? `<span class="kill-delayed-badge" data-tip="Kill published by zKillboard after a delay — not live activity">DELAYED</span>` : ''}
+      <div class="kill-content">
+        <div class="kill-img-wrap">
+          <div class="kill-img" style="background-image: url('${img}')"></div>
+          <img class="kill-icon" src="${iconUrl}" alt="" aria-hidden="true" />
+          ${techBadge(typeId) ? `<img src="./img/graphic/${techBadge(typeId)}.png" class="kill-tech-badge" alt="" aria-hidden="true" />` : ''}
+        </div>
+        <div class="kill-info">
+          <div class="kill-ship"><span class="kill-ship-name">${escapeHtml(name)}</span></div>
+          <div class="kill-pilot${ownerLoading ? ' loading' : ''}">${ownerInitial}</div>
+        </div>
+      </div>
+      <div class="kill-footer">
         <span class="kill-value">${formatIsk(value)} ISK</span>
-        <span class="kill-age" data-ts="${ts || ''}">${formatAge(ts)}</span>
+        ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
       </div>
     </div>
     ${zkbHref ? `
