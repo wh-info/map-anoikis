@@ -644,40 +644,75 @@ function heatColor(count, max, rgb) {
   return `rgb(${Math.round(13 + t*(r-13))},${Math.round(31 + t*(g-31))},${Math.round(31 + t*(b-31))})`;
 }
 
-function buildHmCell(count, max, rgb, tipText) {
-  const cell = document.createElement('div');
-  cell.className = 'intel-hm-cell';
-  cell.style.background = heatColor(count, max, rgb);
-  cell.dataset.tip = tipText;
-  return cell;
-}
-
 function utcToLocalHour(utcH) {
   const offsetMin = new Date().getTimezoneOffset();
   return ((utcH - offsetMin / 60) % 24 + 24) % 24;
 }
 
-function renderHm24(hourly24, rgb) {
+const DOW_ABBR = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+// Update existing heatmap cells in place when the shape (mode) is unchanged,
+// so hover state survives progressive batch re-renders. Only rebuild on first
+// render or mode switch.
+function ensureGridCells(grid, n, className) {
+  if (grid.childElementCount === n) return false;
+  grid.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const cell = document.createElement('div');
+    cell.className = className;
+    grid.appendChild(cell);
+  }
+  return true;
+}
+
+function renderHmShort(counts, rgb, mode) {
   const grid   = document.getElementById('intel-hm24');
   const labels = document.getElementById('intel-hm24-labels');
-  grid.innerHTML = labels.innerHTML = '';
-  const max = Math.max(...hourly24, 1);
-  const total24 = hourly24.reduce((s, v) => s + v, 0);
+  const total  = counts.reduce((s, v) => s + v, 0);
   document.getElementById('intel-count-24h').textContent =
-    `${total24} kill${total24 !== 1 ? 's' : ''}`;
+    `${total} kill${total !== 1 ? 's' : ''}`;
+  const max = Math.max(...counts, 1);
+  const n   = counts.length;
+  const rebuilt = ensureGridCells(grid, n, 'intel-hm-cell');
+  if (rebuilt) labels.innerHTML = '';
+
   const now = new Date();
+  if (mode === '10d') {
+    for (let i = 0; i < n; i++) {
+      const daysAgo = (n - 1) - i;
+      const d = new Date(now.getTime() - daysAgo * INTEL_DAY_MS);
+      const dayLbl = DOW_ABBR[d.getUTCDay()];
+      const dateLbl = `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+      const c = counts[i];
+      const cell = grid.children[i];
+      cell.style.background = heatColor(c, max, rgb);
+      cell.dataset.tip = `${dayLbl} ${dateLbl}\n${c} kill${c !== 1 ? 's' : ''}`;
+      if (rebuilt) {
+        const lbl = document.createElement('div');
+        lbl.className = 'intel-hlabel';
+        lbl.textContent = daysAgo === 0 ? 'Today' : dayLbl;
+        lbl.style.textAlign = 'center';
+        labels.appendChild(lbl);
+      }
+    }
+    return;
+  }
+
   const curH = now.getUTCHours();
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < n; i++) {
     const h    = (curH - 23 + i + 24) % 24;
     const hStr = String(h).padStart(2, '0');
     const locH = String(Math.floor(utcToLocalHour(h))).padStart(2, '0');
-    const c    = hourly24[i];
-    grid.appendChild(buildHmCell(c, max, rgb,
-      `EVE Time  ${hStr}:00\nLocal     ${locH}:00\n${c} kill${c !== 1 ? 's' : ''}`));
-    const lbl = document.createElement('div');
-    lbl.className = 'intel-hlabel';
-    lbl.textContent = (h % 6 === 0) ? hStr : '';
-    labels.appendChild(lbl);
+    const c    = counts[i];
+    const cell = grid.children[i];
+    cell.style.background = heatColor(c, max, rgb);
+    cell.dataset.tip = `EVE Time  ${hStr}:00\nLocal     ${locH}:00\n${c} kill${c !== 1 ? 's' : ''}`;
+    if (rebuilt) {
+      const lbl = document.createElement('div');
+      lbl.className = 'intel-hlabel';
+      lbl.textContent = (h % 6 === 0) ? hStr : '';
+      labels.appendChild(lbl);
+    }
   }
 }
 
@@ -685,30 +720,48 @@ function renderHm60(matrix60, rgb) {
   const grid   = document.getElementById('intel-hm60');
   const labels = document.getElementById('intel-hm60-labels');
   const dlbls  = document.getElementById('intel-dlabels');
-  grid.innerHTML = labels.innerHTML = dlbls.innerHTML = '';
   const flatMax = Math.max(...matrix60.flat(), 1);
-  for (const dow of DAY_ORDER) {
-    const dlbl = document.createElement('div');
-    dlbl.className = 'intel-dlabel';
-    dlbl.textContent = DAY_LABELS[dow];
-    dlbls.appendChild(dlbl);
-    const row = document.createElement('div');
-    row.className = 'intel-hm60-row';
+
+  // Build the 7 row containers + day labels + hour labels once; on subsequent
+  // renders just refresh each cell's background + tooltip in place so hover
+  // state survives progressive batch updates.
+  const rebuilt = grid.childElementCount !== 7;
+  if (rebuilt) {
+    grid.innerHTML = labels.innerHTML = dlbls.innerHTML = '';
+    for (const dow of DAY_ORDER) {
+      const dlbl = document.createElement('div');
+      dlbl.className = 'intel-dlabel';
+      dlbl.textContent = DAY_LABELS[dow];
+      dlbls.appendChild(dlbl);
+      const row = document.createElement('div');
+      row.className = 'intel-hm60-row';
+      for (let hr = 0; hr < 24; hr++) {
+        const cell = document.createElement('div');
+        cell.className = 'intel-hm-cell';
+        row.appendChild(cell);
+      }
+      grid.appendChild(row);
+    }
+    for (let hr = 0; hr < 24; hr++) {
+      const lbl = document.createElement('div');
+      lbl.className = 'intel-hlabel';
+      lbl.textContent = (hr % 6 === 0) ? String(hr).padStart(2, '0') : '';
+      labels.appendChild(lbl);
+    }
+  }
+
+  DAY_ORDER.forEach((dow, ri) => {
+    const row = grid.children[ri];
     for (let hr = 0; hr < 24; hr++) {
       const c    = matrix60[dow][hr];
       const hStr = String(hr).padStart(2, '0');
       const locH = String(Math.floor(utcToLocalHour(hr))).padStart(2, '0');
-      row.appendChild(buildHmCell(c, flatMax, rgb,
-        `EVE Time  ${hStr}:00\nLocal     ${locH}:00\n${DAY_LABELS[dow]} — ${c} kill${c !== 1 ? 's' : ''}`));
+      const cell = row.children[hr];
+      cell.style.background = heatColor(c, flatMax, rgb);
+      cell.dataset.tip =
+        `EVE Time  ${hStr}:00\nLocal     ${locH}:00\n${DAY_LABELS[dow]} — ${c} kill${c !== 1 ? 's' : ''}`;
     }
-    grid.appendChild(row);
-  }
-  for (let hr = 0; hr < 24; hr++) {
-    const lbl = document.createElement('div');
-    lbl.className = 'intel-hlabel';
-    lbl.textContent = (hr % 6 === 0) ? String(hr).padStart(2, '0') : '';
-    labels.appendChild(lbl);
-  }
+  });
 }
 
 function renderEntityList(containerId, items, kind) {
@@ -727,13 +780,70 @@ function renderEntityList(containerId, items, kind) {
     link.rel       = 'noopener';
     link.className = 'intel-entity-link';
     link.textContent = item.name;
+    const spark = document.createElement('canvas');
+    spark.className = 'intel-entity-spark';
+    drawSparkline(spark, item.dailyV, item.dailyA);
+    const filterKind = kind === 'corporation' ? 'corp' : 'alli';
+    if (intelEntityFilter && intelEntityFilter.kind === filterKind && intelEntityFilter.id === item.id) {
+      row.classList.add('selected');
+    }
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.intel-entity-link')) return;
+      toggleEntityFilter(filterKind, item.id);
+    });
     const cnt  = document.createElement('span');
     cnt.className  = 'intel-entity-count';
     cnt.textContent = item.count;
     row.appendChild(link);
+    row.appendChild(spark);
     row.appendChild(cnt);
     el.appendChild(row);
   }
+}
+
+function drawSparkline(canvas, dailyV, dailyA) {
+  if (!dailyV || !dailyV.length) return;
+  const dpr  = window.devicePixelRatio || 1;
+  const cssW = 70;
+  const cssH = 14;
+  canvas.style.width  = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  canvas.width  = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+  const n = dailyV.length;
+  let max = 1;
+  for (let i = 0; i < n; i++) max = Math.max(max, dailyV[i], dailyA[i]);
+  const padY = 1;
+  const usableH = cssH - padY * 2;
+  const xAt = (i) => (n === 1 ? cssW / 2 : (i / (n - 1)) * cssW);
+  const yAt = (v) => padY + usableH - (v / max) * usableH;
+
+  const drawSeries = (data, fill, stroke) => {
+    ctx.beginPath();
+    ctx.moveTo(0, cssH);
+    for (let i = 0; i < n; i++) ctx.lineTo(xAt(i), yAt(data[i]));
+    ctx.lineTo(cssW, cssH);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const x = xAt(i);
+      const y = yAt(data[i]);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 1;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+  };
+
+  drawSeries(dailyA, 'rgba(0, 220, 220, 0.22)', 'rgba(0, 220, 220, 0.85)');
+  drawSeries(dailyV, 'rgba(255, 90, 90, 0.22)',  'rgba(255, 90, 90, 0.85)');
 }
 
 function intelApiBase() {
@@ -754,23 +864,7 @@ function buildLoadBar() {
          `<div class="intel-load-segs">${segs}</div>`;
 }
 
-// Wrap a section container with its own animated loading placeholder. The
-// existing heatmap/entity renderers all call innerHTML='' before rebuilding,
-// so the placeholder is auto-replaced when real data arrives.
-function markSectionLoading(containerId) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  el.innerHTML = `<div class="intel-section-loading">${buildLoadBar()}</div>`;
-}
-function markSectionError(containerId, msg) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  el.innerHTML = `<div class="intel-section-error">${msg}</div>`;
-}
-
-// Parties section has two columns (corps + alliances) that share a single
-// loading bar. Replaces the .intel-lists children entirely and rebuilds
-// them when data arrives.
+// Parties section has two columns (corps + alliances). Rebuilt once per load.
 function renderPartiesColumns() {
   const lists = document.querySelector('.intel-lists');
   lists.innerHTML =
@@ -783,63 +877,586 @@ function renderPartiesColumns() {
       '<div id="intel-alliances"></div>' +
     '</div>';
 }
-function markPartiesLoading() {
-  const lists = document.querySelector('.intel-lists');
-  lists.innerHTML = `<div class="intel-section-loading intel-parties-loading">${buildLoadBar()}</div>`;
-}
 function markPartiesError(msg) {
   const lists = document.querySelector('.intel-lists');
   lists.innerHTML = `<div class="intel-section-error">${msg}</div>`;
 }
 
-// Three parallel loaders. Each is independent so a slow one (60d) never
-// blocks a fast one (24h), and a single failure only blanks its own section.
-async function loadIntel24h(star, token) {
-  markSectionLoading('intel-hm24');
-  document.getElementById('intel-hm24-labels').innerHTML = '';
-  document.getElementById('intel-count-24h').textContent = '';
+// ============================================================================
+// Intel — browser-side kill fetching + aggregation (anoik.is-style)
+//
+// Each visitor's browser hits zKillboard and ESI directly, so CCP's per-IP
+// rate-limit budget scales with the number of users instead of being shared
+// through one backend IP. The backend's role is exclusively the live R2Z2
+// fan-out via /ws — it does not host or proxy any intel data.
+//
+// Flow on click:
+//   1. fetchSystemKills() pulls zKB's w-space slim list for the system, then
+//      hydrates each entry via ESI /killmails/{id}/{hash}/ in batches.
+//   2. After every batch, the heatmaps re-render from the partial result.
+//      zKB returns newest-killmail-id-first, so the visual fill effect runs
+//      "now → backwards" naturally without explicit ordering.
+//   3. Once all kills are hydrated, the corp/alli party lists are aggregated
+//      and their names resolved via ESI (cached in nameCache forever).
+//
+// Cache: intelKillCache holds the hydrated kill array per system for 15 min,
+// and dedupes concurrent loads via an in-flight promise. Re-clicking a system
+// inside the TTL is instant.
+// ============================================================================
+
+const INTEL_CACHE_TTL    = 15 * 60 * 1000;
+const INTEL_DAY_MS       = 24 * 60 * 60 * 1000;
+let intelRangeShort = '24h'; // '24h' | '10d'
+let intelRangeLong  = '30d'; // '30d' | '60d'
+
+// Most recent hydrated kill set + star color for the open intel panel. Used
+// by the range toggle handlers to re-aggregate without re-fetching.
+let intelCurrentKills = null;
+let intelCurrentRgb   = null;
+let intelCurrentToken = 0;
+const ESI_HYDRATE_BATCH  = 10;
+
+// systemId → { fetchedAt, kills, pending }
+const intelKillCache = new Map();
+
+async function fetchSystemKills(systemId, onProgress) {
+  const cached = intelKillCache.get(systemId);
+  if (cached?.pending) return cached.pending;
+  if (cached && Date.now() - cached.fetchedAt < INTEL_CACHE_TTL) {
+    onProgress?.(cached.kills);
+    return cached.kills;
+  }
+
+  const promise = (async () => {
+    const slimRes = await fetch(
+      `https://zkillboard.com/api/solarSystemID/${systemId}/`
+    );
+    if (!slimRes.ok) throw new Error(`zKB ${slimRes.status}`);
+    const slim = await slimRes.json();
+    console.log(`[intel] zKB ${systemId} → ${Array.isArray(slim) ? slim.length : 'non-array'} kills`);
+    if (!Array.isArray(slim) || slim.length === 0) return [];
+
+    const kills = [];
+    for (let i = 0; i < slim.length; i += ESI_HYDRATE_BATCH) {
+      const chunk = slim.slice(i, i + ESI_HYDRATE_BATCH);
+      const batch = await Promise.all(chunk.map(async (s) => {
+        if (!s?.killmail_id || !s.zkb?.hash) return null;
+        try {
+          const res = await fetch(
+            `https://esi.evetech.net/latest/killmails/${s.killmail_id}/${s.zkb.hash}/`
+          );
+          if (!res.ok) return null;
+          const k = await res.json();
+          if (k) k._zkbValue = s.zkb.totalValue ?? 0;
+          return k;
+        } catch { return null; }
+      }));
+      for (const k of batch) {
+        if (k && k.killmail_time) kills.push(k);
+      }
+      onProgress?.(kills);
+    }
+    return kills;
+  })();
+
+  intelKillCache.set(systemId, { pending: promise, fetchedAt: Date.now(), kills: [] });
   try {
-    const res = await fetch(`${intelApiBase()}/intel/24h/${star.id}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (token !== intelLoadToken) return; // user moved on to another system
-    renderHm24(data.hourly24, starColor(star));
-  } catch {
-    if (token !== intelLoadToken) return;
-    markSectionError('intel-hm24', 'Failed to load.');
+    const kills = await promise;
+    intelKillCache.set(systemId, { pending: null, fetchedAt: Date.now(), kills });
+    return kills;
+  } catch (e) {
+    intelKillCache.delete(systemId);
+    throw e;
   }
 }
 
-// 30-day heatmap + corps/alliances share the same underlying kill fetch on
-// the backend, so they resolve together. One combined loader shows a single
-// bar in the 30-day section and hides the parties block until both land.
-async function loadIntelLong(star, token) {
-  markSectionLoading('intel-hm60');
-  document.getElementById('intel-dlabels').innerHTML = '';
+// Short section: '24h' → 24 hourly buckets, '10d' → 10 daily buckets.
+function intelAggregateShort(kills, mode) {
+  const now    = Date.now();
+  const n      = mode === '10d' ? 10 : 24;
+  const stepMs = mode === '10d' ? INTEL_DAY_MS : 3_600_000;
+  const cutoff = now - n * stepMs;
+  const counts = new Array(n).fill(0);
+  for (const k of kills) {
+    const ts = new Date(k.killmail_time).getTime();
+    if (!Number.isFinite(ts) || ts < cutoff) continue;
+    const idx = (n - 1) - Math.min(Math.floor((now - ts) / stepMs), n - 1);
+    counts[idx]++;
+  }
+  return { counts, total: counts.reduce((s, v) => s + v, 0) };
+}
+
+// Long section: 7×24 day-of-week × hour-of-day matrix over `days` days.
+function intelAggregateLong(kills, days) {
+  const cutoff   = Date.now() - days * INTEL_DAY_MS;
+  const matrix   = Array.from({ length: 7 }, () => new Array(24).fill(0));
+  let killCount  = 0;
+  for (const k of kills) {
+    const ts = new Date(k.killmail_time).getTime();
+    if (!Number.isFinite(ts) || ts < cutoff) continue;
+    const d = new Date(ts);
+    matrix[d.getUTCDay()][d.getUTCHours()]++;
+    killCount++;
+  }
+  return { matrix, killCount };
+}
+
+function intelAggregateParties(kills, days) {
+  const now    = Date.now();
+  const cutoff = now - days * INTEL_DAY_MS;
+  const cMap = new Map();
+  const aMap = new Map();
+  const ensure = (m, id) => {
+    let e = m.get(id);
+    if (!e) {
+      e = {
+        count:  0,
+        dailyV: new Array(days).fill(0),
+        dailyA: new Array(days).fill(0),
+      };
+      m.set(id, e);
+    }
+    return e;
+  };
+  for (const k of kills) {
+    const ts = new Date(k.killmail_time).getTime();
+    if (!Number.isFinite(ts) || ts < cutoff) continue;
+    const dayIdx = (days - 1) - Math.min(Math.floor((now - ts) / INTEL_DAY_MS), days - 1);
+
+    const vCorp = k.victim?.corporation_id;
+    const vAlli = k.victim?.alliance_id;
+    if (vCorp) ensure(cMap, vCorp).dailyV[dayIdx]++;
+    if (vAlli) ensure(aMap, vAlli).dailyV[dayIdx]++;
+
+    const seenC = new Set();
+    const seenA = new Set();
+    if (Array.isArray(k.attackers)) {
+      for (const at of k.attackers) {
+        const cId = at.corporation_id;
+        const aId = at.alliance_id;
+        if (cId && !seenC.has(cId) && cId !== vCorp) {
+          seenC.add(cId);
+          ensure(cMap, cId).dailyA[dayIdx]++;
+        }
+        if (aId && !seenA.has(aId) && aId !== vAlli) {
+          seenA.add(aId);
+          ensure(aMap, aId).dailyA[dayIdx]++;
+        }
+      }
+    }
+  }
+  for (const m of [cMap, aMap]) {
+    for (const e of m.values()) {
+      let total = 0;
+      for (let i = 0; i < days; i++) total += e.dailyV[i] + e.dailyA[i];
+      e.count = total;
+    }
+  }
+  const top = (m, n) =>
+    [...m.entries()]
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, n)
+      .map(([id, e]) => ({ id, count: e.count, dailyV: e.dailyV, dailyA: e.dailyA }));
+  return { topCorps: top(cMap, 10), topAllis: top(aMap, 10) };
+}
+
+// Kill scatter view. Each kill = one dot. X = time, Y = log10(ISK value),
+// color = victim ship class. Reveals system character at a glance — ratter
+// farm vs. brawl hub vs. capital killing field.
+let intelView         = 'heatmap'; // 'heatmap' | 'scatter'
+let intelScatterRange = '30d';     // '30d' | '60d'
+let scatterHits       = [];        // {x, y, k, color, label} — rebuilt each draw
+let intelEntityFilter = null;      // { kind: 'corp'|'alli', id }
+
+function killMatchesEntityFilter(k) {
+  if (!intelEntityFilter) return true;
+  const { kind, id } = intelEntityFilter;
+  const field = kind === 'corp' ? 'corporation_id' : 'alliance_id';
+  if (k.victim?.[field] === id) return true;
+  if (Array.isArray(k.attackers)) {
+    for (const a of k.attackers) if (a[field] === id) return true;
+  }
+  return false;
+}
+
+function toggleEntityFilter(kind, id) {
+  if (intelEntityFilter && intelEntityFilter.kind === kind && intelEntityFilter.id === id) {
+    intelEntityFilter = null;
+  } else {
+    intelEntityFilter = { kind, id };
+    if (intelView !== 'scatter') setIntelView('scatter');
+  }
+  renderIntelAll();
+}
+
+// Display label per class slug. Slugs that share a label collapse into one
+// legend entry. Pods/shuttles are intentionally excluded — scatterClassFor
+// returns null for them and the renderer skips those kills entirely.
+const SCATTER_CLASS_LABELS = {
+  frigate: 'Frigate',
+  rookie:  'Frigate',
+  capsule: 'Pods/Shuttles',
+  shuttle: 'Pods/Shuttles',
+  destroyer: 'Destroyer',
+  cruiser:   'Cruiser',
+  battlecruiser: 'Battlecruiser',
+  battleship: 'Battleship',
+  capital: 'Capital',
+  supercarrier: 'Capital',
+  titan: 'Capital',
+  freighter:         'Industrial',
+  industrial:        'Industrial',
+  industrialcommand: 'Industrial',
+  miningbarge:       'Industrial',
+  miningfrigate:     'Industrial',
+};
+const SCATTER_CLASS_COLOR = {
+  Frigate:         '#ff5a5a',
+  Destroyer:       '#ff8a3a',
+  Cruiser:         '#ffd24a',
+  Battlecruiser:   '#a8e060',
+  Battleship:      '#5ab8ff',
+  Capital:         '#c66bff',
+  Industrial:      '#c8a878',
+  Structures:      '#ffffff',
+  'Pods/Shuttles': '#888888',
+};
+const SCATTER_LEGEND_ORDER = [
+  'Frigate', 'Destroyer', 'Cruiser', 'Industrial',
+  'Battlecruiser', 'Battleship', 'Capital', 'Structures',
+  'Pods/Shuttles',
+];
+
+function scatterClassFor(typeId) {
+  const kind = window.TYPE_KINDS && window.TYPE_KINDS[typeId];
+  if (kind === 'structure' || kind === 'tower') return 'Structures';
+  const slug = window.TYPE_ICONS && window.TYPE_ICONS[typeId];
+  if (slug && SCATTER_CLASS_LABELS[slug]) return SCATTER_CLASS_LABELS[slug];
+  return null; // pods, shuttles, fighters, deployables — not plotted
+}
+
+function buildScatterLegend() {
+  const el = document.getElementById('intel-scatter-legend-list');
+  if (!el || el.childElementCount) return;
+  for (const label of SCATTER_LEGEND_ORDER) {
+    const span = document.createElement('span');
+    if (label === 'Pods/Shuttles') span.className = 'intel-scatter-legend-wide';
+    const dot  = document.createElement('i');
+    dot.style.background = SCATTER_CLASS_COLOR[label];
+    span.appendChild(dot);
+    span.appendChild(document.createTextNode(label));
+    el.appendChild(span);
+  }
+}
+
+function formatIskCompact(n) {
+  if (n >= 1e12) return (n / 1e12).toFixed(n >= 1e13 ? 0 : 1).replace(/\.0$/, '') + 'T';
+  if (n >= 1e9)  return Math.round(n / 1e9) + 'B';
+  if (n >= 1e6)  return Math.round(n / 1e6) + 'M';
+  return Math.round(n / 1e3) + 'k';
+}
+
+function renderScatter() {
+  const canvas = document.getElementById('intel-scatter');
+  if (!canvas || intelView !== 'scatter') return;
+  const kills = intelCurrentKills;
+  if (!kills) { scatterHits = []; return; }
+
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth || 280;
+  const cssH = 260;
+  if (canvas.width !== Math.round(cssW * dpr) || canvas.height !== Math.round(cssH * dpr)) {
+    canvas.width  = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  const days = intelScatterRange === '60d' ? 60 : 30;
+  const padL = 30, padR = 8, padT = 8, padB = 16;
+  const plotW = cssW - padL - padR;
+  const plotH = cssH - padT - padB;
+  const now    = Date.now();
+  const cutoff = now - days * INTEL_DAY_MS;
+  // Y ceiling: 15B by default, but auto-grows if a kill in-window exceeds it
+  // (with 20% headroom). Floor stays at 1M.
+  const minLog = 6; // 1M ISK
+  let observedMax = 0;
+  for (const k of kills) {
+    const ts = new Date(k.killmail_time).getTime();
+    if (!Number.isFinite(ts) || ts < cutoff) continue;
+    const cls = scatterClassFor(k.victim?.ship_type_id);
+    if (!cls) continue;
+    const v = k._zkbValue || 0;
+    if (v > observedMax) observedMax = v;
+  }
+  const defaultCeil = 15e9;
+  const step = 5e9;
+  const ceil = observedMax > defaultCeil
+    ? Math.ceil(observedMax / step) * step
+    : defaultCeil;
+  const maxLog = Math.log10(ceil);
+  // Piecewise mapping: compress 1M→100M into the bottom 25%, give 100M→1B
+  // the next 40%, and leave the top 35% for 1B→ceiling. The pure-log mapping
+  // wasted space on cheap kills (the bulk of activity) and squeezed the
+  // expensive band where the interesting reads live.
+  const anchors = [
+    [minLog, 0.0],
+    [8,      0.25],
+    [9,      0.65],
+    [maxLog, 1.0],
+  ];
+  const valueLogToFrac = (lv) => {
+    const c = Math.max(minLog, Math.min(lv, maxLog));
+    for (let i = 1; i < anchors.length; i++) {
+      if (c <= anchors[i][0]) {
+        const [a0, f0] = anchors[i - 1];
+        const [a1, f1] = anchors[i];
+        return f0 + ((c - a0) / (a1 - a0)) * (f1 - f0);
+      }
+    }
+    return 1;
+  };
+
+  ctx.font = '9px monospace';
+  ctx.textBaseline = 'alphabetic';
+  ctx.lineWidth = 1;
+  // Static ticks at 1M / 100M / 1B (emphasized). Dynamic top tick = ceiling.
+  const ticks = [
+    [6, '<1M',  false],
+    [8, '100M', false],
+    [9, '1B',   true],
+  ];
+  ticks.push([maxLog, formatIskCompact(ceil), false]);
+  for (const [v, lbl, emph] of ticks) {
+    const y = padT + plotH - valueLogToFrac(v) * plotH;
+    ctx.strokeStyle = emph ? 'rgba(0,200,200,0.32)' : 'rgba(255,255,255,0.06)';
+    ctx.beginPath();
+    ctx.moveTo(padL, y); ctx.lineTo(cssW - padR, y);
+    ctx.stroke();
+    ctx.fillStyle = emph ? 'rgba(0,220,220,0.85)' : 'rgba(0,220,220,0.7)';
+    ctx.fillText(lbl, 2, y + 3);
+  }
+  ctx.fillStyle = 'rgba(0,220,220,0.7)';
+  const xTicks = days === 60 ? [60, 45, 30, 15, 0] : [30, 20, 10, 0];
+  for (const d of xTicks) {
+    const x = padL + ((days - d) / days) * plotW;
+    const lbl = d === 0 ? 'now' : `-${d}d`;
+    ctx.fillText(lbl, x - ctx.measureText(lbl).width / 2, cssH - 3);
+  }
+
+  scatterHits = [];
+  let filteredTotal = 0;
+  for (const k of kills) {
+    const ts = new Date(k.killmail_time).getTime();
+    if (!Number.isFinite(ts) || ts < cutoff) continue;
+    const matched = killMatchesEntityFilter(k);
+    if (matched && intelEntityFilter) filteredTotal++;
+    const cls = scatterClassFor(k.victim?.ship_type_id);
+    if (!cls) continue;
+    const v = k._zkbValue || 0;
+    if (v <= 0) continue;
+    const lv = Math.log10(v);
+    const x = padL + ((ts - cutoff) / (now - cutoff)) * plotW;
+    const y = padT + plotH - valueLogToFrac(lv) * plotH;
+    const color = SCATTER_CLASS_COLOR[cls];
+    ctx.fillStyle = color;
+    ctx.globalAlpha = matched ? 0.85 : 0.1;
+    ctx.beginPath();
+    ctx.arc(x, y, matched ? 2.6 : 2, 0, Math.PI * 2);
+    ctx.fill();
+    if (matched) scatterHits.push({ x, y, k, color, cls });
+  }
+  ctx.globalAlpha = 1;
+  const legendEl = document.getElementById('intel-scatter-legend');
+  if (intelEntityFilter) {
+    legendEl.textContent = `${scatterHits.length} of ${filteredTotal} kills shown`;
+  } else {
+    legendEl.textContent = `${scatterHits.length} kill${scatterHits.length !== 1 ? 's' : ''}`;
+  }
+}
+
+function setIntelView(view) {
+  if (view === intelView) return;
+  intelView = view;
+  document.getElementById('intel-view-heatmap').style.display = view === 'heatmap' ? '' : 'none';
+  document.getElementById('intel-view-scatter').style.display = view === 'scatter' ? '' : 'none';
+  document.querySelectorAll('[data-view-toggle] button').forEach((b) =>
+    b.classList.toggle('active', b.dataset.view === view));
+  if (view === 'scatter') {
+    buildScatterLegend();
+    renderScatter();
+  }
+}
+
+document.querySelector('[data-view-toggle]').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-view]');
+  if (btn) setIntelView(btn.dataset.view);
+});
+
+// Hover tooltip on scatter dots — closest dot within 6px wins.
+(function wireScatterHover() {
+  const canvas = document.getElementById('intel-scatter');
+  const tip    = document.getElementById('intel-scatter-tip');
+  if (!canvas || !tip) return;
+  canvas.addEventListener('mousemove', (e) => {
+    if (intelView !== 'scatter' || scatterHits.length === 0) {
+      tip.style.display = 'none';
+      return;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    let best = null;
+    let bestD2 = 36; // 6px radius
+    for (const h of scatterHits) {
+      const dx = h.x - mx;
+      const dy = h.y - my;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) { bestD2 = d2; best = h; }
+    }
+    if (!best) { tip.style.display = 'none'; return; }
+    const k = best.k;
+    const shipId   = k.victim?.ship_type_id;
+    const shipName = (window.TYPE_NAMES && window.TYPE_NAMES[shipId]) || `Type ${shipId}`;
+    const isk = k._zkbValue || 0;
+    const when = new Date(k.killmail_time);
+    const ago = Math.floor((Date.now() - when.getTime()) / (60 * 60 * 1000));
+    const agoLbl = ago < 24 ? `${ago}h ago` : `${Math.floor(ago / 24)}d ago`;
+    tip.innerHTML =
+      `<div style="color:${best.color};font-weight:600;">${shipName}</div>` +
+      `<div style="color:var(--muted);">${best.cls}</div>` +
+      `<div>${formatIsk(isk)} ISK</div>` +
+      `<div style="color:var(--dim);">${agoLbl}</div>`;
+    tip.style.display = 'block';
+    // Position above-right of cursor; flip if near edges.
+    const tipW = tip.offsetWidth;
+    const tipH = tip.offsetHeight;
+    let tx = best.x + 8;
+    let ty = best.y - tipH - 6;
+    if (tx + tipW > rect.width)  tx = best.x - tipW - 8;
+    if (ty < 0)                  ty = best.y + 8;
+    tip.style.left = `${tx}px`;
+    tip.style.top  = `${ty}px`;
+  });
+  canvas.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+})();
+
+// Re-render every intel section from the current cached kill set + toggle
+// state. Called on every batch during loading, and by the range-toggle
+// handlers when the user flips 24h↔7d or 30d↔60d.
+function renderIntelAll() {
+  const kills = intelCurrentKills;
+  const rgb   = intelCurrentRgb;
+  if (!kills || !rgb) return;
+  const short = intelAggregateShort(kills, intelRangeShort);
+  renderHmShort(short.counts, rgb, intelRangeShort);
+  const longDays = intelRangeLong === '60d' ? 60 : 30;
+  const aLong = intelAggregateLong(kills, longDays);
+  renderHm60(aLong.matrix, rgb);
+  document.getElementById('intel-count-60d').textContent =
+    `${aLong.killCount} kill${aLong.killCount !== 1 ? 's' : ''}`;
+  // Parties window follows whichever view is active so the corp/alli list
+  // matches what the user is looking at.
+  const partyDays = intelView === 'scatter'
+    ? (intelScatterRange === '60d' ? 60 : 30)
+    : longDays;
+  const { topCorps, topAllis } = intelAggregateParties(kills, partyDays);
+  renderParty('intel-corps',     topCorps, 'corporation', 'corp', (id) => `Corp ${id}`);
+  renderParty('intel-alliances', topAllis, 'alliance',    'alli', (id) => `Alliance ${id}`);
+  if (intelView === 'scatter') renderScatter();
+}
+
+function renderParty(containerId, items, kind, prefix, fallback) {
+  const token = intelCurrentToken;
+  const withNames = items.map((it) => ({
+    ...it,
+    name: nameCache.get(prefix + ':' + it.id) || fallback(it.id),
+  }));
+  renderEntityList(containerId, withNames, kind);
+  const el = document.getElementById(containerId);
+  const rows = el.querySelectorAll('.intel-entity-row');
+  items.forEach((it, i) => {
+    if (nameCache.has(prefix + ':' + it.id)) return;
+    const link = rows[i]?.querySelector('.intel-entity-link');
+    if (!link) return;
+    resolveEntityName(prefix, it.id).then((name) => {
+      if (token !== intelCurrentToken) return;
+      if (name) link.textContent = name;
+    });
+  });
+}
+
+// Wire the range toggles once at startup. Clicks flip module state + re-render
+// from the cached kill set — no refetch, no extra ESI traffic.
+document.querySelectorAll('.intel-range-toggle').forEach((toggle) => {
+  toggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-mode]');
+    if (!btn) return;
+    const range = toggle.dataset.range; // 'short' | 'long' | 'scatter'
+    if (!range) return;
+    const mode  = btn.dataset.mode;
+    if (range === 'short') {
+      if (intelRangeShort === mode) return;
+      intelRangeShort = mode;
+    } else if (range === 'scatter') {
+      if (intelScatterRange === mode) return;
+      intelScatterRange = mode;
+    } else {
+      if (intelRangeLong === mode) return;
+      intelRangeLong = mode;
+    }
+    toggle.querySelectorAll('button').forEach((b) =>
+      b.classList.toggle('active', b.dataset.mode === mode));
+    renderIntelAll();
+  });
+});
+
+// Single intel loader. Fetches kills once; on first batch flips the full-panel
+// loader to the body, then re-renders heatmaps + parties progressively as each
+// batch of hydrated kills arrives. Entity names resolve per-id (cached across
+// batches) and patch their row text in place when they land.
+async function loadIntel(star, token) {
+  const loadingEl = document.getElementById('intel-loading');
+  const bodyEl    = document.getElementById('intel-body');
+  const partiesEl = document.getElementById('intel-parties-section');
+
+  document.getElementById('intel-hm24-labels').innerHTML = '';
   document.getElementById('intel-hm60-labels').innerHTML = '';
+  document.getElementById('intel-dlabels').innerHTML     = '';
+  document.getElementById('intel-count-24h').textContent = '';
   document.getElementById('intel-count-60d').textContent = '';
-  const parties = document.getElementById('intel-parties-section');
-  parties.style.display = 'none';
+  partiesEl.style.display = '';
+  renderPartiesColumns();
+
+  intelCurrentRgb   = starColor(star);
+  intelCurrentKills = null;
+  intelCurrentToken = token;
+  intelEntityFilter = null;
+  let flipped = false;
+
+  const onBatch = (kills) => {
+    if (token !== intelLoadToken) return;
+    intelCurrentKills = kills;
+    if (!flipped) {
+      flipped = true;
+      loadingEl.style.display = 'none';
+      bodyEl.style.display    = '';
+    }
+    renderIntelAll();
+  };
+
   try {
-    const [d60Res, partiesRes] = await Promise.all([
-      fetch(`${intelApiBase()}/intel/60d/${star.id}`),
-      fetch(`${intelApiBase()}/intel/parties/${star.id}`),
-    ]);
-    if (!d60Res.ok || !partiesRes.ok) throw new Error('HTTP');
-    const [d60, partiesData] = await Promise.all([d60Res.json(), partiesRes.json()]);
+    await fetchSystemKills(star.id, onBatch);
+  } catch (err) {
     if (token !== intelLoadToken) return;
-    document.getElementById('intel-count-60d').textContent =
-      `${d60.killCount} kill${d60.killCount !== 1 ? 's' : ''}`;
-    renderHm60(d60.matrix60, starColor(star));
-    parties.style.display = '';
-    renderPartiesColumns();
-    renderEntityList('intel-corps',     partiesData.corps,     'corporation');
-    renderEntityList('intel-alliances', partiesData.alliances, 'alliance');
-  } catch {
-    if (token !== intelLoadToken) return;
-    markSectionError('intel-hm60', 'Failed to load.');
-    parties.style.display = '';
-    markPartiesError('Failed to load.');
+    console.error('intel load failed', err);
+    if (!flipped) {
+      loadingEl.innerHTML = '<div class="intel-section-error">Failed to load.</div>';
+    } else {
+      markPartiesError('Failed to load.');
+    }
   }
 }
 
@@ -855,13 +1472,12 @@ function openIntel(star) {
   document.getElementById('intel-title').textContent =
     displayName(star) + ' · ' + displayClass(star);
   document.getElementById('intel-subtitle').textContent = '';
-  // Show body immediately; each section manages its own loading state.
-  document.getElementById('intel-loading').style.display = 'none';
-  document.getElementById('intel-body').style.display    = '';
+  // Single full-panel loader; flipped to body on first batch of kills.
+  document.getElementById('intel-loading').style.display = '';
+  document.getElementById('intel-body').style.display    = 'none';
   document.getElementById('si-intel').classList.add('active');
   const token = ++intelLoadToken;
-  loadIntel24h(star, token);
-  loadIntelLong(star, token);
+  loadIntel(star, token);
 }
 
 function closeIntel() {
@@ -1611,7 +2227,9 @@ function resolveEntityName(kind, id) {
   const key = kind + ':' + id;
   if (nameCache.has(key)) return Promise.resolve(nameCache.get(key));
   if (nameInFlight.has(key)) return nameInFlight.get(key);
-  const path = kind === 'char' ? 'characters' : 'corporations';
+  const path = kind === 'char' ? 'characters'
+    : kind === 'alli' ? 'alliances'
+    : 'corporations';
   const p = fetch(`https://esi.evetech.net/latest/${path}/${id}/`)
     .then((r) => (r.ok ? r.json() : null))
     .then((j) => {

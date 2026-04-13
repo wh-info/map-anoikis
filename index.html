@@ -100,24 +100,56 @@
     </div>
   </div>
   <div id="intel-body">
-    <div class="intel-section-label" style="margin-top:16px;">
-      <span>Last 24 Hours</span>
-      <span id="intel-count-24h" class="intel-section-count"></span>
+    <div class="intel-section-label intel-view-toggle-row">
+      <div class="intel-range-toggle intel-view-toggle" data-view-toggle="1">
+        <button data-view="heatmap" class="active">Heatmap</button>
+        <button data-view="scatter">Kill Scatter</button>
+      </div>
     </div>
-    <div id="intel-hm24"></div>
-    <div id="intel-hm24-labels" class="intel-hlabels"></div>
 
-    <div class="intel-separator"></div>
+    <div id="intel-view-heatmap">
+      <div class="intel-section-label">
+        <div class="intel-range-toggle" data-range="short">
+          <button data-mode="24h" class="active">Last 24 Hours</button>
+          <button data-mode="10d">Last 10 Days</button>
+        </div>
+        <span id="intel-count-24h" class="intel-section-count"></span>
+      </div>
+      <div id="intel-hm24"></div>
+      <div id="intel-hm24-labels" class="intel-hlabels"></div>
 
-    <div class="intel-section-label">
-      <span>30-Day Activity Pattern</span>
-      <span id="intel-count-60d" class="intel-section-count"></span>
+      <div class="intel-separator"></div>
+
+      <div class="intel-section-label">
+        <div class="intel-range-toggle" data-range="long">
+          <button data-mode="30d" class="active">30-Day Activity</button>
+          <button data-mode="60d">60-Day Activity</button>
+        </div>
+        <span id="intel-count-60d" class="intel-section-count"></span>
+      </div>
+      <div class="intel-hm60-wrap">
+        <div id="intel-dlabels" class="intel-dlabels"></div>
+        <div class="intel-hm60-right">
+          <div id="intel-hm60"></div>
+          <div id="intel-hm60-labels" class="intel-hlabels"></div>
+        </div>
+      </div>
     </div>
-    <div class="intel-hm60-wrap">
-      <div id="intel-dlabels" class="intel-dlabels"></div>
-      <div class="intel-hm60-right">
-        <div id="intel-hm60"></div>
-        <div id="intel-hm60-labels" class="intel-hlabels"></div>
+
+    <div id="intel-view-scatter" style="display:none;">
+      <div class="intel-section-label">
+        <div class="intel-range-toggle" data-range="scatter">
+          <button data-mode="30d" class="active">30 Days</button>
+          <button data-mode="60d">60 Days</button>
+        </div>
+        <span id="intel-scatter-legend" class="intel-section-count"></span>
+      </div>
+      <div class="intel-scatter-box">
+        <div class="intel-scatter-wrap">
+          <canvas id="intel-scatter" width="280" height="180"></canvas>
+          <div id="intel-scatter-tip" class="intel-scatter-tip"></div>
+        </div>
+        <div id="intel-scatter-legend-list" class="intel-scatter-legend"></div>
       </div>
     </div>
 
@@ -131,6 +163,10 @@
           <div class="intel-section-label">Alliances</div>
           <div id="intel-alliances"></div>
         </div>
+      </div>
+      <div class="intel-spark-legend">
+        <span><i class="intel-spark-swatch intel-spark-swatch--a"></i>Attacker</span>
+        <span><i class="intel-spark-swatch intel-spark-swatch--v"></i>Victim</span>
       </div>
     </div>
   </div>
