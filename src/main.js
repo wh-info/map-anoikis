@@ -2624,6 +2624,7 @@ const killPopup      = document.getElementById('kill-popup');
 const kpImg          = killPopup.querySelector('.kp-img');
 const kpShip         = killPopup.querySelector('.kp-ship');
 const kpPilot        = killPopup.querySelector('.kp-pilot');
+const kpCorp         = killPopup.querySelector('.kp-corp');
 const kpLabel        = killPopup.querySelector('.kp-label');
 const kpClose        = killPopup.querySelector('.kp-close');
 let kpOpenKillId     = null;
@@ -2678,6 +2679,7 @@ async function openKillPopup(rowEl, killId) {
   kpImg.style.backgroundImage = '';
   kpShip.textContent  = 'Loading…';
   kpPilot.textContent = '';
+  kpCorp.textContent  = '';
   kpLabel.textContent = 'Final blow';
   killPopup.classList.add('open');
   positionKillPopup(rowEl);
@@ -2699,25 +2701,34 @@ async function openKillPopup(rowEl, killId) {
     }
     if (fb.isNpc) {
       kpPilot.textContent = 'NPC';
+      kpCorp.textContent  = '';
       kpLabel.textContent = 'NPC FTW';
-    } else if (fb.characterId) {
-      kpPilot.textContent = 'Loading…';
-      const name = await resolveEntityName('char', fb.characterId);
-      if (token !== kpToken) return;
-      kpPilot.textContent = name || 'Unknown pilot';
-    } else if (fb.corporationId) {
-      kpPilot.textContent = 'Loading…';
-      const name = await resolveEntityName('corp', fb.corporationId);
-      if (token !== kpToken) return;
-      kpPilot.textContent = name || 'Unknown corporation';
     } else {
-      kpPilot.textContent = 'Unknown';
+      if (fb.characterId) {
+        kpPilot.textContent = 'Loading…';
+        resolveEntityName('char', fb.characterId).then((name) => {
+          if (token !== kpToken) return;
+          kpPilot.textContent = name || 'Unknown pilot';
+        });
+      } else {
+        kpPilot.textContent = 'Unknown pilot';
+      }
+      if (fb.corporationId) {
+        kpCorp.textContent = 'Loading…';
+        resolveEntityName('corp', fb.corporationId).then((name) => {
+          if (token !== kpToken) return;
+          kpCorp.textContent = name || '';
+        });
+      } else {
+        kpCorp.textContent = '';
+      }
     }
     positionKillPopup(rowEl);
   } catch {
     if (token !== kpToken) return;
     kpShip.textContent  = 'Failed to load';
     kpPilot.textContent = '';
+    kpCorp.textContent  = '';
   }
 }
 

@@ -696,8 +696,16 @@ html, body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.kp-corp {
+  font-size: 10px;
+  color: var(--dim);
+  opacity: 0.75;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .kp-label {
-  margin-top: 3px;
+  margin-bottom: 3px;
   font-size: 9px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
