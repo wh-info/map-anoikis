@@ -6,7 +6,7 @@ Reads groups.jsonl and types.jsonl from build/sde_cache/ and produces:
     window.SDE_BUILD_DATE = "2026-04-11 12:00 UTC"
     window.TYPE_NAMES  = { typeID: "Rifter", ... }
     window.TYPE_KINDS  = { typeID: "ship" | "structure" | "tower"
-                                | "fighter" | "deployable" }
+                                | "deployable" }
     window.TYPE_ICONS  = { typeID: "frigate" | "cruiser" | ... }   # ships only
     window.GROUP_ICONS = { groupID: "frigate" | ... }              # used by
                                                                    # the ESI
@@ -21,7 +21,6 @@ Scope:
   - Ship          (category 6)   — includes capsules
   - Structure     (category 65)  — Citadels + other Upwell
   - Control Tower (category 23, group 365) — POS guns/arrays/silos excluded
-  - Fighter       (category 87)
   - Deployable    (category 22)
 
 Run:
@@ -45,7 +44,6 @@ KIND_RULES: list[tuple[str, int, int | None]] = [
     ("ship",        6,  None),
     ("structure",  65,  None),
     ("tower",      23,  365),
-    ("fighter",    87,  None),
     ("deployable", 22,  None),
 ]
 

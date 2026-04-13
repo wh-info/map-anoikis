@@ -2253,7 +2253,6 @@ const KIND_LABEL = {
   ship: 'Ship',
   structure: 'Structure',
   tower: 'Tower',
-  fighter: 'Fighter',
   deployable: 'Deployable'
 };
 

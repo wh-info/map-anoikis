@@ -3,7 +3,7 @@
 // A kill is in-scope when BOTH:
 //   1. solar_system_id falls inside Anoikis (31000000 <= id < 32000000)
 //   2. victim.ship_type_id resolves to one of our tracked kinds
-//      (ship / structure / tower / fighter / deployable)
+//      (ship / structure / tower / deployable)
 //
 // Kind resolution order:
 //   1. type-kinds.json (built from SDE at deploy time) — instant, covers ~600 types
@@ -27,7 +27,6 @@ const KIND_BY_CATEGORY = new Map([
   [6,  'ship'],
   [65, 'structure'],
   [22, 'deployable'],
-  [87, 'fighter'],
 ]);
 // Control towers: category 23 group 365 — handled separately after ESI lookup.
 const TOWER_CATEGORY = 23;
@@ -75,7 +74,7 @@ export async function classifyKill(msg) {
 
   let kind = kindForType(shipTypeId);
   if (!kind) kind = await kindFromEsi(shipTypeId);
-  if (!kind) return null;
+  if (!kind || kind === 'fighter') return null;
 
   return { systemId, shipTypeId, kind };
 }
