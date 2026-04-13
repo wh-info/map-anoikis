@@ -724,7 +724,7 @@ html, body {
   border: 1px solid var(--border);
   border-right: none;
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.7);
-  padding: 4px 12px 6px;
+  padding: 10px 12px 10px;
   display: none;
   z-index: 1000;
   pointer-events: none;
@@ -734,8 +734,13 @@ html, body {
   pointer-events: auto;
 }
 .kp-header {
-  margin-bottom: 8px;
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  right: 12px;
+  margin: 0;
   text-align: right;
+  pointer-events: none;
 }
 .kp-label {
   font-size: 13px;
@@ -749,6 +754,8 @@ html, body {
   flex-direction: row-reverse;
   gap: 10px;
   align-items: center;
+  padding-top: 20px;
+  min-height: 56px;
 }
 .kp-info {
   flex: 1;
