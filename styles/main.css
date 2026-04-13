@@ -277,37 +277,52 @@ html, body {
   flex-shrink: 0;
 }
 
-/* toggle button — always visible */
+/* filter header — "Filter" label, square toggle button, count */
 .kill-footer-hdr {
   width: 100%;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 6px 14px;
+  padding: 8px 14px;
   background: none; border: none;
   color: var(--dim);
-  cursor: pointer;
   font: inherit;
-  font-size: 9px;
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   font-weight: 700;
-  transition: color 0.12s;
 }
-.kill-footer-hdr:hover { color: var(--accent); }
-
 .kill-footer-left {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  color: var(--muted);
+}
+.kill-footer-toggle-btn {
+  width: 18px; height: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--dim);
+  cursor: pointer;
+  border-radius: 0;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+.kill-footer-toggle-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+#kill-footer.open .kill-footer-toggle-btn {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(0, 200, 200, 0.08);
 }
 .kill-footer-chevron {
-  width: 12px; height: 12px;
+  width: 10px; height: 10px;
   flex-shrink: 0;
-  color: var(--dim);
-  transition: transform 0.18s ease;
-  /* default: triangle points down = collapsed, content hidden below */
+  transition: transform 0.2s ease;
 }
 #kill-footer.open .kill-footer-chevron {
-  transform: rotate(180deg); /* points up = expanded */
+  transform: rotate(180deg);
 }
 #kill-count {
   font-size: 10px;
@@ -317,50 +332,27 @@ html, body {
   text-transform: none;
 }
 
-/* filters — animate open/close with max-height */
+/* filter chips — flat, rectangular, one flat row/wrap */
 #kill-filters {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 5px;
   padding: 0 14px;
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.24s ease, padding 0.24s ease;
+  border-top: 1px solid transparent;
+  transition: max-height 0.24s ease, padding 0.24s ease, border-color 0.24s ease;
 }
 #kill-footer.open #kill-filters {
   max-height: 160px;
-  padding: 4px 14px 10px;
+  padding: 10px 14px 12px;
+  border-top-color: var(--border);
 }
-.kill-filters-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding-top: 6px;
-  border-top: 1px solid var(--border);
-}
-.kill-filters-group:first-child {
-  padding-top: 0;
-  border-top: none;
-}
-.kill-filters-group::before {
-  content: attr(data-label);
-  display: block;
-  width: 100%;
-  font-size: 8px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--dim);
-  margin-bottom: 3px;
-}
-.kill-filters-kinds { }
-.kill-filters-tags  { }
-
-/* Filter chips — flat rectangles, no pill shape */
 .kind-chip {
   font-size: 9px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  padding: 3px 7px;
+  padding: 4px 9px;
   border: 1px solid var(--border);
   background: transparent;
   color: var(--dim);
@@ -634,7 +626,7 @@ html, body {
   gap: 1px;
   padding-top: 20px;
 }
-.kill-list--compact .kill-main { gap: 3px; padding-top: 16px; }
+.kill-list--compact .kill-main { gap: 3px; padding-top: 20px; }
 .kill-body {
   min-width: 0;
   display: flex;
@@ -797,7 +789,7 @@ html, body {
 
 #kill-popup.compact { padding: 6px 8px 6px; }
 #kill-popup.compact .kp-header { top: 5px; left: 8px; right: 8px; }
-#kill-popup.compact .kp-body { padding-top: 16px; min-height: 36px; gap: 8px; }
+#kill-popup.compact .kp-body { padding-top: 20px; min-height: 36px; gap: 8px; }
 #kill-popup.compact .kp-img { width: 36px; height: 36px; }
 #kill-popup.compact .kp-label { font-size: 12px; }
 #kill-popup.compact .kp-ship  { font-size: 11px; }

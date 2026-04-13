@@ -200,26 +200,23 @@
     </div>
   </div>
   <div id="kill-footer">
-    <button class="kill-footer-hdr" id="kill-footer-toggle">
+    <div class="kill-footer-hdr">
       <span class="kill-footer-left">
-        <svg class="kill-footer-chevron" viewBox="0 0 12 12">
-          <polygon points="2,3 10,3 6,10" fill="currentColor" />
-        </svg>
         <span>Filter</span>
+        <button class="kill-footer-toggle-btn" id="kill-footer-toggle" aria-label="Toggle filters" data-tip="Toggle filters">
+          <svg class="kill-footer-chevron" viewBox="0 0 12 12">
+            <polygon points="2,3 10,3 6,10" fill="currentColor" />
+          </svg>
+        </button>
       </span>
       <span id="kill-count">0 shown</span>
-    </button>
+    </div>
     <div id="kill-filters">
-      <div class="kill-filters-group kill-filters-kinds" data-label="Type">
-        <span class="kind-chip on" data-kind="ship"       data-tip="Ships (frigates through titans, pods)">Ships</span>
-        <span class="kind-chip on" data-kind="structure"  data-tip="Upwell structures (Citadels, Engineering Complexes, Refineries, …)">Structures</span>
-        <span class="kind-chip" data-kind="tower"      data-tip="POS Control Towers">Towers</span>
-        <span class="kind-chip" data-kind="fighter"    data-tip="Carrier / supercarrier fighters">Fighters</span>
-        <span class="kind-chip" data-kind="deployable" data-tip="Mobile Depots, MTUs, Cyno Inhibitors, …">Deployables</span>
-      </div>
-      <div class="kill-filters-group kill-filters-tags" data-label="Tags">
-        <span class="kind-chip on" data-tag="npc" data-tip="Kills where NPCs were involved (ratting losses, Drifter response fleets, …)">NPC</span>
-      </div>
+      <span class="kind-chip on" data-kind="ship"       data-tip="Ships (frigates through titans, pods)">Ships</span>
+      <span class="kind-chip on" data-kind="structure"  data-tip="Upwell structures (Citadels, Engineering Complexes, Refineries, …)">Structures</span>
+      <span class="kind-chip" data-kind="tower"      data-tip="POS Control Towers">Towers</span>
+      <span class="kind-chip" data-kind="deployable" data-tip="Mobile Depots, MTUs, Cyno Inhibitors, …">Deployables</span>
+      <span class="kind-chip on" data-tag="npc" data-tip="Kills where NPCs were involved (ratting losses, Drifter response fleets, …)">NPC Kills</span>
     </div>
   </div>
 </div>
