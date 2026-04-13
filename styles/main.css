@@ -514,7 +514,7 @@ html, body {
 }
 #panel-right.history-mode #kill-header .panel-hide-btn { color: #040c0c; }
 #panel-right.history-mode #kill-header .panel-hide-btn:hover { color: #000; }
-#panel-right.history-mode #kill-header .live-dots span { background: #040c0c; }
+#panel-right.history-mode #kill-header .live-dots { display: none; }
 
 #panel-right.history-mode #kill-history-controls {
   background: rgba(0, 220, 220, 0.85);

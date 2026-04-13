@@ -2592,6 +2592,16 @@ function setKillView(mode) {
     historyToggleBtn.classList.remove('on');
     panelRightEl.classList.remove('history-mode');
     killHeaderLabelEl.textContent = 'Killfeed Online';
+    // Rebuild the live list from the buffer — kills that arrived while
+    // history was open aren't in the DOM yet. killBuffer is newest-first,
+    // so the first MAX_KILLS entries are the ones the live list should show.
+    killList.innerHTML = '';
+    const liveSlice = killBuffer.slice(0, MAX_KILLS);
+    for (let i = liveSlice.length - 1; i >= 0; i--) {
+      const { kill, star } = liveSlice[i];
+      const el = buildKillElement(killToParams(kill, star));
+      killList.insertBefore(el, killList.firstChild);
+    }
     unseenLiveKills = 0;
     updateKillCount();
   }
