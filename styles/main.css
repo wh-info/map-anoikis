@@ -671,8 +671,7 @@ html, body {
   padding: 8px 12px 10px;
   display: none;
   opacity: 0;
-  transform: translateX(30px);
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transform: translateX(40px);
   z-index: 1000;
   pointer-events: none;
 }
@@ -681,6 +680,11 @@ html, body {
   opacity: 1;
   transform: translateX(0);
   pointer-events: auto;
+  animation: killPopupIn 0.12s ease-out;
+}
+@keyframes killPopupIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 .kp-header {
   margin-bottom: 6px;
