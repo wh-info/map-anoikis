@@ -913,6 +913,7 @@ let intelRangeLong  = '30d'; // '30d' | '60d'
 // by the range toggle handlers to re-aggregate without re-fetching.
 let intelCurrentKills = null;
 let intelCurrentRgb   = null;
+let intelCurrentStar  = null;
 let intelCurrentToken = 0;
 const ESI_HYDRATE_BATCH  = 10;
 
@@ -1269,6 +1270,57 @@ function renderScatter() {
     if (matched) scatterHits.push({ x, y, k, color, cls });
   }
   ctx.globalAlpha = 1;
+
+  // Thera hits zKB's pagination cap before reaching 30/60 days back. Find the
+  // oldest kill we actually got and draw a "data ends here" marker so users
+  // aren't misled by the empty area to the left. Only Thera for now — other
+  // systems are quiet enough to fit inside the cap.
+  const isThera = !!intelCurrentStar && (intelCurrentStar.class === 'Thera' || intelCurrentStar.name === 'Thera');
+  const noteEl = document.getElementById('intel-scatter-note');
+  let truncated = false;
+  let oldestSpanDays = days;
+  if (isThera) {
+    let oldestTs = Infinity;
+    for (const k of kills) {
+      const ts = new Date(k.killmail_time).getTime();
+      if (Number.isFinite(ts) && ts >= cutoff && ts < oldestTs) oldestTs = ts;
+    }
+    if (Number.isFinite(oldestTs)) {
+      oldestSpanDays = (now - oldestTs) / INTEL_DAY_MS;
+      if (oldestSpanDays < days * 0.9) {
+        truncated = true;
+        const cutX = padL + ((oldestTs - cutoff) / (now - cutoff)) * plotW;
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.fillRect(padL, padT, Math.max(0, cutX - padL), plotH);
+        ctx.strokeStyle = 'rgba(220, 180, 100, 0.6)';
+        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cutX, padT);
+        ctx.lineTo(cutX, padT + plotH);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(220, 180, 100, 0.85)';
+        ctx.font = '9px monospace';
+        const lbl = 'data ends';
+        const lblW = ctx.measureText(lbl).width;
+        const lblX = Math.min(cutX + 4, cssW - padR - lblW);
+        ctx.fillText(lbl, lblX, padT + 10);
+        ctx.restore();
+      }
+    }
+  }
+  if (truncated && noteEl) {
+    noteEl.classList.add('on');
+    noteEl.textContent =
+      `Showing ~${Math.round(oldestSpanDays)} days. Thera gets too many kills ` +
+      `for zKillboard to return a full ${days} days of history.`;
+  } else if (noteEl) {
+    noteEl.classList.remove('on');
+    noteEl.textContent = '';
+  }
+
   const legendEl = document.getElementById('intel-scatter-legend');
   if (intelEntityFilter) {
     legendEl.textContent = `${scatterHits.length} of ${filteredTotal} kills shown`;
@@ -1431,6 +1483,7 @@ async function loadIntel(star, token) {
 
   intelCurrentRgb   = starColor(star);
   intelCurrentKills = null;
+  intelCurrentStar  = star;
   intelCurrentToken = token;
   intelEntityFilter = null;
   let flipped = false;

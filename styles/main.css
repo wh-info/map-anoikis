@@ -1290,6 +1290,18 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   padding: 6px 8px 10px;
   background: rgba(0, 0, 0, 0.55);
 }
+.intel-scatter-note {
+  display: none;
+  margin-top: 8px;
+  padding: 6px 8px;
+  font-size: 9px;
+  line-height: 1.5;
+  color: rgba(220, 180, 100, 0.85);
+  background: rgba(220, 180, 100, 0.06);
+  border-left: 2px solid rgba(220, 180, 100, 0.55);
+  letter-spacing: 0.03em;
+}
+.intel-scatter-note.on { display: block; }
 .intel-scatter-legend {
   display: grid;
   grid-template-columns: repeat(4, max-content);
