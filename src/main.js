@@ -2729,9 +2729,9 @@ function renderKillPopupBody(fb, token) {
     kpShip.textContent = 'Unknown ship';
   }
   if (fb.isNpc) {
-    kpPilot.textContent = 'NPC';
+    kpPilot.textContent = 'o7';
     kpCorp.textContent  = '';
-    kpLabel.textContent = 'NPC FTW';
+    kpLabel.textContent = 'NPC KILL';
   } else {
     kpLabel.textContent = 'Final blow';
     if (fb.characterId) {

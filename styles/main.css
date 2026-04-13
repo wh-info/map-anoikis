@@ -724,7 +724,7 @@ html, body {
   border: 1px solid var(--border);
   border-right: none;
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.7);
-  padding: 6px 12px 10px;
+  padding: 4px 12px 6px;
   display: none;
   z-index: 1000;
   pointer-events: none;
@@ -779,8 +779,9 @@ html, body {
 }
 .kp-pilot,
 .kp-corp {
-  font-size: 11px;
-  color: var(--dim);
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
