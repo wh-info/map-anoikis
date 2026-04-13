@@ -506,7 +506,7 @@ html, body {
 .kill {
   position: relative;
   display: flex; gap: 8px; align-items: center;
-  padding: 30px 10px 10px 10px;
+  padding: 10px 10px 10px 10px;
   background: var(--panel-dark);
   border: 1px solid var(--border);
   border-radius: 0;
@@ -602,8 +602,9 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  padding-top: 20px;
 }
-.kill-list--compact .kill-main { gap: 3px; }
+.kill-list--compact .kill-main { gap: 3px; padding-top: 16px; }
 .kill-body {
   min-width: 0;
   display: flex;
@@ -655,7 +656,7 @@ html, body {
 
 /* --- compact kill list ----------------------------------------- */
 .kill-list--compact .kill {
-  padding: 22px 8px 6px 8px;
+  padding: 6px 8px 6px 8px;
 }
 .kill-list--compact .kill-header {
   top: 5px;
