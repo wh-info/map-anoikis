@@ -2251,8 +2251,10 @@ function resolveEntityName(kind, id) {
   return p;
 }
 
-function buildKillElement({ star, killId, typeId, kind, characterId, corporationId, value, ts, hasImplants, isNpc }) {
-  const isDelayed = ts ? (Date.now() - ts * 1000 > DELAYED_KILL_MS) : false;
+function buildKillElement({ star, killId, typeId, kind, characterId, corporationId, value, ts, hasImplants, isNpc, isDelayed }) {
+  if (isDelayed === undefined) {
+    isDelayed = ts ? (Date.now() - ts * 1000 > DELAYED_KILL_MS) : false;
+  }
   const name = typeNameFor(typeId); // synchronous best-effort; ESI fills in below if unknown
   const img = typeId != null
     ? `https://images.evetech.net/types/${typeId}/render?size=64`
@@ -2365,14 +2367,17 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
 }
 
 function spawnLiveKill(params) {
-  if (params.animated) {
-    const isDelayed = params.ts ? (Date.now() - params.ts * 1000 > DELAYED_KILL_MS) : false;
-    triggerKillAnim(params.star, isDelayed);
-  }
+  if (params.animated) triggerKillAnim(params.star, !!params.isDelayed);
   const el = buildKillElement(params);
   killList.insertBefore(el, killList.firstChild);
   while (killList.children.length > MAX_KILLS) killList.removeChild(killList.lastChild);
   updateKillCount();
+}
+
+function stampKill(kill) {
+  if (kill._delayedStamped) return;
+  kill._delayedStamped = true;
+  kill._isDelayed = kill.ts ? (Date.now() - kill.ts * 1000 > DELAYED_KILL_MS) : false;
 }
 
 function killToParams(kill, star) {
@@ -2387,6 +2392,7 @@ function killToParams(kill, star) {
     ts: kill.ts,
     hasImplants: !!kill.hasImplants,
     isNpc: !!kill.isNpc,
+    isDelayed: kill._isDelayed,
   };
 }
 
@@ -2436,14 +2442,17 @@ function pushToBuffer(kill, star) {
 }
 
 function renderHistoryPage() {
-  const totalPages = Math.max(1, Math.ceil(killBuffer.length / HISTORY_PAGE_SIZE));
+  // History = kills older than what's currently in the live list.
+  // Skip the newest MAX_KILLS items (those are in the live view).
+  const historyItems = killBuffer.slice(MAX_KILLS);
+  const totalPages = Math.max(1, Math.ceil(historyItems.length / HISTORY_PAGE_SIZE));
   if (historyPage >= totalPages) historyPage = totalPages - 1;
   if (historyPage < 0) historyPage = 0;
   const start = historyPage * HISTORY_PAGE_SIZE;
-  const end = Math.min(start + HISTORY_PAGE_SIZE, killBuffer.length);
+  const end = Math.min(start + HISTORY_PAGE_SIZE, historyItems.length);
   historyListEl.innerHTML = '';
   for (let i = start; i < end; i++) {
-    const { kill, star } = killBuffer[i];
+    const { kill, star } = historyItems[i];
     const el = buildKillElement(killToParams(kill, star));
     if (!isKillVisible(el.dataset.kind, el.dataset.npc === '1')) el.style.display = 'none';
     historyListEl.appendChild(el);
@@ -2568,6 +2577,7 @@ function connectKillFeed() {
       let msg;
       try { msg = JSON.parse(e.data); } catch { return; }
       if (msg.type === 'snapshot' && Array.isArray(msg.kills)) {
+        for (const k of msg.kills) stampKill(k);
         // Fill buffer newest-first from the full ring (up to HISTORY_BUFFER_SIZE).
         killBuffer.length = 0;
         for (let i = msg.kills.length - 1; i >= 0 && killBuffer.length < HISTORY_BUFFER_SIZE; i--) {
@@ -2581,6 +2591,7 @@ function connectKillFeed() {
         for (const k of recent) handleBackendKill(k, false);
         if (killViewMode === 'history') renderHistoryPage();
       } else if (msg.type === 'kill' && msg.kill) {
+        stampKill(msg.kill);
         const star = starById.get(msg.kill.systemId);
         if (star) pushToBuffer(msg.kill, star);
         if (killViewMode === 'live') {
