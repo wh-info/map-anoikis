@@ -424,6 +424,72 @@ html, body {
   display: flex; flex-direction: column; gap: 6px;
 }
 
+#kill-history {
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+#kill-history.on {
+  display: flex;
+}
+#kill-history-banner {
+  padding: 7px 10px;
+  background: rgba(0, 200, 200, 0.14);
+  border-bottom: 1px dashed var(--border);
+  color: rgba(0, 240, 240, 0.95);
+  font-size: 10px;
+  cursor: pointer;
+  text-align: center;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+#kill-history-banner:hover { background: rgba(0, 200, 200, 0.22); }
+#kill-history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+#kill-history-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--panel-dark);
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+#kill-history-controls button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  transition: background 0.1s, border-color 0.1s;
+}
+#kill-history-controls button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+#kill-history-controls button:not(:disabled):hover {
+  background: rgba(0, 200, 200, 0.12);
+  border-color: rgba(0, 200, 200, 0.5);
+}
+#kill-history-toggle.on {
+  color: rgba(0, 240, 240, 1);
+  border-color: rgba(0, 220, 220, 0.6);
+}
+
 .kill {
   position: relative;
   display: flex; gap: 8px; align-items: center;
@@ -1120,11 +1186,23 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   justify-content: center;
   margin: 4px 0 14px;
 }
-.intel-view-toggle button { font-size: 12px; letter-spacing: 0.1em; }
-.intel-view-toggle button::after {
-  margin-left: 8px;
+.intel-view-toggle {
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.intel-view-toggle button {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  opacity: 0.72;
+}
+.intel-view-toggle button::after { display: none; }
+.intel-view-toggle button.active { opacity: 1; }
+.intel-view-sep {
   color: var(--fg);
-  opacity: 0.55;
+  opacity: 0.85;
+  font-size: 12px;
+  margin: 0 4px;
+  pointer-events: none;
 }
 .intel-range-toggle button:hover { opacity: 0.85; }
 .intel-range-toggle button.active {
@@ -1178,7 +1256,10 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   cursor: default;
   transition: opacity 0.1s;
 }
-.intel-hm-cell:hover { opacity: 0.75; box-shadow: inset 0 0 0 1px rgba(0,200,200,0.5); }
+.intel-hm-cell:hover {
+  opacity: 0.75;
+  box-shadow: inset 1px 0 0 0 rgba(0,200,200,0.5), inset -1px 0 0 0 rgba(0,200,200,0.5);
+}
 
 /* Kill scatter */
 .intel-scatter-wrap {

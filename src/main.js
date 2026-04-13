@@ -1290,9 +1290,8 @@ function setIntelView(view) {
   }
 }
 
-document.querySelector('[data-view-toggle]').addEventListener('click', (e) => {
-  const btn = e.target.closest('button[data-view]');
-  if (btn) setIntelView(btn.dataset.view);
+document.querySelector('[data-view-toggle]').addEventListener('click', () => {
+  setIntelView(intelView === 'heatmap' ? 'scatter' : 'heatmap');
 });
 
 // Hover tooltip on scatter dots — closest dot within 6px wins.
@@ -2106,7 +2105,13 @@ settingsPanel.addEventListener('click', (e) => e.stopPropagation());
 // --- Kill feed ---------------------------------------------------
 const killList = document.getElementById('kill-list');
 const killCountEl = document.getElementById('kill-count');
-const MAX_KILLS = 50;
+const MAX_KILLS = 60;
+const HISTORY_BUFFER_SIZE = 300;
+const HISTORY_PAGE_SIZE = 60;
+const killBuffer = []; // newest first, capped at HISTORY_BUFFER_SIZE
+let killViewMode = 'live'; // 'live' | 'history'
+let historyPage = 0;
+let unseenLiveKills = 0;
 
 function formatIsk(v) {
   if (v >= 1e9) return (v / 1e9).toFixed(1) + '<b>B</b>';
@@ -2246,9 +2251,8 @@ function resolveEntityName(kind, id) {
   return p;
 }
 
-function spawnKill({ star, killId, typeId, kind, characterId, corporationId, value, ts, hasImplants, isNpc, animated }) {
+function buildKillElement({ star, killId, typeId, kind, characterId, corporationId, value, ts, hasImplants, isNpc }) {
   const isDelayed = ts ? (Date.now() - ts * 1000 > DELAYED_KILL_MS) : false;
-  if (animated) triggerKillAnim(star, isDelayed);
   const name = typeNameFor(typeId); // synchronous best-effort; ESI fills in below if unknown
   const img = typeId != null
     ? `https://images.evetech.net/types/${typeId}/render?size=64`
@@ -2349,10 +2353,6 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
     });
   }
 
-  killList.insertBefore(el, killList.firstChild);
-  while (killList.children.length > MAX_KILLS) killList.removeChild(killList.lastChild);
-  updateKillCount();
-
   // If either the name or the icon was a fallback placeholder, ask the
   // unified resolver to fill whatever is missing via ESI.
   const nameKnown = !!window.TYPE_NAMES?.[typeId];
@@ -2360,20 +2360,23 @@ function spawnKill({ star, killId, typeId, kind, characterId, corporationId, val
   if (!nameKnown || !iconKnown) {
     resolveType(typeId, el.querySelector('.kill-ship-name'), el.querySelector('.kill-icon'));
   }
+
+  return el;
 }
 
-function updateKillCount() {
-  let visible = 0;
-  for (const el of killList.children) {
-    if (el.style.display !== 'none') visible++;
+function spawnLiveKill(params) {
+  if (params.animated) {
+    const isDelayed = params.ts ? (Date.now() - params.ts * 1000 > DELAYED_KILL_MS) : false;
+    triggerKillAnim(params.star, isDelayed);
   }
-  killCountEl.textContent = visible + ' shown';
+  const el = buildKillElement(params);
+  killList.insertBefore(el, killList.firstChild);
+  while (killList.children.length > MAX_KILLS) killList.removeChild(killList.lastChild);
+  updateKillCount();
 }
 
-function handleBackendKill(kill, animated) {
-  const star = starById.get(kill.systemId);
-  if (!star) return;
-  spawnKill({
+function killToParams(kill, star) {
+  return {
     star,
     killId: kill.id,
     typeId: kill.shipTypeId,
@@ -2384,17 +2387,111 @@ function handleBackendKill(kill, animated) {
     ts: kill.ts,
     hasImplants: !!kill.hasImplants,
     isNpc: !!kill.isNpc,
-    animated
-  });
+  };
+}
+
+function updateKillCount() {
+  const container = killViewMode === 'history'
+    ? document.getElementById('kill-history-list')
+    : killList;
+  let visible = 0;
+  if (container) {
+    for (const el of container.children) {
+      if (el.style.display !== 'none') visible++;
+    }
+  }
+  killCountEl.textContent = visible + ' shown';
+}
+
+function handleBackendKill(kill, animated) {
+  const star = starById.get(kill.systemId);
+  if (!star) return;
+  spawnLiveKill({ ...killToParams(kill, star), animated });
   if (animated) flashRestoreRight();
 }
 
 function applyKillFilters() {
-  for (const el of killList.children) {
-    el.style.display = isKillVisible(el.dataset.kind, el.dataset.npc === '1') ? '' : 'none';
+  const lists = [killList, document.getElementById('kill-history-list')];
+  for (const list of lists) {
+    if (!list) continue;
+    for (const el of list.children) {
+      el.style.display = isKillVisible(el.dataset.kind, el.dataset.npc === '1') ? '' : 'none';
+    }
   }
   updateKillCount();
 }
+
+// --- Kill history ------------------------------------------------
+const historyListEl = document.getElementById('kill-history-list');
+const historyContainerEl = document.getElementById('kill-history');
+const historyBannerEl = document.getElementById('kill-history-banner');
+const historyPageLabelEl = document.getElementById('kill-history-page');
+const historyPrevBtn = document.getElementById('kill-history-prev');
+const historyNextBtn = document.getElementById('kill-history-next');
+const historyToggleBtn = document.getElementById('kill-history-toggle');
+
+function pushToBuffer(kill, star) {
+  killBuffer.unshift({ kill, star });
+  while (killBuffer.length > HISTORY_BUFFER_SIZE) killBuffer.pop();
+}
+
+function renderHistoryPage() {
+  const totalPages = Math.max(1, Math.ceil(killBuffer.length / HISTORY_PAGE_SIZE));
+  if (historyPage >= totalPages) historyPage = totalPages - 1;
+  if (historyPage < 0) historyPage = 0;
+  const start = historyPage * HISTORY_PAGE_SIZE;
+  const end = Math.min(start + HISTORY_PAGE_SIZE, killBuffer.length);
+  historyListEl.innerHTML = '';
+  for (let i = start; i < end; i++) {
+    const { kill, star } = killBuffer[i];
+    const el = buildKillElement(killToParams(kill, star));
+    if (!isKillVisible(el.dataset.kind, el.dataset.npc === '1')) el.style.display = 'none';
+    historyListEl.appendChild(el);
+  }
+  historyPageLabelEl.textContent = `Page ${historyPage + 1} / ${totalPages}`;
+  historyPrevBtn.disabled = historyPage === 0;
+  historyNextBtn.disabled = historyPage >= totalPages - 1;
+  updateKillCount();
+}
+
+function updateHistoryBanner() {
+  if (killViewMode === 'history' && unseenLiveKills > 0) {
+    historyBannerEl.style.display = '';
+    historyBannerEl.textContent = `${unseenLiveKills} new kill${unseenLiveKills !== 1 ? 's' : ''} — click to return to Live`;
+  } else {
+    historyBannerEl.style.display = 'none';
+  }
+}
+
+function setKillView(mode) {
+  killViewMode = mode;
+  if (mode === 'history') {
+    killList.style.display = 'none';
+    historyContainerEl.style.display = 'flex';
+    historyToggleBtn.classList.add('on');
+    historyPage = 0;
+    renderHistoryPage();
+  } else {
+    killList.style.display = '';
+    historyContainerEl.style.display = 'none';
+    historyToggleBtn.classList.remove('on');
+    unseenLiveKills = 0;
+    updateKillCount();
+  }
+  updateHistoryBanner();
+}
+
+historyToggleBtn.addEventListener('click', () => {
+  setKillView(killViewMode === 'live' ? 'history' : 'live');
+});
+historyBannerEl.addEventListener('click', () => setKillView('live'));
+historyPrevBtn.addEventListener('click', () => {
+  if (historyPage > 0) { historyPage--; renderHistoryPage(); }
+});
+historyNextBtn.addEventListener('click', () => {
+  const totalPages = Math.max(1, Math.ceil(killBuffer.length / HISTORY_PAGE_SIZE));
+  if (historyPage < totalPages - 1) { historyPage++; renderHistoryPage(); }
+});
 document.querySelectorAll('#kill-filters .kind-chip').forEach((chip) => {
   chip.addEventListener('click', () => {
     const kind = chip.dataset.kind;
@@ -2412,7 +2509,12 @@ document.querySelectorAll('#kill-filters .kind-chip').forEach((chip) => {
 });
 
 setInterval(() => {
-  for (const el of killList.querySelectorAll('.kill-age')) {
+  const hist = document.getElementById('kill-history-list');
+  const ages = [
+    ...killList.querySelectorAll('.kill-age'),
+    ...(hist ? hist.querySelectorAll('.kill-age') : []),
+  ];
+  for (const el of ages) {
     const ts = Number(el.dataset.ts) || 0;
     el.textContent = formatAge(ts);
   }
@@ -2427,6 +2529,8 @@ document.getElementById('kill-footer-toggle').addEventListener('click', () => {
 const COMPACT_KEY = 'anoikis-kill-compact';
 function applyKillCompactState(on) {
   killList.classList.toggle('kill-list--compact', on);
+  const hist = document.getElementById('kill-history-list');
+  if (hist) hist.classList.toggle('kill-list--compact', on);
   document.getElementById('kill-compact-toggle').classList.toggle('on', on);
 }
 applyKillCompactState(localStorage.getItem(COMPACT_KEY) === '1');
@@ -2464,10 +2568,28 @@ function connectKillFeed() {
       let msg;
       try { msg = JSON.parse(e.data); } catch { return; }
       if (msg.type === 'snapshot' && Array.isArray(msg.kills)) {
+        // Fill buffer newest-first from the full ring (up to HISTORY_BUFFER_SIZE).
+        killBuffer.length = 0;
+        for (let i = msg.kills.length - 1; i >= 0 && killBuffer.length < HISTORY_BUFFER_SIZE; i--) {
+          const k = msg.kills[i];
+          const star = starById.get(k.systemId);
+          if (star) killBuffer.push({ kill: k, star });
+        }
+        // Render the most recent MAX_KILLS to the live list.
+        killList.innerHTML = '';
         const recent = msg.kills.slice(-MAX_KILLS);
         for (const k of recent) handleBackendKill(k, false);
+        if (killViewMode === 'history') renderHistoryPage();
       } else if (msg.type === 'kill' && msg.kill) {
-        handleBackendKill(msg.kill, true);
+        const star = starById.get(msg.kill.systemId);
+        if (star) pushToBuffer(msg.kill, star);
+        if (killViewMode === 'live') {
+          handleBackendKill(msg.kill, true);
+        } else {
+          unseenLiveKills++;
+          updateHistoryBanner();
+          flashRestoreRight();
+        }
       }
     });
     ws.addEventListener('close', schedule);

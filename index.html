@@ -103,6 +103,7 @@
     <div class="intel-section-label intel-view-toggle-row">
       <div class="intel-range-toggle intel-view-toggle" data-view-toggle="1">
         <button data-view="heatmap" class="active">Heatmap</button>
+        <span class="intel-view-sep">|</span>
         <button data-view="scatter">Kill Scatter</button>
       </div>
     </div>
@@ -177,6 +178,9 @@
   <div id="kill-header">
     <div class="title" style="margin: 0;">Live Kills<span class="live-dots"><span>.</span><span>.</span><span>.</span></span></div>
     <div style="display: flex; align-items: center; gap: 8px;">
+      <button class="panel-hide-btn" id="kill-history-toggle" data-tip="View kill history">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
+      </button>
       <button class="panel-hide-btn" id="kill-compact-toggle" data-tip="Toggle compact view">
         <svg class="kill-compact-icon-normal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5"/><rect x="3" y="13" width="18" height="5"/></svg>
         <svg class="kill-compact-icon-compact" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6"  x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -186,6 +190,15 @@
   </div>
   <button class="panel-minimize-corner panel-minimize-corner--tr" id="hide-right" data-tip="Hide panel" aria-label="Hide panel"></button>
   <div id="kill-list"></div>
+  <div id="kill-history" style="display:none;">
+    <div id="kill-history-banner" style="display:none;"></div>
+    <div id="kill-history-list"></div>
+    <div id="kill-history-controls">
+      <button id="kill-history-prev">&lsaquo; Prev</button>
+      <span id="kill-history-page">Page 1 / 1</span>
+      <button id="kill-history-next">Next &rsaquo;</button>
+    </div>
+  </div>
   <div id="kill-footer">
     <button class="kill-footer-hdr" id="kill-footer-toggle">
       <span>Filter</span>
