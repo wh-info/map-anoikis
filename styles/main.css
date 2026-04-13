@@ -486,7 +486,7 @@ html, body {
   padding: 4px 10px;
   cursor: pointer;
   font-family: inherit;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.05em;
   transition: background 0.1s, border-color 0.1s;
 }
@@ -502,6 +502,36 @@ html, body {
   color: rgba(0, 240, 240, 1);
   border-color: rgba(0, 220, 220, 0.6);
 }
+
+/* --- History mode: invert header + pagination colors ------------- */
+#panel-right.history-mode #kill-header {
+  background: rgba(0, 220, 220, 0.85);
+  color: #040c0c;
+}
+#panel-right.history-mode #kill-header .title,
+#panel-right.history-mode #kill-header #kill-header-label {
+  color: #040c0c;
+}
+#panel-right.history-mode #kill-header .panel-hide-btn { color: #040c0c; }
+#panel-right.history-mode #kill-header .panel-hide-btn:hover { color: #000; }
+#panel-right.history-mode #kill-header .live-dots span { background: #040c0c; }
+
+#panel-right.history-mode #kill-history-controls {
+  background: rgba(0, 220, 220, 0.85);
+  color: #040c0c;
+  border-top-color: rgba(0, 0, 0, 0.35);
+}
+#panel-right.history-mode #kill-history-controls button {
+  background: transparent;
+  color: #040c0c;
+  border-color: rgba(0, 0, 0, 0.4);
+}
+#panel-right.history-mode #kill-history-controls button:not(:disabled):hover {
+  background: rgba(0, 0, 0, 0.12);
+  border-color: rgba(0, 0, 0, 0.6);
+}
+
+#kill-history-page { font-size: 12px; font-weight: 700; }
 
 .kill {
   position: relative;

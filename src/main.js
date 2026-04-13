@@ -2573,18 +2573,25 @@ function updateHistoryBanner() {
   }
 }
 
+const killHeaderLabelEl = document.getElementById('kill-header-label');
+const panelRightEl = document.getElementById('panel-right');
+
 function setKillView(mode) {
   killViewMode = mode;
   if (mode === 'history') {
     killList.style.display = 'none';
     historyContainerEl.style.display = 'flex';
     historyToggleBtn.classList.add('on');
+    panelRightEl.classList.add('history-mode');
+    killHeaderLabelEl.textContent = 'Killfeed History';
     historyPage = 0;
     renderHistoryPage();
   } else {
     killList.style.display = '';
     historyContainerEl.style.display = 'none';
     historyToggleBtn.classList.remove('on');
+    panelRightEl.classList.remove('history-mode');
+    killHeaderLabelEl.textContent = 'Killfeed Online';
     unseenLiveKills = 0;
     updateKillCount();
   }
