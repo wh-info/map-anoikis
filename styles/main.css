@@ -294,14 +294,27 @@ html, body {
 }
 .kill-footer-hdr:hover { color: var(--accent); }
 
+.kill-footer-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
 .kill-footer-chevron {
-  width: 10px; height: 10px;
+  width: 12px; height: 12px;
   flex-shrink: 0;
+  color: var(--dim);
   transition: transform 0.18s ease;
-  /* default: chevron points down = collapsed, content hidden below */
+  /* default: triangle points down = collapsed, content hidden below */
 }
 #kill-footer.open .kill-footer-chevron {
   transform: rotate(180deg); /* points up = expanded */
+}
+#kill-count {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  text-transform: none;
 }
 
 /* filters — animate open/close with max-height */
@@ -656,6 +669,16 @@ html, body {
 .kill-list--compact .kill-ship      { font-size: 11px; }
 .kill-list--compact .kill-pilot     { font-size: 11px; }
 .kill-list--compact .kill-corp      { display: none; }
+.kill-ship-extra                    { display: none; }
+.kill-list--compact .kill-footer    { display: none; }
+.kill-list--compact .kill-ship-extra {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--dim);
+}
+.kill-list--compact .kill-ship-sep  { color: var(--dim); opacity: 0.6; }
 .kill-list--compact .kill-footer    { font-size: 11px; gap: 5px; margin-top: 2px; }
 .kill-list--compact .kill-value     { font-size: 11px; }
 
@@ -893,6 +916,8 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 }
 .panel-hide-btn:hover { color: var(--accent); }
 .panel-hide-btn svg { width: 11px; height: 11px; display: block; }
+#kill-header .panel-hide-btn { width: 26px; height: 26px; }
+#kill-header .panel-hide-btn svg { width: 16px; height: 16px; }
 
 /* Corner-triangle minimize button (left panel top-left, right panel top-right). */
 .panel-minimize-corner {

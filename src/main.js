@@ -2354,7 +2354,14 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
           ${techBadge(typeId) ? `<img src="./img/graphic/${techBadge(typeId)}.png" class="kill-tech-badge" alt="" aria-hidden="true" />` : ''}
         </div>
         <div class="kill-info">
-          <div class="kill-ship"><span class="kill-ship-name">${escapeHtml(name)}</span></div>
+          <div class="kill-ship">
+          <span class="kill-ship-name">${escapeHtml(name)}</span>
+          <span class="kill-ship-extra">
+            <span class="kill-ship-sep">·</span>
+            <span class="kill-value">${formatIsk(value)} ISK</span>
+            ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
+          </span>
+        </div>
           <div class="kill-pilot${ownerLoading ? ' loading' : ''}">${ownerInitial}</div>
           <div class="kill-corp${hasCorp ? ' loading' : ''}">${hasCorp ? 'Loading corporation…' : ''}</div>
         </div>
