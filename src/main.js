@@ -2396,6 +2396,14 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
   locateBtn.addEventListener('mouseenter', () => { locateHover = { el: locateBtn, star }; });
   locateBtn.addEventListener('mouseleave', () => { locateHover = null; });
 
+  if (killId != null) {
+    el.dataset.killId = String(killId);
+    el.addEventListener('click', (ev) => {
+      if (ev.target.closest('.kill-btn')) return;
+      openKillPopup(el, killId);
+    });
+  }
+
   if (ownerLoading) {
     const pilotEl = el.querySelector('.kill-pilot');
     const [entityKind, entityId] = hasChar
@@ -2609,6 +2617,119 @@ document.getElementById('kill-compact-toggle').addEventListener('click', () => {
   const on = !killList.classList.contains('kill-list--compact');
   applyKillCompactState(on);
   localStorage.setItem(COMPACT_KEY, on ? '1' : '0');
+});
+
+// --- Kill detail popup (final-blow attacker) --------------------
+const killPopup      = document.getElementById('kill-popup');
+const kpImg          = killPopup.querySelector('.kp-img');
+const kpShip         = killPopup.querySelector('.kp-ship');
+const kpPilot        = killPopup.querySelector('.kp-pilot');
+const kpLabel        = killPopup.querySelector('.kp-label');
+const kpClose        = killPopup.querySelector('.kp-close');
+let kpOpenKillId     = null;
+let kpToken          = 0;
+
+// killId → Promise<{ shipTypeId, characterId, corporationId, isNpc }>
+const finalBlowCache = new Map();
+
+async function fetchFinalBlow(killId) {
+  if (finalBlowCache.has(killId)) return finalBlowCache.get(killId);
+  const p = (async () => {
+    const zres = await fetch(`https://zkillboard.com/api/killID/${killId}/`);
+    if (!zres.ok) throw new Error('zkb fetch failed');
+    const zarr = await zres.json();
+    const hash = zarr?.[0]?.zkb?.hash;
+    if (!hash) throw new Error('no hash');
+    const kres = await fetch(`https://esi.evetech.net/latest/killmails/${killId}/${hash}/`);
+    if (!kres.ok) throw new Error('esi killmail failed');
+    const km = await kres.json();
+    const fb = km.attackers?.find((a) => a.final_blow) || km.attackers?.[0];
+    if (!fb) throw new Error('no final blow');
+    return {
+      shipTypeId:    fb.ship_type_id ?? null,
+      characterId:   fb.character_id ?? null,
+      corporationId: fb.corporation_id ?? null,
+      isNpc:         !fb.character_id,
+    };
+  })();
+  finalBlowCache.set(killId, p);
+  p.catch(() => finalBlowCache.delete(killId));
+  return p;
+}
+
+function positionKillPopup(rowEl) {
+  const rect = rowEl.getBoundingClientRect();
+  const popupH = killPopup.offsetHeight || 100;
+  let top = rect.top;
+  if (top + popupH > window.innerHeight - 10) top = window.innerHeight - popupH - 10;
+  if (top < 10) top = 10;
+  killPopup.style.top = top + 'px';
+}
+
+function closeKillPopup() {
+  killPopup.classList.remove('open');
+  kpOpenKillId = null;
+}
+
+async function openKillPopup(rowEl, killId) {
+  if (kpOpenKillId === killId) { closeKillPopup(); return; }
+  kpOpenKillId = killId;
+  const token = ++kpToken;
+  kpImg.style.backgroundImage = '';
+  kpShip.textContent  = 'Loading…';
+  kpPilot.textContent = '';
+  kpLabel.textContent = 'Final blow';
+  killPopup.classList.add('open');
+  positionKillPopup(rowEl);
+
+  try {
+    const fb = await fetchFinalBlow(killId);
+    if (token !== kpToken) return;
+    if (fb.shipTypeId != null) {
+      kpImg.style.backgroundImage = `url('https://images.evetech.net/types/${fb.shipTypeId}/render?size=64')`;
+      const localName = window.TYPE_NAMES?.[fb.shipTypeId];
+      if (localName) {
+        kpShip.textContent = localName;
+      } else {
+        kpShip.textContent = 'Type ' + fb.shipTypeId;
+        resolveType(fb.shipTypeId, kpShip, null);
+      }
+    } else {
+      kpShip.textContent = 'Unknown ship';
+    }
+    if (fb.isNpc) {
+      kpPilot.textContent = 'NPC';
+      kpLabel.textContent = 'NPC FTW';
+    } else if (fb.characterId) {
+      kpPilot.textContent = 'Loading…';
+      const name = await resolveEntityName('char', fb.characterId);
+      if (token !== kpToken) return;
+      kpPilot.textContent = name || 'Unknown pilot';
+    } else if (fb.corporationId) {
+      kpPilot.textContent = 'Loading…';
+      const name = await resolveEntityName('corp', fb.corporationId);
+      if (token !== kpToken) return;
+      kpPilot.textContent = name || 'Unknown corporation';
+    } else {
+      kpPilot.textContent = 'Unknown';
+    }
+    positionKillPopup(rowEl);
+  } catch {
+    if (token !== kpToken) return;
+    kpShip.textContent  = 'Failed to load';
+    kpPilot.textContent = '';
+  }
+}
+
+kpClose.addEventListener('click', (e) => { e.stopPropagation(); closeKillPopup(); });
+killPopup.addEventListener('click', (e) => e.stopPropagation());
+document.addEventListener('click', (e) => {
+  if (!killPopup.classList.contains('open')) return;
+  if (e.target.closest('.kill')) return;
+  closeKillPopup();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && killPopup.classList.contains('open')) closeKillPopup();
 });
 
 // --- Live backend WS ---------------------------------------------

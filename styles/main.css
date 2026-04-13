@@ -640,6 +640,87 @@ html, body {
 .kill-list--compact .kill-footer    { font-size: 11px; gap: 5px; margin-top: 2px; }
 .kill-list--compact .kill-value     { font-size: 11px; }
 
+/* --- Kill detail popup (final-blow attacker) ------------------- */
+#kill-popup {
+  position: fixed;
+  right: 392px;
+  top: 80px;
+  width: 220px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75);
+  padding: 10px 12px;
+  display: none;
+  opacity: 0;
+  transform: translateX(10px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 1000;
+}
+#kill-popup.open {
+  display: block;
+  opacity: 1;
+  transform: translateX(0);
+}
+.kp-body {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.kp-img-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.kp-img {
+  width: 56px; height: 56px;
+  background: #040c0c center center / cover no-repeat;
+  border: 1px solid var(--border);
+}
+.kp-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kp-ship {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kp-pilot {
+  font-size: 11px;
+  color: var(--dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kp-label {
+  margin-top: 3px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(0, 220, 220, 0.7);
+}
+.kp-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px; height: 18px;
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.kp-close:hover { color: var(--accent); }
+.kp-close svg { width: 10px; height: 10px; }
+.kill { cursor: pointer; }
+
 .kill-delayed-badge {
   display: inline-flex;
   align-items: center;
