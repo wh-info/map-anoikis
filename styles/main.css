@@ -729,6 +729,7 @@ html, body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.kp-corp { font-weight: 700; }
 .kill { cursor: pointer; }
 
 .kill-delayed-badge {
