@@ -2346,20 +2346,22 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
         <span class="kill-age" data-ts="${ts || ''}">${formatAge(ts)}</span>
       </div>
     </div>
-    <div class="kill-body">
-      <div class="kill-img-wrap">
-        <div class="kill-img" style="background-image: url('${img}')"></div>
-        <img class="kill-icon" src="${iconUrl}" alt="" aria-hidden="true" />
-        ${techBadge(typeId) ? `<img src="./img/graphic/${techBadge(typeId)}.png" class="kill-tech-badge" alt="" aria-hidden="true" />` : ''}
-      </div>
-      <div class="kill-info">
-        <div class="kill-ship"><span class="kill-ship-name">${escapeHtml(name)}</span></div>
-        <div class="kill-pilot${ownerLoading ? ' loading' : ''}">${ownerInitial}</div>
-        <div class="kill-corp${hasCorp ? ' loading' : ''}">${hasCorp ? 'Loading corporation…' : ''}</div>
-        <div class="kill-footer">
-          <span class="kill-value">${formatIsk(value)} ISK</span>
-          ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
+    <div class="kill-main">
+      <div class="kill-body">
+        <div class="kill-img-wrap">
+          <div class="kill-img" style="background-image: url('${img}')"></div>
+          <img class="kill-icon" src="${iconUrl}" alt="" aria-hidden="true" />
+          ${techBadge(typeId) ? `<img src="./img/graphic/${techBadge(typeId)}.png" class="kill-tech-badge" alt="" aria-hidden="true" />` : ''}
         </div>
+        <div class="kill-info">
+          <div class="kill-ship"><span class="kill-ship-name">${escapeHtml(name)}</span></div>
+          <div class="kill-pilot${ownerLoading ? ' loading' : ''}">${ownerInitial}</div>
+          <div class="kill-corp${hasCorp ? ' loading' : ''}">${hasCorp ? 'Loading corporation…' : ''}</div>
+        </div>
+      </div>
+      <div class="kill-footer">
+        <span class="kill-value">${formatIsk(value)} ISK</span>
+        ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
       </div>
     </div>
     ${zkbHref ? `

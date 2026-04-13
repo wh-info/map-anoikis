@@ -583,14 +583,27 @@ html, body {
   color: var(--dim);
 }
 
-.kill-body {
+.kill-main {
   flex: 1;
   min-width: 0;
   display: flex;
-  gap: 8px;
-  align-items: center;
+  flex-direction: column;
+  gap: 6px;
 }
-.kill-info { min-width: 0; flex: 1; }
+.kill-body {
+  min-width: 0;
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  min-height: 56px;
+}
+.kill-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
 
 .kill-ship {
   font-size: 12px;
@@ -636,6 +649,7 @@ html, body {
 }
 .kill-list--compact .kill-sys       { font-size: 11px; }
 .kill-list--compact .kill-img       { width: 36px; height: 36px; }
+.kill-list--compact .kill-body      { min-height: 36px; }
 .kill-list--compact .kill-icon      { display: none; }
 .kill-list--compact .kill-tech-badge{ width: 12px; height: 12px; }
 .kill-list--compact .kill-ship      { font-size: 11px; }
