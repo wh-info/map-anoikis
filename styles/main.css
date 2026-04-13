@@ -690,7 +690,7 @@ html, body {
 }
 .kill-list--compact .kill-header {
   top: 5px;
-  left: 36px;
+  left: 40px;
   right: 8px;
 }
 .kill-list--compact .kill-sys       { font-size: 11px; }
@@ -794,6 +794,16 @@ html, body {
   white-space: nowrap;
 }
 .kp-corp { font-weight: 700; }
+
+#kill-popup.compact { padding: 6px 8px 6px; }
+#kill-popup.compact .kp-header { top: 5px; left: 8px; right: 8px; }
+#kill-popup.compact .kp-body { padding-top: 16px; min-height: 36px; gap: 8px; }
+#kill-popup.compact .kp-img { width: 36px; height: 36px; }
+#kill-popup.compact .kp-label { font-size: 12px; }
+#kill-popup.compact .kp-ship  { font-size: 11px; }
+#kill-popup.compact .kp-pilot { font-size: 11px; }
+#kill-popup.compact .kp-corp  { display: none; }
+
 .kill { cursor: pointer; }
 
 .kill-delayed-badge {

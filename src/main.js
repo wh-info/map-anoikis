@@ -2768,6 +2768,7 @@ async function openKillPopup(rowEl, killId) {
   kpPilot.textContent = '';
   kpCorp.textContent  = '';
   kpLabel.textContent = 'Final blow';
+  killPopup.classList.toggle('compact', killList.classList.contains('kill-list--compact'));
   killPopup.classList.add('open');
   positionKillPopup(rowEl);
 
