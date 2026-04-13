@@ -10,7 +10,6 @@ import { WebSocketServer } from 'ws';
 import { createRing } from './ring.js';
 import { classifyKill } from './filter.js';
 import { connectZkill } from './zkill.js';
-import { getIntel24h, getIntel60d, getIntelParties } from './intel.js';
 
 const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -51,7 +50,11 @@ function compactKill(raw, classification) {
     value: raw.zkb?.totalValue ?? 0,
     hasImplants,
     isNpc: !!raw.zkb?.npc,
-    ts
+    ts,
+    // When our backend first saw this kill. Compared against `ts` by the
+    // frontend to decide the DELAYED badge — this is the "zKB published
+    // it late" signal, independent of when any browser loaded the page.
+    receivedAt: Math.floor(Date.now() / 1000)
   };
 }
 
@@ -93,26 +96,6 @@ fastify.get('/health', async () => ({
   seenAnoikis,
   zkill: zkillStatus
 }));
-
-// Three narrow intel endpoints so the frontend can render the panel section
-// by section. The 24h call hits zKB page 1 only (fast); the 60d and parties
-// calls share a single underlying kill fetch via an in-flight promise, so
-// firing them in parallel does not double up on zKB.
-function intelRoute(handler) {
-  return async (req, reply) => {
-    const systemId = parseInt(req.params.systemId, 10);
-    if (!Number.isFinite(systemId)) return reply.code(400).send({ error: 'bad systemId' });
-    try {
-      return await handler(systemId);
-    } catch (err) {
-      req.log.error(err, 'intel fetch failed');
-      return reply.code(502).send({ error: 'upstream fetch failed' });
-    }
-  };
-}
-fastify.get('/intel/24h/:systemId',     intelRoute(getIntel24h));
-fastify.get('/intel/60d/:systemId',     intelRoute(getIntel60d));
-fastify.get('/intel/parties/:systemId', intelRoute(getIntelParties));
 
 await fastify.listen({ port: PORT, host: HOST });
 

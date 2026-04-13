@@ -2430,7 +2430,16 @@ function spawnLiveKill(params) {
 function stampKill(kill) {
   if (kill._delayedStamped) return;
   kill._delayedStamped = true;
-  kill._isDelayed = kill.ts ? (Date.now() - kill.ts * 1000 > DELAYED_KILL_MS) : false;
+  if (!kill.ts) {
+    kill._isDelayed = false;
+    return;
+  }
+  // Prefer the backend's receivedAt (the true "zKB published it late" signal,
+  // independent of when the browser loaded). Fall back to now() only if the
+  // backend hasn't been updated yet — during the rollout window, the old
+  // behavior is still better than nothing.
+  const ref = kill.receivedAt ? kill.receivedAt * 1000 : Date.now();
+  kill._isDelayed = (ref - kill.ts * 1000) > DELAYED_KILL_MS;
 }
 
 function killToParams(kill, star) {
