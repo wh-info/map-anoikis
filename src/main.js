@@ -2398,10 +2398,8 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
 
   if (killId != null) {
     el.dataset.killId = String(killId);
-    el.addEventListener('click', (ev) => {
-      if (ev.target.closest('.kill-btn')) return;
-      openKillPopup(el, killId);
-    });
+    el.addEventListener('mouseenter', () => openKillPopup(el, killId));
+    el.addEventListener('mouseleave', () => closeKillPopup());
   }
 
   if (ownerLoading) {
@@ -2626,7 +2624,6 @@ const kpShip         = killPopup.querySelector('.kp-ship');
 const kpPilot        = killPopup.querySelector('.kp-pilot');
 const kpCorp         = killPopup.querySelector('.kp-corp');
 const kpLabel        = killPopup.querySelector('.kp-label');
-const kpClose        = killPopup.querySelector('.kp-close');
 let kpOpenKillId     = null;
 let kpToken          = 0;
 
@@ -2661,7 +2658,7 @@ async function fetchFinalBlow(killId) {
 function positionKillPopup(rowEl) {
   const rect = rowEl.getBoundingClientRect();
   const popupH = killPopup.offsetHeight || 100;
-  let top = rect.top;
+  let top = rect.top + rect.height / 2 - popupH / 2;
   if (top + popupH > window.innerHeight - 10) top = window.innerHeight - popupH - 10;
   if (top < 10) top = 10;
   killPopup.style.top = top + 'px';
@@ -2713,7 +2710,7 @@ function renderKillPopupBody(fb, token) {
 }
 
 async function openKillPopup(rowEl, killId) {
-  if (kpOpenKillId === killId) { closeKillPopup(); return; }
+  if (kpOpenKillId === killId) return;
   kpOpenKillId = killId;
   const token = ++kpToken;
   kpImg.style.backgroundImage = '';
@@ -2751,17 +2748,6 @@ async function openKillPopup(rowEl, killId) {
     kpCorp.textContent  = '';
   }
 }
-
-kpClose.addEventListener('click', (e) => { e.stopPropagation(); closeKillPopup(); });
-killPopup.addEventListener('click', (e) => e.stopPropagation());
-document.addEventListener('click', (e) => {
-  if (!killPopup.classList.contains('open')) return;
-  if (e.target.closest('.kill')) return;
-  closeKillPopup();
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && killPopup.classList.contains('open')) closeKillPopup();
-});
 
 // --- Live backend WS ---------------------------------------------
 const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:';

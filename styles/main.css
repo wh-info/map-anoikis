@@ -643,23 +643,35 @@ html, body {
 /* --- Kill detail popup (final-blow attacker) ------------------- */
 #kill-popup {
   position: fixed;
-  right: 392px;
+  right: 376px;
   top: 80px;
   width: 220px;
   background: var(--panel);
   border: 1px solid var(--border);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75);
-  padding: 10px 12px;
+  border-right: none;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.7);
+  padding: 8px 12px 10px;
   display: none;
   opacity: 0;
-  transform: translateX(10px);
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transform: translateX(30px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
   z-index: 1000;
+  pointer-events: none;
 }
 #kill-popup.open {
   display: block;
   opacity: 1;
   transform: translateX(0);
+  pointer-events: auto;
+}
+.kp-header {
+  margin-bottom: 6px;
+}
+.kp-label {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(0, 220, 220, 0.7);
 }
 .kp-body {
   display: flex;
@@ -689,44 +701,14 @@ html, body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.kp-pilot {
+.kp-pilot,
+.kp-corp {
   font-size: 11px;
   color: var(--dim);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.kp-corp {
-  font-size: 10px;
-  color: var(--dim);
-  opacity: 0.75;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.kp-label {
-  margin-bottom: 3px;
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(0, 220, 220, 0.7);
-}
-.kp-close {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 18px; height: 18px;
-  background: none;
-  border: none;
-  color: var(--dim);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-.kp-close:hover { color: var(--accent); }
-.kp-close svg { width: 10px; height: 10px; }
 .kill { cursor: pointer; }
 
 .kill-delayed-badge {
