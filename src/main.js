@@ -536,7 +536,7 @@ function buildOrreryList(star) {
   // Sun row.
   if (star.sunTypeId) {
     const row = document.createElement('div');
-    row.className = 'olist-row';
+    row.className = 'olist-row olist-row--sun';
     row.innerHTML =
       `<img class="olist-img" src="https://images.evetech.net/types/${star.sunTypeId}/icon?size=64" alt="" loading="lazy">` +
       `<div><div class="olist-name">${escapeHtml(star.name)} Star</div>` +

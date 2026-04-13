@@ -1045,7 +1045,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   overflow-y: auto;
   overflow-x: hidden;
   flex: 1;
-  padding-right: 4px;
+  padding-right: 10px;
   min-width: 0;
 }
 
@@ -1335,7 +1335,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   position: fixed;
   left: 326px;
   top: 16px;
-  width: 648px;
+  width: 740px;
   background: var(--panel);
   border: 1px solid var(--border);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75);
@@ -1383,17 +1383,18 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 
 #orrery-canvas {
   display: block;
-  width: 410px;
-  height: 410px;
+  width: 470px;
+  height: 470px;
   flex-shrink: 0;
 }
 
 #orrery-list {
   display: flex;
-  width: 200px;
-  height: 410px;
+  width: 230px;
+  height: 470px;
   overflow-y: auto;
   flex-direction: column;
+  padding-right: 10px;
 }
 
 .olist-row {
@@ -1405,6 +1406,11 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   flex-shrink: 0;
 }
 .olist-row:last-child { border-bottom: none; }
+.olist-row--sun {
+  border-bottom: 1px solid rgba(0, 200, 200, 0.5);
+  margin-bottom: 4px;
+  padding-bottom: 8px;
+}
 
 .olist-img {
   width: 40px;
