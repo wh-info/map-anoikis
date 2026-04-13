@@ -2689,9 +2689,15 @@ async function fetchFinalBlow(killId) {
 }
 
 function positionKillPopup(rowEl) {
-  const rect = rowEl.getBoundingClientRect();
+  const rowImg = rowEl.querySelector('.kill-img');
+  const popupImg = killPopup.querySelector('.kp-img');
+  // Pin to 0 first so getBoundingClientRect reflects internal layout only.
+  killPopup.style.top = '0px';
+  const popupRect = killPopup.getBoundingClientRect();
+  const imgOffsetInPopup = popupImg.getBoundingClientRect().top - popupRect.top;
+  const rowImgRect = rowImg.getBoundingClientRect();
+  let top = rowImgRect.top - imgOffsetInPopup;
   const popupH = killPopup.offsetHeight || 100;
-  let top = rect.top + rect.height / 2 - popupH / 2;
   if (top + popupH > window.innerHeight - 10) top = window.innerHeight - popupH - 10;
   if (top < 10) top = 10;
   killPopup.style.top = top + 'px';
