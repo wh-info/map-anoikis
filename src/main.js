@@ -2398,7 +2398,10 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
 
   if (killId != null) {
     el.dataset.killId = String(killId);
-    el.addEventListener('mouseenter', () => openKillPopup(el, killId));
+    el.addEventListener('click', (ev) => {
+      if (ev.target.closest('.kill-btn')) return;
+      openKillPopup(el, killId);
+    });
     el.addEventListener('mouseleave', () => closeKillPopup());
   }
 

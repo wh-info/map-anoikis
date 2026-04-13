@@ -666,9 +666,10 @@ html, body {
 }
 .kp-header {
   margin-bottom: 6px;
+  text-align: right;
 }
 .kp-label {
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: rgba(0, 220, 220, 0.7);
@@ -677,6 +678,9 @@ html, body {
   display: flex;
   gap: 10px;
   align-items: center;
+}
+.kp-info {
+  flex: 1;
 }
 .kp-img-wrap {
   position: relative;
@@ -692,6 +696,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  text-align: right;
 }
 .kp-ship {
   font-size: 12px;
