@@ -654,8 +654,8 @@ html, body {
 .kill-list--compact .kill-icon      { display: none; }
 .kill-list--compact .kill-tech-badge{ width: 12px; height: 12px; }
 .kill-list--compact .kill-ship      { font-size: 11px; }
-.kill-list--compact .kill-pilot,
-.kill-list--compact .kill-corp      { font-size: 11px; }
+.kill-list--compact .kill-pilot     { font-size: 11px; }
+.kill-list--compact .kill-corp      { display: none; }
 .kill-list--compact .kill-footer    { font-size: 11px; gap: 5px; margin-top: 2px; }
 .kill-list--compact .kill-value     { font-size: 11px; }
 
