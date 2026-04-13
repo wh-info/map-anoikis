@@ -2744,6 +2744,11 @@ async function openKillPopup(rowEl, killId) {
   kpPilot.textContent = '';
   kpCorp.textContent  = '';
   kpLabel.textContent = 'Final blow';
+  // Retrigger slide-in animation on every open, even when switching
+  // directly from one kill to another (CSS animations don't replay unless
+  // the class is removed and re-added with a reflow in between).
+  killPopup.classList.remove('open');
+  void killPopup.offsetWidth;
   killPopup.classList.add('open');
   positionKillPopup(rowEl);
 

@@ -493,7 +493,7 @@ html, body {
 .kill {
   position: relative;
   display: flex; gap: 8px; align-items: center;
-  padding: 28px 10px 10px 10px;
+  padding: 32px 10px 10px 10px;
   background: var(--panel-dark);
   border: 1px solid var(--border);
   border-radius: 0;
@@ -588,7 +588,7 @@ html, body {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 .kill-body {
   min-width: 0;
@@ -633,7 +633,6 @@ html, body {
   gap: 6px;
   font-size: 13px;
   color: var(--dim);
-  margin-top: 4px;
 }
 .kill-value { color: var(--highlight); font-weight: 400; font-size: 13px; }
 .kill-value b { font-weight: 700; }
@@ -788,12 +787,12 @@ html, body {
   background: rgba(232, 212, 77, 0.08);
   color: #e8d44d;
   border-radius: 0;
-  width: 24px; height: 24px; min-width: 24px;
+  width: 16px; height: 16px; min-width: 16px;
 }
 
 /* implant portrait — tint B&W to gold via sepia chain */
 .implant-img {
-  height: 16px;
+  height: 11px;
   width: auto;
   display: block;
   filter: sepia(1) saturate(2) hue-rotate(8deg) brightness(0.72);
