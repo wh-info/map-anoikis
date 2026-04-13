@@ -40,6 +40,8 @@ function compactKill(raw, classification) {
   const shipTypeId = classification.shipTypeId;
   const hasImplants = POD_TYPE_IDS.has(shipTypeId)
     && Array.isArray(victim.items) && victim.items.length > 0;
+  const attackers = Array.isArray(esi.attackers) ? esi.attackers : [];
+  const fb = attackers.find((a) => a.final_blow) || attackers[0] || {};
   return {
     id: raw.killmail_id ?? esi.killmail_id,
     systemId: classification.systemId,
@@ -51,6 +53,9 @@ function compactKill(raw, classification) {
     hasImplants,
     isNpc: !!raw.zkb?.npc,
     ts,
+    fbShipTypeId:    fb.ship_type_id ?? null,
+    fbCharacterId:   fb.character_id ?? null,
+    fbCorporationId: fb.corporation_id ?? null,
     // When our backend first saw this kill. Compared against `ts` by the
     // frontend to decide the DELAYED badge — this is the "zKB published
     // it late" signal, independent of when any browser loaded the page.

@@ -2672,6 +2672,46 @@ function closeKillPopup() {
   kpOpenKillId = null;
 }
 
+function renderKillPopupBody(fb, token) {
+  if (fb.shipTypeId != null) {
+    kpImg.style.backgroundImage = `url('https://images.evetech.net/types/${fb.shipTypeId}/render?size=64')`;
+    const localName = window.TYPE_NAMES?.[fb.shipTypeId];
+    if (localName) {
+      kpShip.textContent = localName;
+    } else {
+      kpShip.textContent = 'Type ' + fb.shipTypeId;
+      resolveType(fb.shipTypeId, kpShip, null);
+    }
+  } else {
+    kpShip.textContent = 'Unknown ship';
+  }
+  if (fb.isNpc) {
+    kpPilot.textContent = 'NPC';
+    kpCorp.textContent  = '';
+    kpLabel.textContent = 'NPC FTW';
+  } else {
+    kpLabel.textContent = 'Final blow';
+    if (fb.characterId) {
+      kpPilot.textContent = 'Loading…';
+      resolveEntityName('char', fb.characterId).then((name) => {
+        if (token !== kpToken) return;
+        kpPilot.textContent = name || 'Unknown pilot';
+      });
+    } else {
+      kpPilot.textContent = 'Unknown pilot';
+    }
+    if (fb.corporationId) {
+      kpCorp.textContent = 'Loading…';
+      resolveEntityName('corp', fb.corporationId).then((name) => {
+        if (token !== kpToken) return;
+        kpCorp.textContent = name || '';
+      });
+    } else {
+      kpCorp.textContent = '';
+    }
+  }
+}
+
 async function openKillPopup(rowEl, killId) {
   if (kpOpenKillId === killId) { closeKillPopup(); return; }
   kpOpenKillId = killId;
@@ -2684,45 +2724,25 @@ async function openKillPopup(rowEl, killId) {
   killPopup.classList.add('open');
   positionKillPopup(rowEl);
 
+  // Fast path — backend now includes final-blow fields in the WS payload.
+  const entry = killBuffer.find((e) => e.kill.id === killId);
+  const raw = entry?.kill;
+  if (raw && raw.fbShipTypeId != null) {
+    renderKillPopupBody({
+      shipTypeId:    raw.fbShipTypeId,
+      characterId:   raw.fbCharacterId,
+      corporationId: raw.fbCorporationId,
+      isNpc:         !raw.fbCharacterId,
+    }, token);
+    positionKillPopup(rowEl);
+    return;
+  }
+
+  // Fallback — older tabs / kills from before the backend deploy.
   try {
     const fb = await fetchFinalBlow(killId);
     if (token !== kpToken) return;
-    if (fb.shipTypeId != null) {
-      kpImg.style.backgroundImage = `url('https://images.evetech.net/types/${fb.shipTypeId}/render?size=64')`;
-      const localName = window.TYPE_NAMES?.[fb.shipTypeId];
-      if (localName) {
-        kpShip.textContent = localName;
-      } else {
-        kpShip.textContent = 'Type ' + fb.shipTypeId;
-        resolveType(fb.shipTypeId, kpShip, null);
-      }
-    } else {
-      kpShip.textContent = 'Unknown ship';
-    }
-    if (fb.isNpc) {
-      kpPilot.textContent = 'NPC';
-      kpCorp.textContent  = '';
-      kpLabel.textContent = 'NPC FTW';
-    } else {
-      if (fb.characterId) {
-        kpPilot.textContent = 'Loading…';
-        resolveEntityName('char', fb.characterId).then((name) => {
-          if (token !== kpToken) return;
-          kpPilot.textContent = name || 'Unknown pilot';
-        });
-      } else {
-        kpPilot.textContent = 'Unknown pilot';
-      }
-      if (fb.corporationId) {
-        kpCorp.textContent = 'Loading…';
-        resolveEntityName('corp', fb.corporationId).then((name) => {
-          if (token !== kpToken) return;
-          kpCorp.textContent = name || '';
-        });
-      } else {
-        kpCorp.textContent = '';
-      }
-    }
+    renderKillPopupBody(fb, token);
     positionKillPopup(rowEl);
   } catch {
     if (token !== kpToken) return;
