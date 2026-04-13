@@ -2504,11 +2504,9 @@ function pushToBuffer(kill, star) {
 }
 
 function renderHistoryPage() {
-  // History = kills older than what's currently in the live list. Since the
-  // live list starts empty and only grows with session kills, the skip count
-  // is whatever's currently rendered in the live view — not a fixed MAX_KILLS.
-  // Buffer's top N items correspond exactly to the live list's N children.
-  const historyItems = killBuffer.slice(killList.children.length);
+  // History = kills older than what's currently in the live list.
+  // Skip the newest MAX_KILLS items (those are in the live view).
+  const historyItems = killBuffer.slice(MAX_KILLS);
   const totalPages = Math.max(1, Math.ceil(historyItems.length / HISTORY_PAGE_SIZE));
   if (historyPage >= totalPages) historyPage = totalPages - 1;
   if (historyPage < 0) historyPage = 0;
@@ -2642,17 +2640,17 @@ function connectKillFeed() {
       try { msg = JSON.parse(e.data); } catch { return; }
       if (msg.type === 'snapshot' && Array.isArray(msg.kills)) {
         for (const k of msg.kills) stampKill(k);
-        // Fill history buffer newest-first from the full ring. The live list
-        // stays empty — users only see kills that arrive during their session.
-        // Everything pre-connect lives in the history view.
+        // Fill buffer newest-first from the full ring (up to HISTORY_BUFFER_SIZE).
         killBuffer.length = 0;
         for (let i = msg.kills.length - 1; i >= 0 && killBuffer.length < HISTORY_BUFFER_SIZE; i--) {
           const k = msg.kills[i];
           const star = starById.get(k.systemId);
           if (star) killBuffer.push({ kill: k, star });
         }
+        // Render the most recent MAX_KILLS to the live list.
         killList.innerHTML = '';
-        updateKillCount();
+        const recent = msg.kills.slice(-MAX_KILLS);
+        for (const k of recent) handleBackendKill(k, false);
         if (killViewMode === 'history') renderHistoryPage();
       } else if (msg.type === 'kill' && msg.kill) {
         stampKill(msg.kill);
