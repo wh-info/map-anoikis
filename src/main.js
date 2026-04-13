@@ -2853,6 +2853,7 @@ function connectKillFeed() {
         if (killViewMode === 'live') {
           handleBackendKill(msg.kill, true);
         } else {
+          if (star) triggerKillAnim(star, !!msg.kill._isDelayed);
           unseenLiveKills++;
           updateHistoryBanner();
           flashRestoreRight();
