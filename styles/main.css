@@ -679,10 +679,10 @@ html, body {
   opacity: 1;
   transform: translateX(0);
   pointer-events: auto;
-  animation: killPopupIn 0.12s ease-out;
+  animation: killPopupIn 0.22s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 @keyframes killPopupIn {
-  from { opacity: 0; transform: translateX(40px); }
+  from { opacity: 0; transform: translateX(80px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 .kp-header {
