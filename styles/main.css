@@ -611,7 +611,8 @@ html, body {
 }
 .kill-ship-name {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  color: var(--muted);
+  color: var(--fg);
+  font-weight: 700;
   letter-spacing: 0.02em;
 }
 
