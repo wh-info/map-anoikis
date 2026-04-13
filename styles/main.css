@@ -624,6 +624,7 @@ html, body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   letter-spacing: 0.02em;
 }
+.kill-corp { font-weight: 700; }
 .kill-pilot.loading,
 .kill-corp.loading { opacity: 0.45; font-style: italic; }
 .kill-corp:empty { display: none; }
