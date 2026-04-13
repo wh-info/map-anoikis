@@ -2355,6 +2355,7 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
       <div class="kill-info">
         <div class="kill-ship"><span class="kill-ship-name">${escapeHtml(name)}</span></div>
         <div class="kill-pilot${ownerLoading ? ' loading' : ''}">${ownerInitial}</div>
+        <div class="kill-corp${hasCorp ? ' loading' : ''}">${hasCorp ? 'Loading corporation…' : ''}</div>
         <div class="kill-footer">
           <span class="kill-value">${formatIsk(value)} ISK</span>
           ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
@@ -2405,16 +2406,36 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
     el.addEventListener('mouseleave', () => closeKillPopup());
   }
 
-  if (ownerLoading) {
+  if (hasChar) {
     const pilotEl = el.querySelector('.kill-pilot');
-    const [entityKind, entityId] = hasChar
-      ? ['char', characterId]
-      : ['corp', corporationId];
-    resolveEntityName(entityKind, entityId).then((n) => {
+    resolveEntityName('char', characterId).then((n) => {
       if (!pilotEl.isConnected) return;
       pilotEl.classList.remove('loading');
-      pilotEl.textContent = n || (hasChar ? 'Unknown pilot' : 'Unknown corporation');
+      pilotEl.textContent = n || 'Unknown pilot';
     });
+  } else if (hasCorp) {
+    // No character (e.g. structure kill) — show corp name on the pilot row
+    // and leave the corp row empty to avoid duplicating the same string.
+    const pilotEl = el.querySelector('.kill-pilot');
+    resolveEntityName('corp', corporationId).then((n) => {
+      if (!pilotEl.isConnected) return;
+      pilotEl.classList.remove('loading');
+      pilotEl.textContent = n || 'Unknown corporation';
+    });
+  }
+
+  if (hasChar && hasCorp) {
+    const corpEl = el.querySelector('.kill-corp');
+    resolveEntityName('corp', corporationId).then((n) => {
+      if (!corpEl.isConnected) return;
+      corpEl.classList.remove('loading');
+      corpEl.textContent = n || 'Unknown corporation';
+    });
+  } else if (!hasChar && hasCorp) {
+    // Corp already on pilot row — clear the corp row so we don't show a spinner.
+    const corpEl = el.querySelector('.kill-corp');
+    corpEl.classList.remove('loading');
+    corpEl.textContent = '';
   }
 
   // If either the name or the icon was a fallback placeholder, ask the

@@ -602,14 +602,17 @@ html, body {
   letter-spacing: 0.02em;
 }
 
-.kill-pilot {
+.kill-pilot,
+.kill-corp {
   font-size: 12px;
   color: var(--muted);
   margin-top: 2px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   letter-spacing: 0.02em;
 }
-.kill-pilot.loading { opacity: 0.45; font-style: italic; }
+.kill-pilot.loading,
+.kill-corp.loading { opacity: 0.45; font-style: italic; }
+.kill-corp:empty { display: none; }
 
 .kill-footer {
   display: flex;
@@ -636,7 +639,8 @@ html, body {
 .kill-list--compact .kill-icon      { display: none; }
 .kill-list--compact .kill-tech-badge{ width: 12px; height: 12px; }
 .kill-list--compact .kill-ship      { font-size: 11px; }
-.kill-list--compact .kill-pilot     { font-size: 11px; }
+.kill-list--compact .kill-pilot,
+.kill-list--compact .kill-corp      { font-size: 11px; }
 .kill-list--compact .kill-footer    { font-size: 11px; gap: 5px; margin-top: 2px; }
 .kill-list--compact .kill-value     { font-size: 11px; }
 
@@ -735,6 +739,7 @@ html, body {
 .kill--delayed .kill-img,
 .kill--delayed .kill-ship,
 .kill--delayed .kill-pilot,
+.kill--delayed .kill-corp,
 .kill--delayed .kill-sys,
 .kill--delayed .kill-value { opacity: 0.65; }
 
