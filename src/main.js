@@ -2744,17 +2744,8 @@ async function openKillPopup(rowEl, killId) {
   kpPilot.textContent = '';
   kpCorp.textContent  = '';
   kpLabel.textContent = 'Final blow';
-  // Retrigger slide-in on every open. display:none → block + animation in
-  // the same frame is unreliable across browsers; double rAF guarantees the
-  // browser paints the "off" state before .open is applied.
-  killPopup.classList.remove('open');
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (kpOpenKillId !== killId) return;
-      killPopup.classList.add('open');
-      positionKillPopup(rowEl);
-    });
-  });
+  killPopup.classList.add('open');
+  positionKillPopup(rowEl);
 
   // Fast path — backend now includes final-blow fields in the WS payload.
   const entry = killBuffer.find((e) => e.kill.id === killId);

@@ -588,7 +588,7 @@ html, body {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 .kill-body {
   min-width: 0;
@@ -669,21 +669,12 @@ html, body {
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.7);
   padding: 8px 12px 10px;
   display: none;
-  opacity: 0;
-  transform: translateX(40px);
   z-index: 1000;
   pointer-events: none;
 }
 #kill-popup.open {
   display: block;
-  opacity: 1;
-  transform: translateX(0);
   pointer-events: auto;
-  animation: killPopupIn 0.22s cubic-bezier(0.2, 0.7, 0.3, 1) both;
-}
-@keyframes killPopupIn {
-  from { opacity: 0; transform: translateX(80px); }
-  to   { opacity: 1; transform: translateX(0); }
 }
 .kp-header {
   margin-bottom: 6px;
@@ -787,12 +778,12 @@ html, body {
   background: rgba(232, 212, 77, 0.08);
   color: #e8d44d;
   border-radius: 0;
-  width: 16px; height: 16px; min-width: 16px;
+  width: 13px; height: 13px; min-width: 13px;
 }
 
 /* implant portrait — tint B&W to gold via sepia chain */
 .implant-img {
-  height: 11px;
+  height: 9px;
   width: auto;
   display: block;
   filter: sepia(1) saturate(2) hue-rotate(8deg) brightness(0.72);
