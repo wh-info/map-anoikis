@@ -10,6 +10,8 @@ import { WebSocketServer } from 'ws';
 import { createRing } from './ring.js';
 import { classifyKill } from './filter.js';
 import { connectZkill } from './zkill.js';
+import { createKillstore, buildIntelKill } from './killstore.js';
+import { createBootstrap } from './bootstrap.js';
 
 const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -17,6 +19,7 @@ const RING_SIZE = Number(process.env.RING_SIZE || 500);
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '*';
 
 const ring = createRing(RING_SIZE);
+const killstore = createKillstore();
 const clients = new Set();
 let zkillStatus = 'init';
 let seenTotal = 0;
@@ -93,6 +96,8 @@ fastify.options('/*', async (_req, reply) => {
   return reply.code(204).send();
 });
 
+let reconcileStats = { lastRunAt: null, totalRuns: 0, lastAdded: 0 };
+
 fastify.get('/health', async () => ({
   ok: true,
   uptime: Math.round(process.uptime()),
@@ -102,7 +107,38 @@ fastify.get('/health', async () => ({
   seenAnoikis,
   zkill: zkillStatus,
   poller: zkillClient?.getState?.() ?? null,
+  killstore: killstore.getState(),
+  reconcile: reconcileStats,
 }));
+
+// Intel: return every kill we have for a system, newest first. The frontend
+// filters by ts for the 24h / 30d / 60d view ranges. Served purely from the
+// in-memory killstore — no zKB or ESI calls on the request path.
+fastify.get('/intel/:systemId', async (req, reply) => {
+  const systemId = Number(req.params.systemId);
+  if (!Number.isFinite(systemId)) {
+    reply.code(400);
+    return { error: 'bad systemId' };
+  }
+  const kills = killstore.getBySystem(systemId);
+  return {
+    kills,
+    coverageFrom: killstore.coverageFrom(),
+    generatedAt: Math.floor(Date.now() / 1000),
+    size: kills.length
+  };
+});
+
+// Load persisted killstore from the Railway volume before opening the port.
+// Runs once at startup; bootstrap/reconciliation later fill any gaps.
+try {
+  const res = await killstore.load();
+  if (res) {
+    fastify.log.info({ total: res.total, kept: res.kept }, 'killstore loaded');
+  }
+} catch (err) {
+  fastify.log.warn({ err: err.message }, 'killstore load failed');
+}
 
 await fastify.listen({ port: PORT, host: HOST });
 
@@ -133,6 +169,27 @@ wss.on('connection', (ws, req) => {
   });
 });
 
+const bootstrap = createBootstrap({
+  killstore,
+  log: fastify.log
+});
+
+// Lightweight wrapper around reconcileWindow that also updates the /health
+// counters and swallows errors so a bad cron run can't crash the worker.
+async function runReconcile(fromTs, toTs, reason) {
+  try {
+    fastify.log.info({ fromTs, toTs, reason }, 'reconcile trigger');
+    const stats = await bootstrap.reconcileWindow(fromTs, toTs);
+    reconcileStats = {
+      lastRunAt: Date.now(),
+      totalRuns: reconcileStats.totalRuns + 1,
+      lastAdded: stats.added
+    };
+  } catch (err) {
+    fastify.log.warn({ err: err.message, reason }, 'reconcile failed');
+  }
+}
+
 zkillClient = connectZkill({
   onStatus: (s) => {
     zkillStatus = s;
@@ -145,9 +202,55 @@ zkillClient = connectZkill({
     seenAnoikis++;
     const kill = compactKill(raw, classification);
     ring.push(kill);
+    killstore.add(buildIntelKill(raw, classification)).catch(() => {});
     broadcast({ type: 'kill', kill });
     fastify.log.info({ kill }, 'anoikis kill');
+  },
+  // When the watchdog jumps ahead, every kill between `from` and `to` is lost
+  // from the live stream. Reconcile the time window those sequences cover —
+  // ~6.7s per sequence is R2Z2's natural cadence, so lag * 7 is a safe upper
+  // bound. Fire-and-forget so it can't stall the poller loop.
+  onJump: ({ lag }) => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    const windowSec = Math.max(300, lag * 7);
+    runReconcile(nowSec - windowSec, nowSec, 'watchdog-jump');
   }
 });
+
+// Kickoff logic for the first-ever deploy: if the killstore doesn't yet
+// have 60 days of coverage, run the bootstrap walker in the background.
+// On every subsequent restart the volume already has the data and this is a
+// cheap no-op. Non-blocking so the HTTP server stays responsive throughout.
+const RETENTION_SEC = 60 * 24 * 60 * 60;
+{
+  const nowSec = Math.floor(Date.now() / 1000);
+  const oldest = killstore.coverageFrom();
+  const target = nowSec - RETENTION_SEC;
+  if (oldest === null || oldest > target) {
+    fastify.log.info(
+      { oldest, target, size: killstore.size() },
+      'coverage gap detected — starting background bootstrap'
+    );
+    bootstrap.bootstrapWindow(target, oldest ?? nowSec)
+      .catch((err) => fastify.log.warn({ err: err.message }, 'bootstrap failed'));
+  } else {
+    fastify.log.info({ size: killstore.size() }, 'killstore coverage complete');
+  }
+}
+
+// Daily reconciliation sweep — catches anything R2Z2 missed silently or that
+// zKB published very late. Piggybacks killstore compaction at the end so the
+// NDJSON file stays bounded at ~6 MB steady state.
+const DAILY_MS = 24 * 60 * 60 * 1000;
+setInterval(async () => {
+  const nowSec = Math.floor(Date.now() / 1000);
+  await runReconcile(nowSec - 24 * 60 * 60, nowSec, 'daily');
+  try {
+    await killstore.compact();
+    fastify.log.info(killstore.getState(), 'killstore compacted');
+  } catch (err) {
+    fastify.log.warn({ err: err.message }, 'compact failed');
+  }
+}, DAILY_MS).unref?.();
 
 fastify.log.info({ port: PORT, ringSize: RING_SIZE }, 'anoikis worker ready');

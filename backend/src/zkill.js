@@ -72,7 +72,7 @@ async function saveState(nextSeq) {
   }
 }
 
-export function connectZkill({ onKill, onStatus } = {}) {
+export function connectZkill({ onKill, onStatus, onJump } = {}) {
   let stopped      = false;
   let nextSeq      = null;
   let headSeq      = null;
@@ -93,6 +93,7 @@ export function connectZkill({ onKill, onStatus } = {}) {
       nextSeq = headSeq;
       jumpsTotal++;
       onStatus?.(`head-skip: jumped ${from} -> ${headSeq} (${lag} behind)`);
+      onJump?.({ from, to: headSeq, lag, at: Date.now() });
       await saveState(nextSeq);
     } catch {
       // A failed head check is harmless — we'll retry next cycle.
