@@ -1727,15 +1727,16 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 
 #sun-popup {
   position: absolute;
-  right: 248px;
-  top: 54px;
-  width: 220px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.7);
+  right: 252px;
+  top: 56px;
+  width: 230px;
+  background: rgba(8, 14, 20, 0.4);
+  border: 1px dashed var(--border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
   padding: 10px 12px;
   display: none;
-  z-index: 20;
+  z-index: 50;
 }
 #sun-popup.open { display: block; }
 .sun-popup-title {

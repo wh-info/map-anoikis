@@ -104,6 +104,7 @@ const stars = window.ANOIKIS_SYSTEMS.map((s) => ({
   whClass: s.class,
   effect: s.effect || null,
   sunTypeId: s.sunTypeId || null,
+  sun: s.sun || null,
   planets: s.planets || [],
   statics: [],
   twinklePhase: Math.random() * Math.PI * 2,
@@ -559,6 +560,12 @@ function updateOrreryHeader(star) {
 function buildOrreryList(star) {
   const el = document.getElementById('orrery-list');
   el.innerHTML = '';
+  el.onclick = (ev) => {
+    if (ev.target.closest('.olist-row--sun')) {
+      ev.stopPropagation();
+      toggleSunPopup(star);
+    }
+  };
 
   function attachRowHover(row, hoverData) {
     const img = row.querySelector('.olist-img');
@@ -573,13 +580,10 @@ function buildOrreryList(star) {
     row.innerHTML =
       `<img class="olist-img" src="https://images.evetech.net/types/${star.sunTypeId}/icon?size=64" alt="" loading="lazy">` +
       `<div><div class="olist-name">${escapeHtml(star.name)} Star</div>` +
-      `<div class="olist-sub">${escapeHtml((SUN_NAMES[star.sunTypeId] || 'Sun').replace(/\s*\(.*\)$/, ''))}</div></div>`;
+      `<div class="olist-sub">${escapeHtml(SUN_NAMES[star.sunTypeId] || 'Sun')}</div></div>`;
     el.appendChild(row);
     attachRowHover(row, { isSun: true });
-    row.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      toggleSunPopup(star);
-    });
+    row.addEventListener('mouseleave', closeSunPopup);
   }
 
   // Planet rows sorted by celestialIndex.
@@ -621,11 +625,9 @@ function toggleSunPopup(star) {
     pop.classList.remove('open');
     return;
   }
-  const s = star.sun;
-  if (!s) { pop.classList.remove('open'); return; }
+  const s = star.sun || {};
   pop.dataset.sysId = String(star.id);
   pop.innerHTML =
-    `<div class="sun-popup-title">${escapeHtml(star.name)} Star</div>` +
     `<div class="sun-popup-row"><b>Spectral class:</b> ${escapeHtml(s.spectralClass || '—')}</div>` +
     `<div class="sun-popup-row"><b>Luminosity:</b> ${s.luminosity != null ? formatSunLuminosity(s.luminosity) : '—'}</div>` +
     `<div class="sun-popup-row"><b>Age:</b> ${s.age != null ? formatSunAge(s.age) : '—'}</div>` +
