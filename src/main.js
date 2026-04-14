@@ -664,6 +664,10 @@ function openOrrery(star) {
 function closeOrrery() {
   orreryOpen      = false;
   orreryListHover = null;
+  orreryRotate    = false;
+  const rotBtn = document.getElementById('orrery-rotate-btn');
+  rotBtn.textContent = 'Rotation: Off';
+  rotBtn.classList.remove('on');
   orreryPanel.classList.remove('open');
   orreryTip.textContent = '';
   closeSunPopup();
