@@ -2263,9 +2263,10 @@ function techBadge(typeId) {
 
 const activeKinds = new Set(['ship', 'structure']);
 const activeTags = new Set(['npc']);
-function isKillVisible(kind, isNpc) {
+function isKillVisible(kind, isNpc, isDelayed) {
   if (!activeKinds.has(kind)) return false;
   if (isNpc && !activeTags.has('npc')) return false;
+  if (isDelayed && !activeTags.has('delayed')) return false;
   return true;
 }
 let locateHover = null;
@@ -2329,7 +2330,8 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
   el.className = 'kill' + (isDelayed ? ' kill--delayed' : '');
   el.dataset.kind = kindKey;
   if (isNpc) el.dataset.npc = '1';
-  if (!isKillVisible(kindKey, !!isNpc)) el.style.display = 'none';
+  if (isDelayed) el.dataset.delayed = '1';
+  if (!isKillVisible(kindKey, !!isNpc, !!isDelayed)) el.style.display = 'none';
 
   el.innerHTML = `
     <button class="kill-btn kill-btn--locate locate-btn" data-tip="Locate ${escapeHtml(starDisplayName)}" aria-label="Locate ${escapeHtml(starDisplayName)}">
@@ -2521,7 +2523,7 @@ function applyKillFilters() {
   for (const list of lists) {
     if (!list) continue;
     for (const el of list.children) {
-      el.style.display = isKillVisible(el.dataset.kind, el.dataset.npc === '1') ? '' : 'none';
+      el.style.display = isKillVisible(el.dataset.kind, el.dataset.npc === '1', el.dataset.delayed === '1') ? '' : 'none';
     }
   }
   updateKillCount();

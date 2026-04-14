@@ -328,26 +328,21 @@ html, body {
   border-top: 1px solid transparent;
   transition: max-height 0.24s ease, padding 0.24s ease, border-color 0.24s ease;
 }
-#kill-filters .kind-chip:nth-child(1),
-#kill-filters .kind-chip:nth-child(3) {
+#kill-filters .kind-chip:nth-child(odd) {
   padding-right: 9px;
   justify-content: flex-end;
 }
-#kill-filters .kind-chip:nth-child(2),
-#kill-filters .kind-chip:nth-child(4) {
+#kill-filters .kind-chip:nth-child(even) {
   flex-direction: row-reverse;
   justify-content: flex-end;
   padding-left: 9px;
   border-left: 1px dashed var(--border);
 }
-#kill-filters .kind-chip:last-child {
-  grid-column: 1 / -1;
-  justify-self: center;
+#kill-filters .kind-chip:nth-child(5),
+#kill-filters .kind-chip:nth-child(6) {
   margin-top: 4px;
   padding-top: 10px;
   border-top: 1px dashed var(--border);
-  width: 100%;
-  justify-content: center;
 }
 #kill-footer.open #kill-filters {
   max-height: 160px;
