@@ -21,6 +21,7 @@ const clients = new Set();
 let zkillStatus = 'init';
 let seenTotal = 0;
 let seenAnoikis = 0;
+let zkillClient = null;
 
 // Compact the ESI+zkb payload down to just what the frontend uses. This
 // keeps fan-out bandwidth small and hides R2Z2's envelope from clients.
@@ -99,7 +100,8 @@ fastify.get('/health', async () => ({
   ringSize: ring.size,
   seenTotal,
   seenAnoikis,
-  zkill: zkillStatus
+  zkill: zkillStatus,
+  poller: zkillClient?.getState?.() ?? null,
 }));
 
 await fastify.listen({ port: PORT, host: HOST });
@@ -131,7 +133,7 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-connectZkill({
+zkillClient = connectZkill({
   onStatus: (s) => {
     zkillStatus = s;
     fastify.log.info({ zkill: s }, 'upstream status');
