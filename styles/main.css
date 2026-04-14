@@ -683,13 +683,21 @@ html, body {
 .kill-corp.loading { opacity: 0.45; font-style: italic; }
 .kill-corp:empty { display: none; }
 
-.kill-footer {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.kill-isk {
+  margin-top: 2px;
   font-size: 13px;
   color: var(--dim);
 }
+.kill-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  width: 56px;
+  font-size: 13px;
+  color: var(--dim);
+}
+.kill-footer:empty { display: none; }
 .kill-value { color: var(--highlight); font-weight: 400; font-size: 13px; }
 .kill-value b { font-weight: 700; }
 
@@ -710,6 +718,7 @@ html, body {
 .kill-list--compact .kill-ship      { font-size: 11px; }
 .kill-list--compact .kill-pilot     { font-size: 11px; }
 .kill-list--compact .kill-corp      { display: none; }
+.kill-list--compact .kill-isk       { display: none; }
 .kill-ship-extra                    { display: none; }
 .kill-list--compact .kill-footer    { display: none; }
 .kill-list--compact .kill-ship-extra {

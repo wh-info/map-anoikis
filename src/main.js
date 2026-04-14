@@ -2365,10 +2365,10 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
         </div>
           <div class="kill-pilot${ownerLoading ? ' loading' : ''}">${ownerInitial}</div>
           <div class="kill-corp${hasCorp ? ' loading' : ''}">${hasCorp ? 'Loading corporation…' : ''}</div>
+          <div class="kill-isk"><span class="kill-value">${formatIsk(value)} ISK</span></div>
         </div>
       </div>
       <div class="kill-footer">
-        <span class="kill-value">${formatIsk(value)} ISK</span>
         ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
       </div>
     </div>
