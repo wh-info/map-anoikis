@@ -260,6 +260,13 @@ html, body {
   border: 1px solid var(--border);
   color: var(--muted);
   letter-spacing: 0.06em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+.static-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* ================================================================ */

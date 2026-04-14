@@ -1989,8 +1989,11 @@ function selectStar(s, focus) {
   const stEl = document.getElementById('si-statics');
   stEl.innerHTML = '';
   for (const st of s.statics) {
-    const chip = document.createElement('span');
+    const chip = document.createElement('a');
     chip.className = 'static-chip';
+    chip.href = 'https://whtype.info?type=' + encodeURIComponent(st);
+    chip.target = '_blank';
+    chip.rel = 'noopener noreferrer';
     const typeInfo = window.WH_TYPES && window.WH_TYPES[st];
     const dest = typeInfo && typeInfo.leadsTo && typeInfo.leadsTo[0];
     if (dest) {
