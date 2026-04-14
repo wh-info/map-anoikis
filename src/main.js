@@ -2399,6 +2399,7 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
           <div class="kill-img" style="background-image: url('${img}')"></div>
           <img class="kill-icon" src="${iconUrl}" alt="" aria-hidden="true" />
           ${techBadge(typeId) ? `<img src="./img/graphic/${techBadge(typeId)}.png" class="kill-tech-badge" alt="" aria-hidden="true" />` : ''}
+          ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
         </div>
         <div class="kill-info">
           <div class="kill-ship">
@@ -2414,9 +2415,7 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
           <div class="kill-isk"><span class="kill-value">${formatIsk(value)} ISK</span></div>
         </div>
       </div>
-      <div class="kill-footer">
-        ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
-      </div>
+      <div class="kill-footer"></div>
     </div>
     ${zkbHref ? `
     <a class="kill-btn kill-btn--zkb zkb-link" href="${zkbHref}" target="_blank" rel="noopener noreferrer" data-tip="Open on zKillboard" aria-label="Open on zKillboard">

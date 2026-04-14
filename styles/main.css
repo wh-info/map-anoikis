@@ -583,6 +583,10 @@ html, body {
 .kill-img-wrap {
   position: relative;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
 }
 .kill-tech-badge {
   position: absolute;
