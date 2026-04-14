@@ -1700,6 +1700,8 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   width: 470px;
   height: 470px;
   flex-shrink: 0;
+  border: 1px dotted var(--border);
+  background: rgba(0, 0, 0, 0.55);
 }
 
 #orrery-list {
