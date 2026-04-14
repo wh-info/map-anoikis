@@ -586,10 +586,6 @@ html, body {
 .kill-img-wrap {
   position: relative;
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
 }
 .kill-tech-badge {
   position: absolute;
@@ -712,6 +708,10 @@ html, body {
   margin-top: 2px;
   font-size: 13px;
   color: var(--dim);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
 }
 .kill-footer {
   display: flex;
