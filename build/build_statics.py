@@ -26,8 +26,9 @@ import json
 import urllib.request
 from pathlib import Path
 
-ROOT   = Path(__file__).resolve().parent.parent
-OUTPUT = ROOT / "data" / "wh-statics.json"
+ROOT      = Path(__file__).resolve().parent.parent
+OUTPUT    = ROOT / "data" / "wh-statics.json"
+OVERRIDES = ROOT / "data" / "wh-statics-overrides.json"
 
 ANOIK_URL = "https://anoik.is/static/static.json?version=11"
 USER_AGENT = "map-anoikis-build/0.1 (https://map.anoikis.info)"
@@ -68,6 +69,21 @@ def main() -> None:
             continue
         out[name] = {"static": list(statics)}
 
+    # Apply hand-curated overrides. Each entry is a full replacement of the
+    # system's record, so you can correct or delete statics without touching
+    # the scrape output. Delete a system from the scrape by setting its entry
+    # to null in the overrides file.
+    override_count = 0
+    if OVERRIDES.exists():
+        with open(OVERRIDES, encoding="utf-8") as fh:
+            overrides = json.load(fh)
+        for name, entry in overrides.items():
+            if entry is None:
+                out.pop(name, None)
+            else:
+                out[name] = entry
+            override_count += 1
+
     # Sort keys for deterministic git diffs.
     out_sorted = {k: out[k] for k in sorted(out)}
 
@@ -77,6 +93,8 @@ def main() -> None:
         fh.write("\n")
 
     print(f"Wrote {len(out_sorted)} systems -> {OUTPUT.relative_to(ROOT)}")
+    if override_count:
+        print(f"  applied {override_count} override(s) from {OVERRIDES.relative_to(ROOT)}")
     if skipped_class:
         print(f"  skipped by class: {skipped_class}")
 
