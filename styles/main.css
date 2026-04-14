@@ -838,7 +838,7 @@ html, body {
 }
 .kp-corp { font-weight: 700; }
 
-#kill-popup.compact { padding: 6px 8px 6px; }
+#kill-popup.compact { padding: 6px 8px 6px; width: max-content; max-width: 220px; }
 #kill-popup.compact .kp-header { top: 5px; left: 8px; right: 8px; }
 #kill-popup.compact .kp-body { padding-top: 20px; min-height: 36px; gap: 8px; }
 #kill-popup.compact .kp-img { width: 36px; height: 36px; }
