@@ -264,9 +264,12 @@ html, body {
   cursor: pointer;
 }
 .static-chip-dest { font-weight: 800; }
-.static-chip[data-dest="HS"] { color: #0dfa05; border-color: #0dfa05; }
-.static-chip[data-dest="LS"] { color: #f0a800; border-color: #f0a800; }
-.static-chip[data-dest="NS"] { color: #e81e1e; border-color: #e81e1e; }
+.static-chip[data-dest="HS"] { color: #0dfa05; }
+.static-chip[data-dest="LS"] { color: #f0a800; }
+.static-chip[data-dest="NS"] { color: #e81e1e; }
+.static-chip[data-dest="HS"]:hover { color: #0dfa05; border-color: #0dfa05; }
+.static-chip[data-dest="LS"]:hover { color: #f0a800; border-color: #f0a800; }
+.static-chip[data-dest="NS"]:hover { color: #e81e1e; border-color: #e81e1e; }
 .static-chip:hover {
   border-color: var(--accent);
   color: var(--accent);
