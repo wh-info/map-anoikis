@@ -1713,7 +1713,9 @@ function draw() {
     const zoomK = clamp(camera.scale, 0.5, 1.8);
     const radius = (10 + t * 70) * zoomK;
     const alpha = Math.pow(1 - t, 1.6);
-    const color = a.delayed ? [160, 170, 180] : starColor(a.star);
+    const color = a.delayed
+      ? [160, 170, 180]
+      : (currentPalette === 'ghost' ? [255, 140, 0] : starColor(a.star));
     ctx.strokeStyle = rgba(color, (a.delayed ? 0.45 : 0.70) * alpha);
     ctx.lineWidth = (a.delayed ? 1.2 : 1.7) + alpha * (a.delayed ? 0.8 : 1.3);
     ctx.beginPath();
