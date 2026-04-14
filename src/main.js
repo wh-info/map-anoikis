@@ -594,7 +594,7 @@ function buildOrreryList(star) {
       `<div><div class="olist-name">${escapeHtml(star.name)} Star</div>` +
       `<div class="olist-sub">${escapeHtml(SUN_NAMES[star.sunTypeId] || 'Sun')}</div></div>`;
     el.appendChild(row);
-    attachRowHover(row, { isSun: true });
+    attachRowHover(row, { isSun: true, typeId: star.sunTypeId });
     row.addEventListener('mouseleave', closeSunPopup);
   }
 
