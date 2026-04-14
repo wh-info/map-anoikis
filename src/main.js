@@ -544,7 +544,7 @@ function updateOrreryTrace() {
   const bodyRect = orreryBodyEl.getBoundingClientRect();
   const canvRect = orreryCanvas.getBoundingClientRect();
   const imgRect  = orreryListHover.imgEl.getBoundingClientRect();
-  const bx = imgRect.left + imgRect.width  / 2 - bodyRect.left;
+  const bx = imgRect.left + 4                - bodyRect.left;
   const by = imgRect.top  + imgRect.height / 2 - bodyRect.top;
   const ex = hit.x + (canvRect.left - bodyRect.left);
   const ey = hit.y + (canvRect.top  - bodyRect.top);
