@@ -1689,22 +1689,35 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 }
 
 .orrery-body {
+  position: relative;
   display: flex;
   flex-direction: row;
   align-items: flex-start;
   gap: 10px;
 }
+#orrery-trace {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 1;
+}
+#orrery-trace-line { display: none; }
+#orrery-trace-line.on { display: inline; }
 
 #orrery-canvas {
   display: block;
   width: 470px;
   height: 470px;
   flex-shrink: 0;
-  border: 1px dotted var(--border);
   background: rgba(0, 0, 0, 0.55);
 }
 
 #orrery-list {
+  position: relative;
+  z-index: 2;
   display: flex;
   width: 230px;
   height: 470px;

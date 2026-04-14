@@ -522,34 +522,46 @@ function drawOrrery(star) {
     orreryHits.push({ x: px, y: py, hitR: pR + 5, typeId: p.typeId, ci: p.ci || 0, moons: p.moons || 0 });
   }
 
-  // List-row hover trace: dashed line from the hovered row's image to the matching hit.
-  if (orreryListHover) {
-    const hit = orreryListHover.isSun
-      ? orreryHits.find(h => h.isSun)
-      : orreryHits.find(h => !h.isSun && h.ci === orreryListHover.ci);
-    if (hit) {
-      const canvRect = orreryCanvas.getBoundingClientRect();
-      const imgRect  = orreryListHover.imgEl.getBoundingClientRect();
-      const bx = imgRect.left + imgRect.width  / 2 - canvRect.left;
-      const by = imgRect.top  + imgRect.height / 2 - canvRect.top;
-      const endColor = orreryListHover.isSun
-        ? `rgba(${(SUN_COLORS[orreryListHover.typeId] || [255,220,100]).join(',')},0.55)`
-        : `rgba(${planetRGB(orreryListHover.typeId).join(',')},0.55)`;
-      const grad = oc.createLinearGradient(bx, by, hit.x, hit.y);
-      grad.addColorStop(0, 'rgba(0,200,200,0.85)');
-      grad.addColorStop(1, endColor.replace(/[\d.]+\)$/, '0.85)'));
-      oc.strokeStyle = grad;
-      oc.lineWidth = 1.5;
-      oc.setLineDash([5, 5]);
-      oc.beginPath();
-      oc.moveTo(bx, by);
-      oc.lineTo(hit.x, hit.y);
-      oc.stroke();
-      oc.setLineDash([]);
-    }
-  }
-
   oc.restore();
+  updateOrreryTrace();
+}
+
+// SVG overlay for the list-row hover trace. Drawing on the orrery canvas
+// clipped everything past the canvas's right edge, so the segment from the
+// list row's image to the canvas border never rendered. An SVG overlay on
+// .orrery-body can draw across both the canvas and the list area.
+const traceSvgLine  = document.getElementById('orrery-trace-line');
+const traceSvgGrad  = document.getElementById('orrery-trace-grad');
+const traceSvgStops = traceSvgGrad.querySelectorAll('stop');
+const orreryBodyEl  = document.querySelector('.orrery-body');
+
+function updateOrreryTrace() {
+  if (!orreryListHover) { traceSvgLine.classList.remove('on'); return; }
+  const hit = orreryListHover.isSun
+    ? orreryHits.find(h => h.isSun)
+    : orreryHits.find(h => !h.isSun && h.ci === orreryListHover.ci);
+  if (!hit) { traceSvgLine.classList.remove('on'); return; }
+  const bodyRect = orreryBodyEl.getBoundingClientRect();
+  const canvRect = orreryCanvas.getBoundingClientRect();
+  const imgRect  = orreryListHover.imgEl.getBoundingClientRect();
+  const bx = imgRect.left + imgRect.width  / 2 - bodyRect.left;
+  const by = imgRect.top  + imgRect.height / 2 - bodyRect.top;
+  const ex = hit.x + (canvRect.left - bodyRect.left);
+  const ey = hit.y + (canvRect.top  - bodyRect.top);
+  traceSvgLine.setAttribute('x1', bx);
+  traceSvgLine.setAttribute('y1', by);
+  traceSvgLine.setAttribute('x2', ex);
+  traceSvgLine.setAttribute('y2', ey);
+  traceSvgGrad.setAttribute('x1', bx);
+  traceSvgGrad.setAttribute('y1', by);
+  traceSvgGrad.setAttribute('x2', ex);
+  traceSvgGrad.setAttribute('y2', ey);
+  const endColor = orreryListHover.isSun
+    ? `rgba(${(SUN_COLORS[orreryListHover.typeId] || [255,220,100]).join(',')},0.85)`
+    : `rgba(${planetRGB(orreryListHover.typeId).join(',')},0.85)`;
+  traceSvgStops[0].setAttribute('stop-color', 'rgba(0,200,200,0.85)');
+  traceSvgStops[1].setAttribute('stop-color', endColor);
+  traceSvgLine.classList.add('on');
 }
 
 function updateOrreryHeader(star) {
