@@ -1015,11 +1015,17 @@ let intelCurrentKills = null;
 let intelCurrentRgb   = null;
 let intelCurrentStar  = null;
 let intelCurrentToken = 0;
-const ESI_HYDRATE_BATCH  = 10;
 
 // systemId → { fetchedAt, kills, pending }
 const intelKillCache = new Map();
 
+// Intel data now comes from the backend killstore (/intel/:systemId). The
+// backend maintains a 60-day rolling window of pre-hydrated kills persisted
+// to a Railway volume, so the request path is a single HTTP fetch with no
+// zKB pagination, no ESI hydration, and no per-user rate-limit budget.
+// The returned kill objects use ESI field names (killmail_time, victim,
+// attackers, _zkbValue) so the downstream aggregation code reads them
+// unchanged from its previous ESI-direct incarnation.
 async function fetchSystemKills(systemId, onProgress) {
   const cached = intelKillCache.get(systemId);
   if (cached?.pending) return cached.pending;
@@ -1029,34 +1035,12 @@ async function fetchSystemKills(systemId, onProgress) {
   }
 
   const promise = (async () => {
-    const slimRes = await fetch(
-      `https://zkillboard.com/api/solarSystemID/${systemId}/`
-    );
-    if (!slimRes.ok) throw new Error(`zKB ${slimRes.status}`);
-    const slim = await slimRes.json();
-    console.log(`[intel] zKB ${systemId} → ${Array.isArray(slim) ? slim.length : 'non-array'} kills`);
-    if (!Array.isArray(slim) || slim.length === 0) return [];
-
-    const kills = [];
-    for (let i = 0; i < slim.length; i += ESI_HYDRATE_BATCH) {
-      const chunk = slim.slice(i, i + ESI_HYDRATE_BATCH);
-      const batch = await Promise.all(chunk.map(async (s) => {
-        if (!s?.killmail_id || !s.zkb?.hash) return null;
-        try {
-          const res = await fetch(
-            `https://esi.evetech.net/latest/killmails/${s.killmail_id}/${s.zkb.hash}/`
-          );
-          if (!res.ok) return null;
-          const k = await res.json();
-          if (k) k._zkbValue = s.zkb.totalValue ?? 0;
-          return k;
-        } catch { return null; }
-      }));
-      for (const k of batch) {
-        if (k && k.killmail_time) kills.push(k);
-      }
-      onProgress?.(kills);
-    }
+    const res = await fetch(`${intelApiBase()}/intel/${systemId}`);
+    if (!res.ok) throw new Error(`intel ${res.status}`);
+    const body = await res.json();
+    const kills = Array.isArray(body?.kills) ? body.kills : [];
+    console.log(`[intel] ${systemId} → ${kills.length} kills from backend`);
+    onProgress?.(kills);
     return kills;
   })();
 
@@ -1171,14 +1155,25 @@ let intelEntityFilter = null;      // { kind: 'corp'|'alli', id }
 
 function killMatchesEntityFilter(k) {
   if (!intelEntityFilter) return true;
+  return entityRoleInKill(k) !== null;
+}
+
+// Returns 'victim' | 'attacker' | null for the currently filtered entity.
+// Self-kill (same corp/alliance on both sides) resolves to 'victim' — that's
+// the more visceral signal, and we only need one colour per dot.
+function entityRoleInKill(k) {
+  if (!intelEntityFilter) return null;
   const { kind, id } = intelEntityFilter;
   const field = kind === 'corp' ? 'corporation_id' : 'alliance_id';
-  if (k.victim?.[field] === id) return true;
+  if (k.victim?.[field] === id) return 'victim';
   if (Array.isArray(k.attackers)) {
-    for (const a of k.attackers) if (a[field] === id) return true;
+    for (const a of k.attackers) if (a[field] === id) return 'attacker';
   }
-  return false;
+  return null;
 }
+
+const ROLE_COLOR_VICTIM   = '#ff5566';
+const ROLE_COLOR_ATTACKER = '#55e0ff';
 
 function toggleEntityFilter(kind, id) {
   if (intelEntityFilter && intelEntityFilter.kind === kind && intelEntityFilter.id === id) {
@@ -1238,7 +1233,25 @@ function scatterClassFor(typeId) {
 
 function buildScatterLegend() {
   const el = document.getElementById('intel-scatter-legend-list');
-  if (!el || el.childElementCount) return;
+  if (!el) return;
+  el.innerHTML = '';
+  if (intelEntityFilter) {
+    // While a corp/alliance filter is active, dots are coloured by role
+    // (victim red, attacker cyan) — swap the legend to match.
+    const entries = [
+      ['Losses', ROLE_COLOR_VICTIM],
+      ['Kills',  ROLE_COLOR_ATTACKER],
+    ];
+    for (const [label, color] of entries) {
+      const span = document.createElement('span');
+      const dot  = document.createElement('i');
+      dot.style.background = color;
+      span.appendChild(dot);
+      span.appendChild(document.createTextNode(label));
+      el.appendChild(span);
+    }
+    return;
+  }
   for (const label of SCATTER_LEGEND_ORDER) {
     const span = document.createElement('span');
     if (label === 'Pods/Shuttles') span.className = 'intel-scatter-legend-wide';
@@ -1260,6 +1273,7 @@ function formatIskCompact(n) {
 function renderScatter() {
   const canvas = document.getElementById('intel-scatter');
   if (!canvas || intelView !== 'scatter') return;
+  buildScatterLegend();
   const kills = intelCurrentKills;
   if (!kills) { scatterHits = []; return; }
 
@@ -1275,7 +1289,7 @@ function renderScatter() {
   ctx.clearRect(0, 0, cssW, cssH);
 
   const days = intelScatterRange === '60d' ? 60 : 30;
-  const padL = 30, padR = 8, padT = 8, padB = 16;
+  const padL = 30, padR = 8, padT = 8, padB = 22;
   const plotW = cssW - padL - padR;
   const plotH = cssH - padT - padB;
   const now    = Date.now();
@@ -1361,7 +1375,12 @@ function renderScatter() {
     const lv = Math.log10(v);
     const x = padL + ((ts - cutoff) / (now - cutoff)) * plotW;
     const y = padT + plotH - valueLogToFrac(lv) * plotH;
-    const color = SCATTER_CLASS_COLOR[cls];
+    let color = SCATTER_CLASS_COLOR[cls];
+    if (intelEntityFilter && matched) {
+      const role = entityRoleInKill(k);
+      if (role === 'victim')   color = ROLE_COLOR_VICTIM;
+      if (role === 'attacker') color = ROLE_COLOR_ATTACKER;
+    }
     ctx.fillStyle = color;
     ctx.globalAlpha = matched ? 0.85 : 0.1;
     ctx.beginPath();
