@@ -19,12 +19,15 @@
 // against the current head. Two cases it handles:
 //   - nextSeq is far behind head (restart backlog, zKB hole run): jump
 //     forward to head, losing the skipped kills so the feed stays real-time.
-//   - nextSeq is ahead of head (zKB rolled back, CDN inconsistency on the
-//     saved state, clock skew): snap back to head so we stop 404-looping
-//     on a sequence that doesn't exist yet.
+//   - nextSeq is ahead of head AND we're stuck (no successful kill within
+//     STUCK_MS): snap back to head. The "stuck" guard matters because zKB's
+//     sequence.json frequently lags behind its actual published killmail
+//     files — we can be fetching real kills at seqs the sequence.json hasn't
+//     caught up to yet. Snapping back on every head check in that window
+//     would reprocess the same seqs in a loop.
 // Running on wall-clock rather than poll-success cadence is load-bearing:
-// if every poll 404s (either case above) the watchdog would otherwise
-// never fire and we'd be stuck until a manual restart.
+// if every poll 404s the watchdog would otherwise never fire and we'd be
+// stuck until a manual restart.
 //
 // Persistence: nextSeq is written to STATE_FILE on every successful poll.
 // On startup we read it first so restarts resume where we left off instead
@@ -39,8 +42,9 @@ const KILL_URL = (seq) => `https://r2z2.zkillboard.com/ephemeral/${seq}.json`;
 const EMPTY_BACKOFF_MS = 6500;
 const ERROR_BACKOFF_MS = 5000;
 
-const HEAD_CHECK_MS       = 60_000; // head-check cadence (wall clock)
-const HEAD_SKIP_THRESHOLD = 500;    // jump forward if this many seqs behind
+const HEAD_CHECK_MS       = 60_000;  // head-check cadence (wall clock)
+const HEAD_SKIP_THRESHOLD = 500;     // jump forward if this many seqs behind
+const STUCK_MS            = 180_000; // rollback guard: only snap back if no kill in this window
 
 const DEFAULT_UA = 'map-anoikis/0.1 (+https://github.com/wh-info/map-anoikis; map.anoikis.info)';
 const USER_AGENT = process.env.ZKILL_USER_AGENT || DEFAULT_UA;
@@ -109,13 +113,18 @@ export function connectZkill({ onKill, onStatus, onJump } = {}) {
         return;
       }
 
-      // Case 2: we're ahead of head (rollback, CDN skew, stale saved state).
-      // Snap back to head or we'll 404-loop on a seq that doesn't exist.
+      // Case 2: we're ahead of head AND genuinely stuck (no kill processed
+      // in STUCK_MS). zKB's sequence.json often lags its actual published
+      // killmail files by a handful of seqs, so "ahead of head" on its own
+      // is a normal transient state — only snap back when it's clearly not
+      // resolving on its own, indicating the saved state was bad.
       if (lag < 0) {
+        const stuckFor = Date.now() - (lastKillAt ?? 0);
+        if (lastKillAt !== null && stuckFor < STUCK_MS) return;
         const from = nextSeq;
         nextSeq = headSeq;
         jumpsTotal++;
-        onStatus?.(`head-rollback: snapped ${from} -> ${headSeq} (${-lag} ahead)`);
+        onStatus?.(`head-rollback: snapped ${from} -> ${headSeq} (${-lag} ahead, stuck ${Math.round(stuckFor/1000)}s)`);
         await saveState(nextSeq);
       }
     } catch {
