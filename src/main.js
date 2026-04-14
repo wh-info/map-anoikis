@@ -113,6 +113,32 @@ const stars = window.ANOIKIS_SYSTEMS.map((s) => ({
 document.getElementById('star-count').textContent = stars.length + ' wormhole systems';
 // systemID -> star, used by the live kill feed to resolve incoming IDs.
 const starById = new Map(stars.map((s) => [s.id, s]));
+// name (J-code) -> star, used by the static loader to map anoik.is keys.
+const starByName = new Map(stars.map((s) => [s.name, s]));
+
+// Wormhole statics + type properties — loaded async from data/.
+// statics: scraped once from anoik.is, served from our own file forever.
+// types:   maintained from the user's own website; empty {} until populated.
+window.WH_STATICS = {};
+window.WH_TYPES   = {};
+fetch('./data/wh-statics.json')
+  .then((r) => (r.ok ? r.json() : {}))
+  .then((data) => {
+    window.WH_STATICS = data || {};
+    for (const [name, entry] of Object.entries(window.WH_STATICS)) {
+      const star = starByName.get(name);
+      if (star) star.statics = entry.static || [];
+    }
+    if (selected) selectStar(selected, false);
+  })
+  .catch(() => {});
+fetch('./data/wh-types.json')
+  .then((r) => (r.ok ? r.json() : {}))
+  .then((data) => {
+    window.WH_TYPES = data || {};
+    if (selected) selectStar(selected, false);
+  })
+  .catch(() => {});
 
 // Named Drifter systems — keyed by SDE name; carries lore J-code + subclass.
 const DRIFTER_INFO = {

@@ -237,10 +237,16 @@ html, body {
   letter-spacing: 0.04em;
 }
 
+.info-row--statics { align-items: center; }
+.info-row--statics .v.statics {
+  display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end;
+  margin-top: 0;
+}
 .statics {
   margin-top: 8px;
   display: flex; gap: 4px; flex-wrap: wrap;
 }
+.info-row--statics:has(.statics:empty) { display: none; }
 .static-chip {
   font-size: 10px;
   font-weight: 700;
