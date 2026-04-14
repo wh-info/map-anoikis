@@ -242,7 +242,12 @@ html, body {
   margin-top: 6px;
   padding-top: 9px;
 }
-.info-row--statics { align-items: center; }
+.info-row--statics {
+  align-items: center;
+  border-top: 1px dashed var(--border);
+  margin-top: 6px;
+  padding-top: 9px;
+}
 .info-row--statics .v.statics {
   display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end;
   margin-top: 0;
