@@ -113,7 +113,7 @@ html, body {
   color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  text-align: right;
+  text-align: left;
   margin-top: 4px;
 }
 
