@@ -20,8 +20,37 @@
 // of {remaining, pauseUntil} vars is shared across bootstrap + reconcile so
 // one can't starve the other when both run in the same process.
 
+import { readFile, writeFile, mkdir, unlink } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { classifyKill } from './filter.js';
 import { buildIntelKill } from './killstore.js';
+
+// Persistent walker progress so Railway restarts don't reset us to region 0.
+// Without this, every restart re-walks the first few high-activity C1 regions
+// (60 min each due to ESI throttling) and never progresses to C2..C6 — which
+// is how we ended up with 99% of the store concentrated in A-R00001..A-R00003.
+const BOOTSTRAP_STATE_FILE = process.env.BOOTSTRAP_STATE_FILE
+  || '/tmp/bootstrap-state.json';
+
+async function loadBootstrapState() {
+  try {
+    const raw = await readFile(BOOTSTRAP_STATE_FILE, 'utf-8');
+    const obj = JSON.parse(raw);
+    if (typeof obj.lastCompletedIdx === 'number') return obj;
+  } catch { /* no state or bad state — start fresh */ }
+  return null;
+}
+
+async function saveBootstrapState(state) {
+  try {
+    await mkdir(dirname(BOOTSTRAP_STATE_FILE), { recursive: true });
+    await writeFile(BOOTSTRAP_STATE_FILE, JSON.stringify(state));
+  } catch { /* best-effort — next boot just re-does the current region */ }
+}
+
+async function clearBootstrapState() {
+  try { await unlink(BOOTSTRAP_STATE_FILE); } catch { /* already gone */ }
+}
 
 // zKB rejects pastSeconds > 7 days, so bootstrap paginates without it and
 // uses hydrated killmail_time to decide when to stop each region.
@@ -153,13 +182,32 @@ export function createBootstrap({ killstore, log }) {
 
   // Core walker shared by bootstrap and reconcile. Iterates every Anoikis
   // region, paginates newest-first, hydrates each page, and stops the region
-  // when the oldest kill on that page crosses fromTs. `skipKnown`
-  // short-circuits ingest for killmail_ids already in the store.
-  async function walkWindow(fromTs, _toTs, { skipKnown }) {
-    const stats = { regions: 0, pages: 0, slimSeen: 0, hydrated: 0, added: 0, throttled: 0 };
+  // when the oldest kill on that page crosses fromTs.
+  //
+  // `skipKnown` short-circuits ingest for killmail_ids already in the store.
+  // `resumable` enables bootstrap state persistence: on entry we resume from
+  // the region after the last completed one, and on each region done we
+  // persist the index so the next restart picks up mid-sweep instead of
+  // grinding through A-R00001 again.
+  async function walkWindow(fromTs, _toTs, { skipKnown, resumable }) {
+    const stats = { regions: 0, pages: 0, slimSeen: 0, hydrated: 0, added: 0, throttled: 0, skippedFighters: 0 };
     const queue = [];
 
-    for (const regionId of ANOIKIS_REGIONS) {
+    let startIdx = 0;
+    if (resumable) {
+      const state = await loadBootstrapState();
+      if (state && state.lastCompletedIdx + 1 < ANOIKIS_REGIONS.length) {
+        startIdx = state.lastCompletedIdx + 1;
+        log?.info?.({ startIdx, regionId: ANOIKIS_REGIONS[startIdx] }, 'bootstrap resuming from saved state');
+      } else if (state) {
+        // All regions already walked on a previous boot — nothing to do.
+        log?.info?.({ completedAt: state.completedAt }, 'bootstrap already complete, skipping');
+        return stats;
+      }
+    }
+
+    for (let idx = startIdx; idx < ANOIKIS_REGIONS.length; idx++) {
+      const regionId = ANOIKIS_REGIONS[idx];
       stats.regions++;
       for (let page = 1; page <= MAX_PAGES; page++) {
         let slim;
@@ -176,6 +224,15 @@ export function createBootstrap({ killstore, log }) {
         for (const row of slim) {
           if (!row?.killmail_id) continue;
           if (skipKnown && killstore.has(row.killmail_id)) continue;
+          // Pre-filter via zkb labels: drop rows we already know we'd drop
+          // post-classification, so we don't spend ESI budget hydrating them.
+          // Labels look like ["tz:ru","cat:6","pvp","loc:w-space"] — cat:87 is
+          // fighters, which filter.js rejects. Cheap win on ESI load.
+          const labels = row.zkb?.labels;
+          if (Array.isArray(labels) && labels.includes('cat:87')) {
+            stats.skippedFighters++;
+            continue;
+          }
           queue.push(row);
         }
 
@@ -186,7 +243,14 @@ export function createBootstrap({ killstore, log }) {
         // Stop this region when the page's oldest kill is past our window.
         if (oldestThisPage != null && oldestThisPage < fromTs) break;
       }
-      log?.info?.({ regionId, added: stats.added, pages: stats.pages }, 'bootstrap region done');
+      log?.info?.({ regionId, idx, added: stats.added, pages: stats.pages }, 'bootstrap region done');
+      if (resumable) {
+        await saveBootstrapState({ lastCompletedIdx: idx, regionId, savedAt: Date.now() });
+      }
+    }
+
+    if (resumable) {
+      await saveBootstrapState({ lastCompletedIdx: ANOIKIS_REGIONS.length - 1, completedAt: Date.now() });
     }
     return stats;
   }
@@ -194,7 +258,7 @@ export function createBootstrap({ killstore, log }) {
   async function bootstrapWindow(fromTs, toTs) {
     log?.info?.({ fromTs, toTs }, 'bootstrap starting');
     const started = Date.now();
-    const stats = await walkWindow(fromTs, toTs, { skipKnown: false });
+    const stats = await walkWindow(fromTs, toTs, { skipKnown: true, resumable: true });
     const elapsed = Math.round((Date.now() - started) / 1000);
     log?.info?.({ ...stats, elapsed }, 'bootstrap done');
     try { await killstore.compact(); } catch { /* best-effort */ }
@@ -204,11 +268,17 @@ export function createBootstrap({ killstore, log }) {
   async function reconcileWindow(fromTs, toTs) {
     log?.info?.({ fromTs, toTs }, 'reconcile starting');
     const started = Date.now();
-    const stats = await walkWindow(fromTs, toTs, { skipKnown: true });
+    const stats = await walkWindow(fromTs, toTs, { skipKnown: true, resumable: false });
     const elapsed = Math.round((Date.now() - started) / 1000);
     log?.info?.({ ...stats, elapsed }, 'reconcile done');
     return stats;
   }
 
-  return { bootstrapWindow, reconcileWindow };
+  // Exposed so the /health endpoint (or a future operator command) can wipe
+  // saved state and force a full re-walk from region 0 on the next bootstrap.
+  async function resetBootstrapState() {
+    await clearBootstrapState();
+  }
+
+  return { bootstrapWindow, reconcileWindow, resetBootstrapState };
 }

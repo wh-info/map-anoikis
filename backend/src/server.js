@@ -217,25 +217,23 @@ zkillClient = connectZkill({
   }
 });
 
-// Kickoff logic for the first-ever deploy: if the killstore doesn't yet
-// have 60 days of coverage, run the bootstrap walker in the background.
-// On every subsequent restart the volume already has the data and this is a
-// cheap no-op. Non-blocking so the HTTP server stays responsive throughout.
+// Kickoff logic: always ask the walker to run on boot. The walker itself
+// consults its own persistent state file (bootstrap-state.json on the
+// volume) to resume from the last completed region, and short-circuits to
+// a cheap no-op once all 33 regions have been walked once. We deliberately
+// don't gate on killstore.coverageFrom() anymore — a single deep kill in
+// region 1 can make coverage look "complete" while 30 other regions are
+// still empty, which is exactly the state that exposed the restart bug.
 const RETENTION_SEC = 60 * 24 * 60 * 60;
 {
   const nowSec = Math.floor(Date.now() / 1000);
-  const oldest = killstore.coverageFrom();
   const target = nowSec - RETENTION_SEC;
-  if (oldest === null || oldest > target) {
-    fastify.log.info(
-      { oldest, target, size: killstore.size() },
-      'coverage gap detected — starting background bootstrap'
-    );
-    bootstrap.bootstrapWindow(target, oldest ?? nowSec)
-      .catch((err) => fastify.log.warn({ err: err.message }, 'bootstrap failed'));
-  } else {
-    fastify.log.info({ size: killstore.size() }, 'killstore coverage complete');
-  }
+  fastify.log.info(
+    { target, size: killstore.size(), coverageFrom: killstore.coverageFrom() },
+    'kicking off bootstrap walker'
+  );
+  bootstrap.bootstrapWindow(target, nowSec)
+    .catch((err) => fastify.log.warn({ err: err.message }, 'bootstrap failed'));
 }
 
 // Daily reconciliation sweep — catches anything R2Z2 missed silently or that
