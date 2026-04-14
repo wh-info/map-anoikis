@@ -14,10 +14,17 @@
 // limit is 20 req/sec per IP; we stay well under it because the natural
 // cadence (one new sequence every ~6.7s at the head) is the real pacer.
 //
-// Head-skip watchdog: every HEAD_CHECK_EVERY successful polls, re-fetch
-// sequence.json. If we've fallen more than HEAD_SKIP_THRESHOLD behind
-// (network stalls, restart backlog, zKB hole runs), jump nextSeq forward
-// to head. We accept losing the skipped kills so the feed stays real-time.
+// Head-skip watchdog: on a wall-clock cadence (every HEAD_CHECK_MS,
+// regardless of poll success) re-fetch sequence.json and reconcile nextSeq
+// against the current head. Two cases it handles:
+//   - nextSeq is far behind head (restart backlog, zKB hole run): jump
+//     forward to head, losing the skipped kills so the feed stays real-time.
+//   - nextSeq is ahead of head (zKB rolled back, CDN inconsistency on the
+//     saved state, clock skew): snap back to head so we stop 404-looping
+//     on a sequence that doesn't exist yet.
+// Running on wall-clock rather than poll-success cadence is load-bearing:
+// if every poll 404s (either case above) the watchdog would otherwise
+// never fire and we'd be stuck until a manual restart.
 //
 // Persistence: nextSeq is written to STATE_FILE on every successful poll.
 // On startup we read it first so restarts resume where we left off instead
@@ -32,8 +39,8 @@ const KILL_URL = (seq) => `https://r2z2.zkillboard.com/ephemeral/${seq}.json`;
 const EMPTY_BACKOFF_MS = 6500;
 const ERROR_BACKOFF_MS = 5000;
 
-const HEAD_CHECK_EVERY    = 50;   // head-check cadence (successful polls)
-const HEAD_SKIP_THRESHOLD = 500;  // jump forward if this many seqs behind
+const HEAD_CHECK_MS       = 60_000; // head-check cadence (wall clock)
+const HEAD_SKIP_THRESHOLD = 500;    // jump forward if this many seqs behind
 
 const DEFAULT_UA = 'map-anoikis/0.1 (+https://github.com/wh-info/map-anoikis; map.anoikis.info)';
 const USER_AGENT = process.env.ZKILL_USER_AGENT || DEFAULT_UA;
@@ -73,28 +80,44 @@ async function saveState(nextSeq) {
 }
 
 export function connectZkill({ onKill, onStatus, onJump } = {}) {
-  let stopped      = false;
-  let nextSeq      = null;
-  let headSeq      = null;
-  let lastKillAt   = null;
-  let pollsSince   = 0;  // successful polls since last head check
-  let jumpsTotal   = 0;
+  let stopped          = false;
+  let nextSeq          = null;
+  let headSeq          = null;
+  let lastKillAt       = null;
+  let lastHeadCheckAt  = 0;
+  let jumpsTotal       = 0;
 
   async function maybeCheckHead() {
-    if (pollsSince < HEAD_CHECK_EVERY) return;
-    pollsSince = 0;
+    if (nextSeq === null) return;
+    if (Date.now() - lastHeadCheckAt < HEAD_CHECK_MS) return;
+    lastHeadCheckAt = Date.now();
     try {
       const seq = await fetchJson(SEQ_URL);
       if (!seq || typeof seq.sequence !== 'number') return;
       headSeq = seq.sequence;
       const lag = headSeq - nextSeq;
-      if (lag <= HEAD_SKIP_THRESHOLD) return;
-      const from = nextSeq;
-      nextSeq = headSeq;
-      jumpsTotal++;
-      onStatus?.(`head-skip: jumped ${from} -> ${headSeq} (${lag} behind)`);
-      onJump?.({ from, to: headSeq, lag, at: Date.now() });
-      await saveState(nextSeq);
+
+      // Case 1: we're far behind head (zKB hole, stalled restart).
+      // Jump forward and let reconcile pick up the gap.
+      if (lag > HEAD_SKIP_THRESHOLD) {
+        const from = nextSeq;
+        nextSeq = headSeq;
+        jumpsTotal++;
+        onStatus?.(`head-skip: jumped ${from} -> ${headSeq} (${lag} behind)`);
+        onJump?.({ from, to: headSeq, lag, at: Date.now() });
+        await saveState(nextSeq);
+        return;
+      }
+
+      // Case 2: we're ahead of head (rollback, CDN skew, stale saved state).
+      // Snap back to head or we'll 404-loop on a seq that doesn't exist.
+      if (lag < 0) {
+        const from = nextSeq;
+        nextSeq = headSeq;
+        jumpsTotal++;
+        onStatus?.(`head-rollback: snapped ${from} -> ${headSeq} (${-lag} ahead)`);
+        await saveState(nextSeq);
+      }
     } catch {
       // A failed head check is harmless — we'll retry next cycle.
     }
@@ -118,6 +141,11 @@ export function connectZkill({ onKill, onStatus, onJump } = {}) {
       return 0;
     }
 
+    // Run the watchdog before every fetch. On wall-clock cadence (60s) it's
+    // cheap, and it's the only thing that can unstick us when every poll is
+    // 404ing — success-path-only checks would leave us frozen.
+    await maybeCheckHead();
+
     const kill = await fetchJson(KILL_URL(nextSeq));
     if (kill === null) {
       return EMPTY_BACKOFF_MS;
@@ -125,9 +153,7 @@ export function connectZkill({ onKill, onStatus, onJump } = {}) {
     onKill?.(kill);
     nextSeq++;
     lastKillAt = Date.now();
-    pollsSince++;
     await saveState(nextSeq);
-    await maybeCheckHead();
     return 0;
   }
 
