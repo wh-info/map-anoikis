@@ -2005,6 +2005,7 @@ function selectStar(s, focus) {
     chip.rel = 'noopener noreferrer';
     const typeInfo = window.WH_TYPES && window.WH_TYPES[st];
     const dest = typeInfo && typeInfo.leadsTo && typeInfo.leadsTo[0];
+    if (dest) chip.dataset.dest = dest;
     if (dest) {
       const destEl = document.createElement('b');
       destEl.className = 'static-chip-dest';
