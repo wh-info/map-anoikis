@@ -180,6 +180,10 @@ const starBounds = (() => {
   return { minX, minY, maxX, maxY };
 })();
 
+// J130621 is the horizontal anchor for the default view — it sits left of the
+// bbox centre, so framing on it pushes the whole cluster slightly leftward.
+const RESET_ANCHOR = stars.find((s) => s.name === 'J130621');
+
 function computeResetTarget() {
   const padding = 50;
   const cw = window.innerWidth, ch = window.innerHeight;
@@ -189,9 +193,11 @@ function computeResetTarget() {
     Math.min((cw - padding * 2) / mapW, (ch - padding * 2) / mapH),
     MIN_SCALE, 1.5
   );
+  const anchorX = RESET_ANCHOR ? RESET_ANCHOR.x : (starBounds.minX + starBounds.maxX) / 2;
+  const anchorShiftPx = 100; // push anchor right of true screen centre
   return {
     scale,
-    offsetX: cw / 2 - ((starBounds.minX + starBounds.maxX) / 2) * scale,
+    offsetX: cw / 2 + anchorShiftPx - anchorX * scale,
     offsetY: ch / 2 - ((starBounds.minY + starBounds.maxY) / 2) * scale
   };
 }
