@@ -253,8 +253,8 @@ html, body {
 }
 .info-row--statics:has(.statics:empty) { display: none; }
 .static-chip {
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 500;
   padding: 2px 6px;
   background: transparent;
   border: 1px solid var(--border);
@@ -262,8 +262,8 @@ html, body {
   letter-spacing: 0.06em;
   text-decoration: none;
   cursor: pointer;
-  transition: border-color 0.12s, color 0.12s;
 }
+.static-chip-dest { font-weight: 800; }
 .static-chip:hover {
   border-color: var(--accent);
   color: var(--accent);
