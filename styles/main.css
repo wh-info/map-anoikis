@@ -1609,6 +1609,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   display: block;
   opacity: 0.85;
 }
+#panel-intel:not(.intel-view-scatter) .intel-entity-spark { display: none; }
 .intel-spark-legend {
   display: flex;
   justify-content: center;

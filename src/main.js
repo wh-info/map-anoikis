@@ -1434,6 +1434,7 @@ function setIntelView(view) {
   intelView = view;
   document.getElementById('intel-view-heatmap').style.display = view === 'heatmap' ? '' : 'none';
   document.getElementById('intel-view-scatter').style.display = view === 'scatter' ? '' : 'none';
+  document.getElementById('panel-intel').classList.toggle('intel-view-scatter', view === 'scatter');
   document.querySelectorAll('[data-view-toggle] button').forEach((b) =>
     b.classList.toggle('active', b.dataset.view === view));
   if (view === 'scatter') {
