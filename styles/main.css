@@ -593,7 +593,7 @@ html, body {
   flex-direction: column;
   align-items: flex-end;
 }
-.kill-img-wrap .implant-badge { margin-top: auto; }
+.kill-img-wrap .implant-badge { margin-top: auto; margin-bottom: 3px; }
 .kill-tech-badge {
   position: absolute;
   top: 1px; left: 1px;
