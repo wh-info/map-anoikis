@@ -78,8 +78,8 @@ def en(name_field) -> str:
     return str(name_field) if name_field else ""
 
 
-def load_lookups() -> tuple[dict, dict, dict, dict, dict]:
-    """Return (regions, constellations, effects, planets_by_id, star_type_by_system) lookup dicts."""
+def load_lookups() -> tuple[dict, dict, dict, dict, dict, dict]:
+    """Return regions, constellations, effects, planets, star_type, star_info lookups."""
     # regionID → {name, wormholeClassID}
     regions: dict[int, dict] = {}
     for rid, rec in iter_jsonl(SDE_CACHE / "mapRegions.jsonl"):
@@ -122,19 +122,36 @@ def load_lookups() -> tuple[dict, dict, dict, dict, dict]:
             angle    = round(math.atan2(pz, px), 4)  # XZ plane, same projection as starmap
             ci       = rec.get("celestialIndex") or 0  # 1-based planet index (I, II, III…)
             moon_count = len(rec.get("moonIDs") or [])
-            planets_by_id[int(pid)] = {"typeId": type_id, "r": orbit_au, "a": angle, "ci": ci, "moons": moon_count}
+            planets_by_id[int(pid)] = {
+                "typeId": type_id, "r": orbit_au, "a": angle,
+                "ci": ci, "moons": moon_count,
+            }
 
-    # solarSystemID → star typeID — loaded from mapStars.jsonl if present.
+    # solarSystemID → star typeID / star statistics — loaded from mapStars.jsonl if present.
     star_type_by_system: dict[int, int] = {}
+    star_info_by_system: dict[int, dict] = {}
     stars_path = SDE_CACHE / "mapStars.jsonl"
     if stars_path.exists():
         for _, rec in iter_jsonl(stars_path):
             sid = rec.get("solarSystemID")
             tid = rec.get("typeID")
-            if sid is not None and tid is not None:
-                star_type_by_system[int(sid)] = int(tid)
+            if sid is None:
+                continue
+            sid_i = int(sid)
+            if tid is not None:
+                star_type_by_system[sid_i] = int(tid)
+            stats = rec.get("statistics") or {}
+            radius = rec.get("radius")
+            if stats or radius is not None:
+                star_info_by_system[sid_i] = {
+                    "spectralClass": stats.get("spectralClass"),
+                    "luminosity":    stats.get("luminosity"),
+                    "age":           stats.get("age"),        # seconds
+                    "temperature":   stats.get("temperature"),
+                    "radius":        radius,                  # meters
+                }
 
-    return regions, constellations, effects, planets_by_id, star_type_by_system
+    return regions, constellations, effects, planets_by_id, star_type_by_system, star_info_by_system
 
 
 def load_systems(
@@ -143,6 +160,7 @@ def load_systems(
     effects: dict,
     planets_by_id: dict,
     star_type_by_system: dict,
+    star_info_by_system: dict,
 ) -> list[dict]:
     """Load every wspace solar system and attach region/constellation/effect/planets."""
     required = [
@@ -197,6 +215,7 @@ def load_systems(
             "sx":            float(pos.get("x", 0)),
             "sz":            float(pos.get("z", 0)),
             "sun_type_id":   star_type_by_system.get(sys_id),
+            "sun_info":      star_info_by_system.get(sys_id),
             "planets":       planets,
         })
     return rows
@@ -235,6 +254,7 @@ def transform(rows: list[dict]) -> list[dict]:
             "y":             row["y"],
             "r":             DEFAULT_RADIUS,
             "sunTypeId":     row.get("sun_type_id"),
+            "sun":           row.get("sun_info"),
             "planets":       row.get("planets", []),
         })
     if dropped:
@@ -256,8 +276,12 @@ def write_js(systems: list[dict]) -> None:
 
 
 def main() -> None:
-    regions, constellations, effects, planets_by_id, star_type_by_system = load_lookups()
-    rows = load_systems(regions, constellations, effects, planets_by_id, star_type_by_system)
+    (regions, constellations, effects, planets_by_id,
+     star_type_by_system, star_info_by_system) = load_lookups()
+    rows = load_systems(
+        regions, constellations, effects,
+        planets_by_id, star_type_by_system, star_info_by_system,
+    )
     project(rows)
     systems = transform(rows)
     with_effect = sum(1 for s in systems if s["effect"])

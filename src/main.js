@@ -576,6 +576,10 @@ function buildOrreryList(star) {
       `<div class="olist-sub">${escapeHtml((SUN_NAMES[star.sunTypeId] || 'Sun').replace(/\s*\(.*\)$/, ''))}</div></div>`;
     el.appendChild(row);
     attachRowHover(row, { isSun: true });
+    row.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      toggleSunPopup(star);
+    });
   }
 
   // Planet rows sorted by celestialIndex.
@@ -596,6 +600,44 @@ function buildOrreryList(star) {
   }
 }
 
+function formatSunAge(ageSeconds) {
+  const years = ageSeconds / 31557600;
+  if (years >= 1e9) {
+    const bn = years / 1e9;
+    return (bn >= 10 ? Math.round(bn) : bn.toFixed(1).replace('.', ',')) + ' billion years';
+  }
+  return Math.round(years / 1e6) + ' million years';
+}
+function formatSunRadius(meters) {
+  const km = Math.round(meters / 1000);
+  return km.toLocaleString('de-DE') + ' km';
+}
+function formatSunLuminosity(lum) {
+  return lum.toFixed(2).replace('.', ',');
+}
+function toggleSunPopup(star) {
+  const pop = document.getElementById('sun-popup');
+  if (pop.classList.contains('open') && pop.dataset.sysId === String(star.id)) {
+    pop.classList.remove('open');
+    return;
+  }
+  const s = star.sun;
+  if (!s) { pop.classList.remove('open'); return; }
+  pop.dataset.sysId = String(star.id);
+  pop.innerHTML =
+    `<div class="sun-popup-title">${escapeHtml(star.name)} Star</div>` +
+    `<div class="sun-popup-row"><b>Spectral class:</b> ${escapeHtml(s.spectralClass || '—')}</div>` +
+    `<div class="sun-popup-row"><b>Luminosity:</b> ${s.luminosity != null ? formatSunLuminosity(s.luminosity) : '—'}</div>` +
+    `<div class="sun-popup-row"><b>Age:</b> ${s.age != null ? formatSunAge(s.age) : '—'}</div>` +
+    `<div class="sun-popup-row"><b>Radius:</b> ${s.radius != null ? formatSunRadius(s.radius) : '—'}</div>` +
+    `<div class="sun-popup-row"><b>Temperature:</b> ${s.temperature != null ? Math.round(s.temperature) + 'K' : '—'}</div>`;
+  pop.classList.add('open');
+}
+function closeSunPopup() {
+  const pop = document.getElementById('sun-popup');
+  if (pop) pop.classList.remove('open');
+}
+
 function openOrrery(star) {
   if (intelOpen) closeIntel();
   orreryOpen = true;
@@ -610,6 +652,7 @@ function closeOrrery() {
   orreryListHover = null;
   orreryPanel.classList.remove('open');
   orreryTip.textContent = '';
+  closeSunPopup();
   document.getElementById('si-system-view').classList.remove('active');
 }
 
@@ -2025,6 +2068,7 @@ function selectStar(s, focus) {
   if (orreryOpen) {
     updateOrreryHeader(s);
     buildOrreryList(s);
+    closeSunPopup();
   }
   if (intelOpen) openIntel(s);
 }
