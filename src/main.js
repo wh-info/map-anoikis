@@ -116,9 +116,12 @@ const starById = new Map(stars.map((s) => [s.id, s]));
 // name (J-code) -> star, used by the static loader to map anoik.is keys.
 const starByName = new Map(stars.map((s) => [s.name, s]));
 
-// Wormhole statics + type properties — loaded async from data/.
-// statics: scraped once from anoik.is, served from our own file forever.
-// types:   maintained from the user's own website; empty {} until populated.
+// Wormhole statics + type properties.
+// statics: scraped once from anoik.is, served from data/wh-statics.json forever.
+// types:   pulled live from the user's own whtype.info site. Browser respects
+//          the server's 10-minute Cache-Control, which is the effective update
+//          cadence. The GH Pages URL (wh-info.github.io) 301s to whtype.info
+//          without CORS headers on the redirect, so we hit whtype.info directly.
 window.WH_STATICS = {};
 window.WH_TYPES   = {};
 fetch('./data/wh-statics.json')
@@ -132,10 +135,14 @@ fetch('./data/wh-statics.json')
     if (selected) selectStar(selected, false);
   })
   .catch(() => {});
-fetch('./data/wh-types.json')
-  .then((r) => (r.ok ? r.json() : {}))
-  .then((data) => {
-    window.WH_TYPES = data || {};
+fetch('https://whtype.info/data/wormholes.json')
+  .then((r) => (r.ok ? r.json() : []))
+  .then((list) => {
+    const map = {};
+    for (const entry of list || []) {
+      if (entry && entry.type) map[entry.type] = entry;
+    }
+    window.WH_TYPES = map;
     if (selected) selectStar(selected, false);
   })
   .catch(() => {});
@@ -1984,7 +1991,17 @@ function selectStar(s, focus) {
   for (const st of s.statics) {
     const chip = document.createElement('span');
     chip.className = 'static-chip';
-    chip.textContent = st;
+    const typeInfo = window.WH_TYPES && window.WH_TYPES[st];
+    const dest = typeInfo && typeInfo.leadsTo && typeInfo.leadsTo[0];
+    if (dest) {
+      const destEl = document.createElement('b');
+      destEl.className = 'static-chip-dest';
+      destEl.textContent = dest;
+      chip.appendChild(destEl);
+      chip.appendChild(document.createTextNode(' - ' + st));
+    } else {
+      chip.textContent = st;
+    }
     stEl.appendChild(chip);
   }
   if (focus) {
