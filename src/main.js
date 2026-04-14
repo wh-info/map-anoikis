@@ -2409,6 +2409,7 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
           <div class="kill-img" style="background-image: url('${img}')"></div>
           <img class="kill-icon" src="${iconUrl}" alt="" aria-hidden="true" />
           ${techBadge(typeId) ? `<img src="./img/graphic/${techBadge(typeId)}.png" class="kill-tech-badge" alt="" aria-hidden="true" />` : ''}
+          ${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}
         </div>
         <div class="kill-info">
           <div class="kill-ship">
@@ -2421,7 +2422,7 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
         </div>
           <div class="kill-pilot${ownerLoading ? ' loading' : ''}">${ownerInitial}</div>
           <div class="kill-corp${hasCorp ? ' loading' : ''}">${hasCorp ? 'Loading corporation…' : ''}</div>
-          <div class="kill-isk"><span class="kill-value">${formatIsk(value)} ISK</span>${hasImplants ? `<span class="implant-badge" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" class="implant-img" alt="" aria-hidden="true" /></span>` : ''}</div>
+          <div class="kill-isk"><span class="kill-value">${formatIsk(value)} ISK</span></div>
         </div>
       </div>
       <div class="kill-footer"></div>
