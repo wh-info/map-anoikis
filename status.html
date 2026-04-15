@@ -77,6 +77,9 @@ body {
 #status-root {
   width: 100%;
   max-width: 680px;
+  min-height: calc(100vh - 100px);  /* body padding: 60 top + 40 bottom */
+  display: flex;
+  flex-direction: column;
   opacity: 0;
   transition: opacity 0.6s ease;
 }
@@ -211,7 +214,8 @@ footer {
   text-align: center;
   color: var(--dim);
   font-size: 11px;
-  margin-top: 24px;
+  margin-top: auto;   /* pin to bottom of #status-root flex column */
+  padding-top: 40px;
   line-height: 1.8;
 }
 footer a {
@@ -291,8 +295,7 @@ footer a:hover {
       <a href="https://zkillboard.com/" target="_blank" rel="noopener">zKillboard R2Z2</a> ·
       <a href="https://developers.eveonline.com/" target="_blank" rel="noopener">EVE ESI</a> ·
       <a href="https://www.cloudflare.com/" target="_blank" rel="noopener">Cloudflare</a> ·
-      <a href="https://railway.app/" target="_blank" rel="noopener">Railway</a> ·
-      <a href="https://pages.github.com/" target="_blank" rel="noopener">GitHub Pages</a>
+      <a href="https://whtype.info/" target="_blank" rel="noopener">whtype.info</a>
     </div>
     <div class="map-link"><a href="/">← back to map</a></div>
   </footer>
@@ -318,14 +321,12 @@ const QUOTES = [
   "Mass is a cruel god",
   "Rolling holes is a lifestyle",
   "J-space doesn't forgive",
-  "The wormhole giveth, the wormhole taketh away",
-  "No second chances in J-space",
+  "Bob giveth, Bob taketh",
   "Probe it. Scan it. Kill it.",
   "Every signature is a story",
   "D-scan or die",
   "If you see a Loki, you're already dead",
   "Bob provides",
-  "Ignorance of the hole is no defense",
   "The wormhole closes for everyone eventually",
 ];
 
@@ -398,12 +399,12 @@ function computeMood(h) {
   if (!h || !h.ok) return { text: '💀 Dead inside', cls: 'down' };
   const zk = h.zkill || '';
   if (zk.startsWith('error:')) return { text: '💀 Dead inside', cls: 'down' };
-  if (h.uptime < 60) return { text: '🌱 Just woke up', cls: '' };
+  if (h.uptime < 60) return { text: ':o Just woke up', cls: '' };
   const rate = h.seenAnoikis / (h.uptime / 3600);
-  if (rate < 5)  return { text: '☕ Napping',  cls: '' };
-  if (rate < 20) return { text: '😐 Bored',    cls: '' };
-  if (rate < 60) return { text: '👀 Watching', cls: 'ok' };
-  return { text: '🔥 Feasting', cls: 'ok' };
+  if (rate < 5)  return { text: 'zZz Napping',  cls: '' };
+  if (rate < 20) return { text: ':/ Bored',     cls: '' };
+  if (rate < 60) return { text: ':O Watching',  cls: 'ok' };
+  return { text: '>:D Feasting', cls: 'ok' };
 }
 
 function computeSilence(h) {
