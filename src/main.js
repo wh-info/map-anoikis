@@ -1067,6 +1067,7 @@ function intelAggregateShort(kills, mode) {
   const cutoff = now - n * stepMs;
   const counts = new Array(n).fill(0);
   for (const k of kills) {
+    if (!passesIntelFilter(k)) continue;
     const ts = new Date(k.killmail_time).getTime();
     if (!Number.isFinite(ts) || ts < cutoff) continue;
     const idx = (n - 1) - Math.min(Math.floor((now - ts) / stepMs), n - 1);
@@ -1081,6 +1082,7 @@ function intelAggregateLong(kills, days) {
   const matrix   = Array.from({ length: 7 }, () => new Array(24).fill(0));
   let killCount  = 0;
   for (const k of kills) {
+    if (!passesIntelFilter(k)) continue;
     const ts = new Date(k.killmail_time).getTime();
     if (!Number.isFinite(ts) || ts < cutoff) continue;
     const d = new Date(ts);
@@ -1108,6 +1110,7 @@ function intelAggregateParties(kills, days) {
     return e;
   };
   for (const k of kills) {
+    if (!passesIntelFilter(k)) continue;
     const ts = new Date(k.killmail_time).getTime();
     if (!Number.isFinite(ts) || ts < cutoff) continue;
     const dayIdx = (days - 1) - Math.min(Math.floor((now - ts) / INTEL_DAY_MS), days - 1);
@@ -1156,6 +1159,21 @@ let intelView         = 'heatmap'; // 'heatmap' | 'scatter'
 let intelScatterRange = '30d';     // '30d' | '60d'
 let scatterHits       = [];        // {x, y, k, color, label} — rebuilt each draw
 let intelEntityFilter = null;      // { kind: 'corp'|'alli', id }
+
+// Intel-wide filter: ships are always counted, fighters are always excluded,
+// the rest are toggleable via the footer chips. Applied by every intel
+// aggregator (short/long/parties) and the scatter renderer.
+const intelFilterKinds = new Set(['structure']);
+let intelFilterNpc = false;
+function passesIntelFilter(k) {
+  const kind = k.kind;
+  if (kind === 'fighter') return false;
+  if (kind === 'structure' || kind === 'tower' || kind === 'deployable') {
+    if (!intelFilterKinds.has(kind)) return false;
+  }
+  if (k.isNpc && !intelFilterNpc) return false;
+  return true;
+}
 
 function killMatchesEntityFilter(k) {
   if (!intelEntityFilter) return true;
@@ -1219,20 +1237,24 @@ const SCATTER_CLASS_COLOR = {
   Capital:         '#c66bff',
   Industrial:      '#c8a878',
   Structures:      '#ffffff',
+  Towers:          '#b0a0ff',
+  Deployables:     '#60d0b0',
   'Pods/Shuttles': '#888888',
 };
 const SCATTER_LEGEND_ORDER = [
   'Frigate', 'Destroyer', 'Cruiser', 'Industrial',
   'Battlecruiser', 'Battleship', 'Capital', 'Structures',
-  'Pods/Shuttles',
+  'Towers', 'Deployables', 'Pods/Shuttles',
 ];
 
 function scatterClassFor(typeId) {
   const kind = window.TYPE_KINDS && window.TYPE_KINDS[typeId];
-  if (kind === 'structure' || kind === 'tower') return 'Structures';
+  if (kind === 'structure')  return 'Structures';
+  if (kind === 'tower')      return 'Towers';
+  if (kind === 'deployable') return 'Deployables';
   const slug = window.TYPE_ICONS && window.TYPE_ICONS[typeId];
   if (slug && SCATTER_CLASS_LABELS[slug]) return SCATTER_CLASS_LABELS[slug];
-  return null; // pods, shuttles, fighters, deployables — not plotted
+  return null; // pods, shuttles, fighters — not plotted
 }
 
 function buildScatterLegend() {
@@ -1303,6 +1325,7 @@ function renderScatter() {
   const minLog = 6; // 1M ISK
   let observedMax = 0;
   for (const k of kills) {
+    if (!passesIntelFilter(k)) continue;
     const ts = new Date(k.killmail_time).getTime();
     if (!Number.isFinite(ts) || ts < cutoff) continue;
     const cls = scatterClassFor(k.victim?.ship_type_id);
@@ -1368,6 +1391,7 @@ function renderScatter() {
   scatterHits = [];
   let filteredTotal = 0;
   for (const k of kills) {
+    if (!passesIntelFilter(k)) continue;
     const ts = new Date(k.killmail_time).getTime();
     if (!Number.isFinite(ts) || ts < cutoff) continue;
     const matched = killMatchesEntityFilter(k);
@@ -2783,6 +2807,25 @@ setInterval(() => {
 // --- Kill footer filter toggle -----------------------------------
 document.getElementById('kill-footer-toggle').addEventListener('click', () => {
   document.getElementById('kill-footer').classList.toggle('open');
+});
+
+// --- Intel footer filter toggle + chips --------------------------
+document.getElementById('intel-footer-toggle').addEventListener('click', () => {
+  document.getElementById('intel-footer').classList.toggle('open');
+});
+document.querySelectorAll('#intel-filters .kind-chip').forEach((chip) => {
+  chip.addEventListener('click', () => {
+    const kind = chip.dataset.kind;
+    const tag  = chip.dataset.tag;
+    if (kind) {
+      if (intelFilterKinds.has(kind)) intelFilterKinds.delete(kind);
+      else intelFilterKinds.add(kind);
+    } else if (tag === 'npc') {
+      intelFilterNpc = !intelFilterNpc;
+    }
+    chip.classList.toggle('on');
+    renderIntelAll();
+  });
 });
 
 // --- Kill list compact-view toggle (persisted) -------------------
