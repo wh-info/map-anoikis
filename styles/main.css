@@ -227,6 +227,34 @@ html, body {
   align-items: baseline;
   gap: 10px;
 }
+.sys-name #si-name {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+.sys-name-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.si-copy-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  transition: color 0.12s;
+}
+.si-copy-link:hover { color: var(--accent); }
+.si-copy-link .si-copy-icon--check { display: none; color: var(--accent); }
+.si-copy-link.copied .si-copy-icon        { display: none; }
+.si-copy-link.copied .si-copy-icon--check { display: inline-block; }
 .sys-name #si-class {
   font-size: 12px;
   color: var(--highlight);

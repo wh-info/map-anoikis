@@ -31,7 +31,13 @@
     <div class="title">System</div>
     <div class="info-body">
       <div class="sys-name">
-        <span id="si-name">—</span>
+        <span class="sys-name-left">
+          <span id="si-name">—</span>
+          <button id="si-copy-link" class="si-copy-link" type="button">
+            <svg class="si-copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            <svg class="si-copy-icon si-copy-icon--check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+          </button>
+        </span>
         <span id="si-class">—</span>
       </div>
       <div class="info-row info-row--jcode" id="si-jcode-row" style="display:none;">
@@ -55,7 +61,7 @@
 
 <!-- ORRERY PANEL: solar system view -->
 <div id="panel-orrery">
-  <button class="panel-hide-btn" id="close-orrery" data-tip="Close">
+  <button class="panel-hide-btn" id="close-orrery">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
   </button>
   <div class="orrery-header">
@@ -95,7 +101,7 @@
       <div class="title" style="margin:0;" id="intel-title">—</div>
       <div id="intel-subtitle"></div>
     </div>
-    <button class="panel-hide-btn" id="close-intel" data-tip="Close">
+    <button class="panel-hide-btn" id="close-intel">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
     </button>
   </div>

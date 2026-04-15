@@ -2083,16 +2083,27 @@ function updateCorners(cw, ch) {
 let selected = null;
 let searchMarker = null;
 const siEl = document.getElementById('system-info');
+let initialUrlSys = null;
+
+function clearUrlSysParam() {
+  if (location.search) {
+    history.replaceState({}, '', location.pathname);
+  }
+  initialUrlSys = null;
+}
+
 function deselectStar() {
   selected = null;
   siEl.classList.add('empty');
   for (const el of Object.values(cornerEls)) el.classList.remove('corner--active');
   closeOrrery();
   closeIntel();
+  clearUrlSysParam();
 }
 
 function selectStar(s, focus) {
   selected = s;
+  if (initialUrlSys && s.name.toUpperCase() !== initialUrlSys) clearUrlSysParam();
   for (const el of Object.values(cornerEls)) el.classList.add('corner--active');
   siEl.classList.remove('empty');
   const dd = drifterDisplay(s);
@@ -3037,6 +3048,40 @@ function connectKillFeed() {
   open();
 }
 connectKillFeed();
+
+// --- Copy-link button (next to J-code in system info panel) -----
+{
+  const btn = document.getElementById('si-copy-link');
+  btn.addEventListener('click', async () => {
+    if (!selected) return;
+    const base = location.protocol === 'file:'
+      ? 'https://anoikis.info/'
+      : `${location.origin}${location.pathname}`;
+    const url = `${base}?sys=${selected.name}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      return;
+    }
+    btn.classList.add('copied');
+    setTimeout(() => btn.classList.remove('copied'), 1200);
+  });
+}
+
+// --- URL deep-link: ?sys=J121856 flies to the system on load ----
+{
+  const raw = new URLSearchParams(location.search).get('sys');
+  if (raw && /^J\d{6}$/i.test(raw)) {
+    const code = raw.toUpperCase();
+    const s = stars.find((st) => st.name.toUpperCase() === code);
+    if (s) {
+      initialUrlSys = code;
+      selectStar(s, true);
+    } else {
+      clearUrlSysParam();
+    }
+  }
+}
 
 // --- Go ----------------------------------------------------------
 requestAnimationFrame(draw);
