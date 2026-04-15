@@ -50,6 +50,10 @@ body {
 
 /* ----- boot sequence ----- */
 #boot {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: 100%;
   max-width: 680px;
   padding: 24px;
@@ -254,8 +258,8 @@ footer a:hover {
 <div id="boot">
 <div class="boot-line" data-text="> connecting to R2Z2..."></div>
 <div class="boot-line" data-text="> handshaking with Cloudflare..."></div>
-<div class="boot-line" data-text="> entering wormhole space..."></div>
-<div class="boot-line" data-text="> you have jumped into Anoikis. nobody can hear you scream."></div>
+<div class="boot-line" data-text="> you have jumped into wormhole space."></div>
+<div class="boot-line" data-text="> nobody can hear you scream."></div>
 </div>
 
 <main id="status-root" hidden>
