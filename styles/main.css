@@ -1699,15 +1699,22 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   transition: opacity 0.18s ease;
 }
 #panel-orrery.open { display: flex; }
+#panel-orrery > #close-orrery {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 4;
+}
 
 .orrery-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .orrery-header-info {
-  flex: 1;
+  width: 470px;
+  flex-shrink: 0;
   min-width: 0;
 }
 
@@ -1724,6 +1731,8 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   display: flex;
   gap: 3px;
   flex-shrink: 0;
+  width: 230px;
+  justify-content: center;
 }
 
 .orrery-body {
@@ -1842,8 +1851,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 .orrery-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   min-height: 20px;
 }
 
@@ -1851,7 +1859,14 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   font-size: 11px;
   color: var(--muted);
   letter-spacing: 0.04em;
-  flex: 1;
+  width: 470px;
+  flex-shrink: 0;
+}
+
+#orrery-rotate-btn {
+  width: 230px;
+  flex-shrink: 0;
+  text-align: center;
 }
 
 .orrery-ctrl {
@@ -1869,10 +1884,10 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   transition: background 0.1s, border-color 0.1s, color 0.1s;
   flex-shrink: 0;
 }
-.orrery-ctrl:hover { border-color: var(--muted); color: var(--muted); }
+.orrery-ctrl:hover { border-color: var(--border-hi); color: var(--accent); }
 .orrery-ctrl.on {
   background: rgba(0,200,200,0.1);
-  border-color: var(--accent);
+  border-color: var(--border-hi);
   color: var(--accent);
 }
 
