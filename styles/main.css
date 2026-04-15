@@ -1373,6 +1373,14 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   margin: 12px 0 5px;
 }
 .intel-section-label:first-child { margin-top: 0; }
+.intel-section-title-group {
+  display: inline-flex;
+  gap: 10px;
+  align-items: baseline;
+}
+.intel-section-title {
+  color: var(--fg);
+}
 .intel-utc { text-transform: none; letter-spacing: 0; font-size: 9px; }
 .intel-section-count {
   font-size: 10px;
@@ -1527,12 +1535,14 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   display: grid;
   grid-template-columns: repeat(4, max-content);
   justify-content: center;
+  align-content: center;
   gap: 5px 16px;
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px dashed var(--border);
   font-size: 9px;
   color: var(--dim);
+  min-height: 56px;
 }
 .intel-scatter-legend > span {
   display: inline-flex;

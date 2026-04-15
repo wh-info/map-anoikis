@@ -123,9 +123,12 @@
 
     <div id="intel-view-heatmap">
       <div class="intel-section-label">
-        <div class="intel-range-toggle" data-range="short">
-          <button data-mode="24h" class="active">Last 24 Hours</button>
-          <button data-mode="10d">Last 10 Days</button>
+        <div class="intel-section-title-group">
+          <span class="intel-section-title">Recent Activity</span>
+          <div class="intel-range-toggle" data-range="short">
+            <button data-mode="24h" class="active">24 Hours</button>
+            <button data-mode="12d">12 Days</button>
+          </div>
         </div>
         <span id="intel-count-24h" class="intel-section-count"></span>
       </div>
@@ -135,9 +138,12 @@
       <div class="intel-separator"></div>
 
       <div class="intel-section-label">
-        <div class="intel-range-toggle" data-range="long">
-          <button data-mode="30d" class="active">30-Day Activity</button>
-          <button data-mode="60d">60-Day Activity</button>
+        <div class="intel-section-title-group">
+          <span class="intel-section-title">Activity Pattern</span>
+          <div class="intel-range-toggle" data-range="long">
+            <button data-mode="30d" class="active">30 Days</button>
+            <button data-mode="60d">60 Days</button>
+          </div>
         </div>
         <span id="intel-count-60d" class="intel-section-count"></span>
       </div>

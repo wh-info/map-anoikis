@@ -777,7 +777,7 @@ function renderHmShort(counts, rgb, mode) {
   if (rebuilt) labels.innerHTML = '';
 
   const now = new Date();
-  if (mode === '10d') {
+  if (mode === '12d') {
     for (let i = 0; i < n; i++) {
       const daysAgo = (n - 1) - i;
       const d = new Date(now.getTime() - daysAgo * INTEL_DAY_MS);
@@ -1006,7 +1006,7 @@ function markPartiesError(msg) {
 
 const INTEL_CACHE_TTL    = 15 * 60 * 1000;
 const INTEL_DAY_MS       = 24 * 60 * 60 * 1000;
-let intelRangeShort = '24h'; // '24h' | '10d'
+let intelRangeShort = '24h'; // '24h' | '12d'
 let intelRangeLong  = '30d'; // '30d' | '60d'
 
 // Most recent hydrated kill set + star color for the open intel panel. Used
@@ -1055,11 +1055,11 @@ async function fetchSystemKills(systemId, onProgress) {
   }
 }
 
-// Short section: '24h' → 24 hourly buckets, '10d' → 10 daily buckets.
+// Short section: '24h' → 24 hourly buckets, '12d' → 12 daily buckets.
 function intelAggregateShort(kills, mode) {
   const now    = Date.now();
-  const n      = mode === '10d' ? 10 : 24;
-  const stepMs = mode === '10d' ? INTEL_DAY_MS : 3_600_000;
+  const n      = mode === '12d' ? 12 : 24;
+  const stepMs = mode === '12d' ? INTEL_DAY_MS : 3_600_000;
   const cutoff = now - n * stepMs;
   const counts = new Array(n).fill(0);
   for (const k of kills) {
@@ -1594,8 +1594,9 @@ async function loadIntel(star, token) {
   const partiesEl = document.getElementById('intel-parties-section');
 
   document.getElementById('intel-hm24-labels').innerHTML = '';
-  document.getElementById('intel-hm60-labels').innerHTML = '';
-  document.getElementById('intel-dlabels').innerHTML     = '';
+  // hm60-labels (hours 0–23) and dlabels (Mon–Sun) are static — don't clear
+  // them, or the `rebuilt` shortcut in renderHm60 (keyed off grid child count)
+  // will skip repopulating and leave the day column empty on every re-open.
   document.getElementById('intel-count-24h').textContent = '';
   document.getElementById('intel-count-60d').textContent = '';
   partiesEl.style.display = '';
