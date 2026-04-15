@@ -1600,6 +1600,8 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 }
 .intel-list-col > .intel-section-label { justify-content: center; }
 .intel-entity-row:hover { background: rgba(255, 255, 255, 0.04); }
+.intel-entity-row--nofilter { cursor: default; }
+.intel-entity-row--nofilter:hover { background: transparent; }
 .intel-entity-row.selected { background: rgba(0, 200, 200, 0.14); }
 .intel-entity-row.selected .intel-entity-link { color: rgba(0, 240, 240, 1); }
 .intel-entity-link {

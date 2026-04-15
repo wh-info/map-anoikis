@@ -871,9 +871,11 @@ function renderEntityList(containerId, items, kind) {
     el.innerHTML = '<div class="intel-empty">None</div>';
     return;
   }
+  const clickable = intelView === 'scatter';
   for (const item of items) {
     const row  = document.createElement('div');
     row.className = 'intel-entity-row';
+    if (!clickable) row.classList.add('intel-entity-row--nofilter');
     const link = document.createElement('a');
     link.href      = `https://zkillboard.com/${kind}/${item.id}/`;
     link.target    = '_blank';
@@ -887,10 +889,12 @@ function renderEntityList(containerId, items, kind) {
     if (intelEntityFilter && intelEntityFilter.kind === filterKind && intelEntityFilter.id === item.id) {
       row.classList.add('selected');
     }
-    row.addEventListener('click', (e) => {
-      if (e.target.closest('.intel-entity-link')) return;
-      toggleEntityFilter(filterKind, item.id);
-    });
+    if (clickable) {
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('.intel-entity-link')) return;
+        toggleEntityFilter(filterKind, item.id);
+      });
+    }
     const cnt  = document.createElement('span');
     cnt.className  = 'intel-entity-count';
     cnt.textContent = item.count;
@@ -1450,6 +1454,7 @@ function renderScatter() {
 
 function setIntelView(view) {
   if (view === intelView) return;
+  if (view === 'heatmap' && intelEntityFilter) intelEntityFilter = null;
   intelView = view;
   document.getElementById('intel-view-heatmap').style.display = view === 'heatmap' ? '' : 'none';
   document.getElementById('intel-view-scatter').style.display = view === 'scatter' ? '' : 'none';
@@ -1460,6 +1465,7 @@ function setIntelView(view) {
     buildScatterLegend();
     renderScatter();
   }
+  renderIntelAll();
 }
 
 document.querySelector('[data-view-toggle]').addEventListener('click', () => {
