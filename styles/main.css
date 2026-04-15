@@ -1375,11 +1375,12 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 .intel-section-label:first-child { margin-top: 0; }
 .intel-section-title-group {
   display: inline-flex;
-  gap: 10px;
+  gap: 16px;
   align-items: baseline;
 }
 .intel-section-title {
   color: var(--fg);
+  font-weight: 600;
 }
 .intel-utc { text-transform: none; letter-spacing: 0; font-size: 9px; }
 .intel-section-count {
