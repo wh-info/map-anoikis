@@ -7,6 +7,7 @@
 
 import Fastify from 'fastify';
 import fastifyCompress from '@fastify/compress';
+import fastifyRateLimit from '@fastify/rate-limit';
 import { WebSocketServer } from 'ws';
 import { createRing } from './ring.js';
 import { classifyKill } from './filter.js';
@@ -94,6 +95,18 @@ await fastify.register(fastifyCompress, {
   threshold: 1024
 });
 
+// Global rate limit: 300 req/min per IP. /health is exempted so Railway's
+// healthcheck can poll freely, and /ws upgrades bypass fastify routing
+// entirely so they're naturally unaffected. /intel/:systemId gets a tighter
+// per-route cap below (60/min) — that's the only endpoint a scraper would
+// actually hammer, since it's the one serving real payloads.
+await fastify.register(fastifyRateLimit, {
+  global: true,
+  max: 300,
+  timeWindow: '1 minute',
+  skip: (req) => req.url === '/health',
+});
+
 // CORS — applied to all HTTP responses so the frontend at anoikis.info
 // can call /intel/:systemId and /health directly from the browser.
 fastify.addHook('onSend', async (_req, reply) => {
@@ -124,13 +137,22 @@ fastify.get('/health', async () => ({
 // Intel: return every kill we have for a system, newest first. The frontend
 // filters by ts for the 24h / 30d / 60d view ranges. Served purely from the
 // in-memory killstore — no zKB or ESI calls on the request path.
-fastify.get('/intel/:systemId', async (req, reply) => {
+fastify.get('/intel/:systemId', {
+  config: {
+    rateLimit: { max: 60, timeWindow: '1 minute' }
+  }
+}, async (req, reply) => {
   const systemId = Number(req.params.systemId);
   if (!Number.isFinite(systemId)) {
     reply.code(400);
     return { error: 'bad systemId' };
   }
   const kills = killstore.getBySystem(systemId);
+  // 60s shared cache: Cloudflare (when proxied) and browsers will reuse this
+  // response for a minute. The killstore updates continuously from the live
+  // stream, so a 60s staleness ceiling is invisible to users but cuts repeat
+  // hits on hot systems to near zero.
+  reply.header('Cache-Control', 'public, max-age=60');
   return {
     kills,
     coverageFrom: killstore.coverageFrom(),
