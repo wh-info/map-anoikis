@@ -26,6 +26,7 @@ const clients = new Set();
 let zkillStatus = 'init';
 let seenTotal = 0;
 let seenAnoikis = 0;
+let lastAnoikisKillAt = null;
 let zkillClient = null;
 
 // Compact the ESI+zkb payload down to just what the frontend uses. This
@@ -128,6 +129,7 @@ fastify.get('/health', async () => ({
   ringSize: ring.size,
   seenTotal,
   seenAnoikis,
+  lastAnoikisKillAt,
   zkill: zkillStatus,
   poller: zkillClient?.getState?.() ?? null,
   killstore: killstore.getState(),
@@ -252,6 +254,7 @@ zkillClient = connectZkill({
     const classification = await classifyKill(raw);
     if (!classification) return;
     seenAnoikis++;
+    lastAnoikisKillAt = Date.now();
     const kill = compactKill(raw, classification);
     ring.push(kill);
     killstore.add(buildIntelKill(raw, classification)).catch(() => {});

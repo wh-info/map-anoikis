@@ -419,7 +419,10 @@ function computeMood(h) {
 }
 
 function computeSilence(h) {
-  const last = h?.poller?.lastKillAt;
+  // Prefer the Anoikis-filtered timestamp from server.js; fall back to the
+  // upstream poller's any-kill timestamp for older backends that don't yet
+  // expose lastAnoikisKillAt.
+  const last = h?.lastAnoikisKillAt ?? h?.poller?.lastKillAt;
   if (!last) return { text: '—', cls: '' };
   const sec = Math.floor((Date.now() - last) / 1000);
   if (sec < 0) return { text: 'just now', cls: 'ok' };
