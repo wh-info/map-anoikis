@@ -6,6 +6,7 @@
 // a single "snapshot" message immediately after connecting.
 
 import Fastify from 'fastify';
+import fastifyCompress from '@fastify/compress';
 import { WebSocketServer } from 'ws';
 import { createRing } from './ring.js';
 import { classifyKill } from './filter.js';
@@ -82,6 +83,15 @@ function broadcast(message) {
 
 const fastify = Fastify({
   logger: { level: process.env.LOG_LEVEL || 'info' }
+});
+
+// gzip/br compression for all JSON responses. /intel/:systemId can be ~800KB
+// raw for the busiest systems; compression cuts that ~80%, keeping Railway
+// egress usage comfortably inside the hobby plan allowance even under load.
+await fastify.register(fastifyCompress, {
+  global: true,
+  encodings: ['gzip', 'br'],
+  threshold: 1024
 });
 
 // CORS — applied to all HTTP responses so the frontend at map.anoikis.info
@@ -233,6 +243,7 @@ const RETENTION_SEC = 60 * 24 * 60 * 60;
     'kicking off bootstrap walker'
   );
   bootstrap.bootstrapWindow(target, nowSec)
+    .then(() => bootstrap.secondPassWindow())
     .catch((err) => fastify.log.warn({ err: err.message }, 'bootstrap failed'));
 }
 

@@ -1186,8 +1186,8 @@ function toggleEntityFilter(kind, id) {
 }
 
 // Display label per class slug. Slugs that share a label collapse into one
-// legend entry. Pods/shuttles are intentionally excluded — scatterClassFor
-// returns null for them and the renderer skips those kills entirely.
+// legend entry. Fighters and deployables are intentionally excluded —
+// scatterClassFor returns null for them and the renderer skips those kills.
 const SCATTER_CLASS_LABELS = {
   frigate: 'Frigate',
   rookie:  'Frigate',
