@@ -184,6 +184,8 @@ wss.on('connection', (ws, req) => {
     return;
   }
   clients.add(ws);
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
   fastify.log.info({ clients: clients.size }, 'client connected');
 
   try {
@@ -200,6 +202,24 @@ wss.on('connection', (ws, req) => {
     // 'close' will fire right after.
   });
 });
+
+// Heartbeat: Cloudflare's free tier closes idle WebSocket connections after
+// ~100s. Quiet Anoikis systems can easily go 5+ minutes with no kills, so we
+// ping every 30s to keep the connection warm. The browser responds to pings
+// automatically; our 'pong' handler above marks the socket alive. Any socket
+// that didn't pong since the last ping is assumed dead and terminated so the
+// client reconnects cleanly instead of sitting on a zombie connection.
+const WS_PING_MS = 30_000;
+setInterval(() => {
+  for (const ws of clients) {
+    if (ws.isAlive === false) {
+      ws.terminate();
+      continue;
+    }
+    ws.isAlive = false;
+    try { ws.ping(); } catch { /* terminate on next tick */ }
+  }
+}, WS_PING_MS).unref?.();
 
 const bootstrap = createBootstrap({
   killstore,
