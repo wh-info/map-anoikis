@@ -73,7 +73,7 @@ const ESI_KILLMAIL_URL = (id, hash) =>
 const ANOIKIS_REGIONS = Array.from({ length: 33 }, (_, i) => 11000001 + i);
 
 const USER_AGENT = process.env.ZKILL_USER_AGENT
-  || 'map-anoikis/0.1 (+https://github.com/wh-info/map-anoikis; map.anoikis.info)';
+  || 'map-anoikis/0.1 (+https://github.com/wh-info/map-anoikis; anoikis.info)';
 
 const MAX_PAGES        = 200;  // hard safety cap — 200 pages × 200 kills = 40k
 const PAGE_DELAY_MS    = 1100; // zKB asks for ≤1 req/s; we go just under

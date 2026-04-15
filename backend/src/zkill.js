@@ -46,7 +46,7 @@ const HEAD_CHECK_MS       = 60_000;  // head-check cadence (wall clock)
 const HEAD_SKIP_THRESHOLD = 500;     // jump forward if this many seqs behind
 const STUCK_MS            = 180_000; // rollback guard: only snap back if no kill in this window
 
-const DEFAULT_UA = 'map-anoikis/0.1 (+https://github.com/wh-info/map-anoikis; map.anoikis.info)';
+const DEFAULT_UA = 'map-anoikis/0.1 (+https://github.com/wh-info/map-anoikis; anoikis.info)';
 const USER_AGENT = process.env.ZKILL_USER_AGENT || DEFAULT_UA;
 const STATE_FILE = process.env.ZKILL_STATE_FILE || '/tmp/zkill-state.json';
 

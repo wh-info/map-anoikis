@@ -94,7 +94,7 @@ await fastify.register(fastifyCompress, {
   threshold: 1024
 });
 
-// CORS — applied to all HTTP responses so the frontend at map.anoikis.info
+// CORS — applied to all HTTP responses so the frontend at anoikis.info
 // can call /intel/:systemId and /health directly from the browser.
 fastify.addHook('onSend', async (_req, reply) => {
   reply.header('Access-Control-Allow-Origin', ALLOWED_ORIGIN);

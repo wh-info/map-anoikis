@@ -31,7 +31,7 @@ OUTPUT    = ROOT / "data" / "wh-statics.json"
 OVERRIDES = ROOT / "data" / "wh-statics-overrides.json"
 
 ANOIK_URL = "https://anoik.is/static/static.json?version=11"
-USER_AGENT = "map-anoikis-build/0.1 (https://map.anoikis.info)"
+USER_AGENT = "map-anoikis-build/0.1 (https://anoikis.info)"
 
 # Class identifiers as used in anoik.is's static.json. Excluded systems get
 # no entry at all in our output.

@@ -1,4 +1,4 @@
-// map.anoikis.info — main script
+// anoikis.info — main script
 // Canvas 2D map of Anoikis (wormhole) space with live zKillboard kill feed.
 // Data globals loaded before this script: window.ANOIKIS_SYSTEMS, window.TYPE_NAMES, window.TYPE_KINDS.
 
