@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>anoikis.info — status</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:,">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+
+:root {
+  --bg:          #000;
+  --panel:       rgba(2, 6, 6, 0.76);
+  --panel-dark:  rgba(1, 3, 3, 0.88);
+  --border:      #0f2e2e;
+  --border-hi:   rgba(0, 200, 200, 0.38);
+  --text:        #8de0e0;
+  --muted:       #4fc8c8;
+  --dim:         #3d8888;
+  --accent:      #00c8c8;
+  --highlight:   #e8d44d;
+  --danger:      #fe3743;
+  --ok:          #4fd96a;
+  --warn:        #e8d44d;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.5 'Roboto Mono', 'Courier New', monospace;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 60px 20px 40px;
+  background:
+    radial-gradient(ellipse at top, rgba(0, 200, 200, 0.05), transparent 60%),
+    radial-gradient(ellipse at bottom, rgba(0, 200, 200, 0.03), transparent 60%),
+    var(--bg);
+  min-height: 100vh;
+}
+
+/* ----- boot sequence ----- */
+#boot {
+  width: 100%;
+  max-width: 680px;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: pre;
+  transition: opacity 0.5s ease;
+}
+.boot-line { min-height: 1.5em; }
+.boot-line::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  background: var(--accent);
+  vertical-align: text-bottom;
+  margin-left: 2px;
+  animation: blink 1s steps(2) infinite;
+  opacity: 0;
+}
+.boot-line.typing::after { opacity: 1; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ----- main panel ----- */
+#status-root {
+  width: 100%;
+  max-width: 680px;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+#status-root.ready { opacity: 1; }
+
+header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.brand-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  user-select: none;
+}
+.cursor-blink {
+  color: var(--accent);
+  animation: cursor-pulse 1.1s steps(2) infinite;
+}
+@keyframes cursor-pulse { 50% { opacity: 0; } }
+.subtitle {
+  color: var(--dim);
+  font-size: 11px;
+  letter-spacing: 3px;
+  margin-top: 6px;
+}
+
+#status-quote {
+  text-align: center;
+  color: var(--dim);
+  font-style: italic;
+  font-size: 12px;
+  margin: 0 0 22px;
+  min-height: 1.6em;
+}
+#status-quote::before { content: '"'; }
+#status-quote::after { content: '"'; }
+
+#status-badge {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+#status-badge .badge-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--dim);
+  box-shadow: 0 0 14px currentColor;
+  color: var(--dim);
+  flex-shrink: 0;
+}
+#status-badge.ok    .badge-dot { background: var(--ok);     color: var(--ok); }
+#status-badge.warn  .badge-dot { background: var(--warn);   color: var(--warn); }
+#status-badge.down  .badge-dot { background: var(--danger); color: var(--danger); }
+#status-badge .badge-text {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.stat {
+  background: var(--panel-dark);
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+}
+.stat label {
+  display: block;
+  color: var(--dim);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.stat-val {
+  font-size: 17px;
+  color: var(--text);
+}
+.stat-val.ok   { color: var(--ok); }
+.stat-val.warn { color: var(--warn); }
+.stat-val.down { color: var(--danger); }
+
+#classified {
+  background: var(--panel-dark);
+  border: 1px solid var(--border-hi);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+  animation: unlock 0.5s ease;
+}
+@keyframes unlock {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+#classified h2 {
+  margin: 0 0 12px;
+  color: var(--highlight);
+  font-size: 11px;
+  letter-spacing: 2px;
+  font-weight: 700;
+}
+#classified dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  font-size: 12px;
+}
+#classified dt {
+  color: var(--dim);
+}
+#classified dd {
+  margin: 0;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+footer {
+  text-align: center;
+  color: var(--dim);
+  font-size: 11px;
+  margin-top: 24px;
+  line-height: 1.8;
+}
+footer a {
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+}
+footer a:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.yc-date {
+  color: var(--highlight);
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+}
+.powered-by { margin-bottom: 10px; }
+.map-link   { margin-top: 6px; }
+
+@media (max-width: 520px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  body { padding: 30px 14px; }
+  .brand-title { font-size: 22px; }
+}
+</style>
+</head>
+<body>
+
+<div id="boot">
+<div class="boot-line" data-text="> connecting to R2Z2..."></div>
+<div class="boot-line" data-text="> handshaking with Cloudflare..."></div>
+<div class="boot-line" data-text="> entering wormhole space..."></div>
+<div class="boot-line" data-text="> you have jumped into Anoikis. nobody can hear you scream."></div>
+</div>
+
+<main id="status-root" hidden>
+  <header>
+    <div class="brand-title" id="brand">anoikis.info<span class="cursor-blink">_</span></div>
+    <div class="subtitle">// SYSTEM STATUS //</div>
+  </header>
+
+  <div id="status-quote">—</div>
+
+  <section id="status-badge">
+    <div class="badge-dot"></div>
+    <div class="badge-text" id="badge-text">CHECKING…</div>
+  </section>
+
+  <section class="stats-grid">
+    <div class="stat">
+      <label>Backend mood</label>
+      <div id="s-mood" class="stat-val">—</div>
+    </div>
+    <div class="stat">
+      <label>Time since last pod popped</label>
+      <div id="s-silence" class="stat-val">—</div>
+    </div>
+    <div class="stat">
+      <label>Pilots watching the feed</label>
+      <div id="s-pilots" class="stat-val">—</div>
+    </div>
+    <div class="stat">
+      <label>Worker uptime</label>
+      <div id="s-uptime" class="stat-val">—</div>
+    </div>
+  </section>
+
+  <section id="classified" hidden>
+    <h2>// CLASSIFIED INTELLIGENCE //</h2>
+    <dl id="classified-dl"></dl>
+  </section>
+
+  <footer>
+    <div class="yc-date" id="yc-date"></div>
+    <div class="powered-by">
+      powered by
+      <a href="https://zkillboard.com/" target="_blank" rel="noopener">zKillboard R2Z2</a> ·
+      <a href="https://developers.eveonline.com/" target="_blank" rel="noopener">EVE ESI</a> ·
+      <a href="https://www.cloudflare.com/" target="_blank" rel="noopener">Cloudflare</a> ·
+      <a href="https://railway.app/" target="_blank" rel="noopener">Railway</a> ·
+      <a href="https://pages.github.com/" target="_blank" rel="noopener">GitHub Pages</a>
+    </div>
+    <div class="map-link"><a href="/">← back to map</a></div>
+  </footer>
+</main>
+
+<script>
+// ---- config ----
+// Use prod backend unless we're clearly on a dev server. file:// previews
+// should hit prod so the page renders with real data instead of failing on
+// a missing localhost backend.
+const IS_DEV = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+const HEALTH_URL = IS_DEV ? 'http://localhost:8080/health' : 'https://ws.anoikis.info/health';
+const POLL_MS = 30_000;
+
+// ---- quotes ----
+const QUOTES = [
+  "Don't fly what you can't afford to lose",
+  "There is no Concord here",
+  "Everyone on d-scan is already too late",
+  "The hole is home now",
+  "Praise Bob",
+  "Local is empty. It's always empty.",
+  "Mass is a cruel god",
+  "Rolling holes is a lifestyle",
+  "J-space doesn't forgive",
+  "The wormhole giveth, the wormhole taketh away",
+  "No second chances in J-space",
+  "Probe it. Scan it. Kill it.",
+  "Every signature is a story",
+  "D-scan or die",
+  "If you see a Loki, you're already dead",
+  "Bob provides",
+  "Ignorance of the hole is no defense",
+  "The wormhole closes for everyone eventually",
+];
+
+// ---- boot sequence (typed animation) ----
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function typeLine(el, text, charDelay = 14) {
+  el.classList.add('typing');
+  for (let i = 0; i <= text.length; i++) {
+    el.textContent = text.slice(0, i);
+    await sleep(charDelay);
+  }
+  el.classList.remove('typing');
+}
+
+async function runBoot() {
+  const lines = document.querySelectorAll('.boot-line');
+  for (const line of lines) {
+    await typeLine(line, line.dataset.text);
+    await sleep(140);
+  }
+  await sleep(700);
+  const boot = document.getElementById('boot');
+  boot.style.opacity = '0';
+  await sleep(500);
+  boot.remove();
+  const root = document.getElementById('status-root');
+  root.hidden = false;
+  // Allow the 'hidden' removal to commit before transitioning opacity.
+  requestAnimationFrame(() => root.classList.add('ready'));
+}
+
+// ---- quote ----
+function pickQuote() {
+  const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+  document.getElementById('status-quote').textContent = q;
+}
+
+// ---- YC date ----
+function renderYCDate() {
+  const d = new Date();
+  const y = d.getFullYear() - 1898;  // 2026 → 128
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  document.getElementById('yc-date').textContent = `YC ${y}.${m}.${day}`;
+}
+
+// ---- health fetch + render ----
+async function fetchHealth() {
+  try {
+    const r = await fetch(HEALTH_URL, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+function formatDuration(sec) {
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  if (m < 60) return `${m}m ${sec % 60}s`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ${m % 60}m`;
+  const d = Math.floor(h / 24);
+  return `${d}d ${h % 24}h`;
+}
+
+function computeMood(h) {
+  if (!h || !h.ok) return { text: '💀 Dead inside', cls: 'down' };
+  const zk = h.zkill || '';
+  if (zk.startsWith('error:')) return { text: '💀 Dead inside', cls: 'down' };
+  if (h.uptime < 60) return { text: '🌱 Just woke up', cls: '' };
+  const rate = h.seenAnoikis / (h.uptime / 3600);
+  if (rate < 5)  return { text: '☕ Napping',  cls: '' };
+  if (rate < 20) return { text: '😐 Bored',    cls: '' };
+  if (rate < 60) return { text: '👀 Watching', cls: 'ok' };
+  return { text: '🔥 Feasting', cls: 'ok' };
+}
+
+function computeSilence(h) {
+  const last = h?.poller?.lastKillAt;
+  if (!last) return { text: '—', cls: '' };
+  const sec = Math.floor((Date.now() - last) / 1000);
+  if (sec < 0) return { text: 'just now', cls: 'ok' };
+  const cls = sec < 300 ? 'ok' : sec < 1800 ? 'warn' : 'down';
+  return { text: formatDuration(sec) + ' ago', cls };
+}
+
+function computePilots(h) {
+  const n = h?.clients ?? 0;
+  if (n === 0) return 'nobody (the void stares back)';
+  if (n === 1) return '1 pilot (it\'s probably you)';
+  return `${n} pilots`;
+}
+
+function computeBadge(h) {
+  if (!h)        return { text: 'BACKEND UNREACHABLE', cls: 'down' };
+  if (!h.ok)     return { text: 'DEGRADED',            cls: 'warn' };
+  const zk = h.zkill || '';
+  if (zk.startsWith('error:')) return { text: 'POLLER DEGRADED', cls: 'warn' };
+  return { text: 'ALL SYSTEMS NOMINAL', cls: 'ok' };
+}
+
+function setStat(id, text, cls = '') {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'stat-val' + (cls ? ' ' + cls : '');
+}
+
+function renderClassified(h) {
+  const section = document.getElementById('classified');
+  if (section.hidden) return;
+  const dl = document.getElementById('classified-dl');
+  dl.innerHTML = '';
+  if (!h) {
+    dl.innerHTML = '<dt>status</dt><dd>unreachable</dd>';
+    return;
+  }
+  const p = h.poller || {};
+  const k = h.killstore || {};
+  const r = h.reconcile || {};
+  const rows = [
+    ['ws clients',          h.clients],
+    ['ring buffer',         h.ringSize],
+    ['seen (total)',        h.seenTotal],
+    ['seen (anoikis)',      h.seenAnoikis],
+    ['poller nextSeq',      p.nextSeq],
+    ['poller headSeq',      p.headSeq],
+    ['poller lag',          p.lag],
+    ['jumps total',         p.jumpsTotal],
+    ['last kill at',        p.lastKillAt ? new Date(p.lastKillAt).toISOString() : '—'],
+    ['killstore size',      k.size],
+    ['killstore systems',   k.systems],
+    ['coverage from',       k.coverageFrom ? new Date(k.coverageFrom * 1000).toISOString() : '—'],
+    ['compacted at',        k.compactedAt ? new Date(k.compactedAt).toISOString() : '—'],
+    ['reconcile runs',      r.totalRuns],
+    ['reconcile last run',  r.lastRunAt ? new Date(r.lastRunAt).toISOString() : '—'],
+    ['zkill status',        h.zkill],
+  ];
+  for (const [label, value] of rows) {
+    const dt = document.createElement('dt');
+    dt.textContent = label;
+    const dd = document.createElement('dd');
+    dd.textContent = value ?? '—';
+    dl.appendChild(dt);
+    dl.appendChild(dd);
+  }
+}
+
+async function refresh() {
+  const h = await fetchHealth();
+
+  const badge = computeBadge(h);
+  const badgeEl = document.getElementById('status-badge');
+  badgeEl.className = badge.cls;
+  document.getElementById('badge-text').textContent = badge.text;
+
+  const mood = computeMood(h);
+  setStat('s-mood', mood.text, mood.cls);
+
+  const silence = computeSilence(h);
+  setStat('s-silence', silence.text, silence.cls);
+
+  setStat('s-pilots', computePilots(h), '');
+
+  setStat('s-uptime', h ? formatDuration(h.uptime) : '—', '');
+
+  renderClassified(h);
+}
+
+// ---- hidden classified panel (10 brand clicks) ----
+let brandClicks = 0;
+document.getElementById('brand').addEventListener('click', () => {
+  brandClicks++;
+  if (brandClicks >= 10) {
+    const c = document.getElementById('classified');
+    if (c.hidden) {
+      c.hidden = false;
+      refresh();
+    }
+  }
+});
+
+// ---- kickoff ----
+pickQuote();
+renderYCDate();
+runBoot().then(() => {
+  refresh();
+  setInterval(refresh, POLL_MS);
+});
+</script>
+
+</body>
+</html>

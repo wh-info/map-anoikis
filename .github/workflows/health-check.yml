@@ -1,0 +1,27 @@
+name: health-check
+
+# External monitoring for the anoikis.info backend. Runs every 5 minutes,
+# curls /health, and asserts { ok: true }. GitHub emails the repo owner on
+# any failed run — that's the alerting. No third-party service needed.
+#
+# The check goes through Cloudflare (same path real users take), so it
+# covers DNS, Cloudflare edge, Railway, the worker, and the killstore load
+# in one hit. Rate-limit exempts /health on the backend side, so a 5 min
+# cron is safe even when combined with occasional manual reruns.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: curl /health
+        run: |
+          set -eu
+          resp=$(curl -sS --max-time 15 https://ws.anoikis.info/health)
+          echo "$resp"
+          echo "$resp" | grep -q '"ok":true'
