@@ -3063,8 +3063,13 @@ connectKillFeed();
     } catch {
       return;
     }
+    const panel = document.getElementById('system-info');
     btn.classList.add('copied');
-    setTimeout(() => btn.classList.remove('copied'), 1200);
+    panel.classList.add('si-copied');
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      panel.classList.remove('si-copied');
+    }, 1200);
   });
 }
 
