@@ -1234,7 +1234,10 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 
 .si-view-btn {
   flex: 1;
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   width: auto;
   margin-top: 0;
   padding: 6px 10px;
@@ -1242,7 +1245,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  text-align: left;
+  text-align: center;
   background: rgba(0, 200, 200, 0.06);
   border: 1px solid var(--border);
   color: var(--muted);
@@ -1251,7 +1254,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 }
 .si-view-btn:hover {
   background: rgba(0, 200, 200, 0.12);
-  border-color: var(--accent);
+  border-color: var(--border-hi);
   color: var(--accent);
 }
 .si-view-btn.active {
