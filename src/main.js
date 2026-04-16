@@ -3058,6 +3058,26 @@ function connectKillFeed() {
           updateHistoryBanner();
           flashRestoreRight();
         }
+        // Live-inject into the open intel panel's 24h/12d heatmap.
+        if (intelOpen && intelCurrentKills && intelCurrentStar
+            && msg.kill.systemId === intelCurrentStar.id) {
+          const k = msg.kill;
+          intelCurrentKills.push({
+            killmail_time: new Date(k.ts * 1000).toISOString(),
+            kind: k.kind,
+            isNpc: k.isNpc,
+            _zkbValue: k.value,
+            victim: {
+              character_id: k.characterId,
+              corporation_id: k.corporationId,
+              alliance_id: null,
+              ship_type_id: k.shipTypeId,
+            },
+            attackers: [],
+          });
+          const short = intelAggregateShort(intelCurrentKills, intelRangeShort);
+          renderHmShort(short.counts, intelCurrentRgb, intelRangeShort);
+        }
       }
     });
     ws.addEventListener('close', schedule);
