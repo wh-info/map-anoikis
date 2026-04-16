@@ -2428,6 +2428,8 @@ function selectStar(s, focus) {
     }
     stEl.appendChild(chip);
   }
+  document.getElementById('si-ember-info').style.display = s.name === 'J101145' ? '' : 'none';
+  document.getElementById('si-thera-links').style.display = s.whClass === 'Thera' ? '' : 'none';
   if (focus) {
     flyTo(s.x, s.y, 10, 520);
     searchMarker = { star: s, start: performance.now(), duration: 2600 };

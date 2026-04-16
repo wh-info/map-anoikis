@@ -98,6 +98,7 @@ html, body {
 
 .brand {
   display: block;
+  position: relative;
   margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
@@ -1304,6 +1305,27 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   background: rgba(0, 200, 200, 0.12);
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.si-ember-quote {
+  font-size: 11px;
+  color: var(--dim);
+  text-align: center;
+  margin: 6px 0 0;
+}
+
+.si-thera-links { margin-top: 0; }
+.si-thera-sep {
+  border: none;
+  border-top: 1px dashed rgba(0, 200, 200, 0.18);
+  margin: 6px 0;
+}
+.si-evescout-btn {
+  width: 100%;
+  text-align: center;
+  justify-content: center;
+  text-decoration: none;
+  font-weight: 400;
 }
 
 /* ================================================================ */
