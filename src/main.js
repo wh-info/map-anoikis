@@ -40,7 +40,7 @@ const CLASS_COLORS = { ...PALETTES.ghost };
 
 // 'ghost' | 'ember' | 'anoikis' | 'whtype' → class-based colouring.
 // 'eve'   → per-star colouring from SUN_COLORS[sunTypeId].
-let currentPalette = 'eve';
+let currentPalette = localStorage.getItem('anoikis-palette') || 'eve';
 
 function applyPalette(name) {
   currentPalette = name;
@@ -224,7 +224,8 @@ function animatedResetView() {
 }
 resetView();
 
-let showLabels = false;
+let showLabels = localStorage.getItem('anoikis-labels') === '1';
+let potatoMode = localStorage.getItem('anoikis-potato') === '1';
 
 // --- Region & constellation bounding-box centers for label LOD -----
 const regionBounds = new Map();
@@ -1214,8 +1215,10 @@ let intelEntityFilter = null;      // { kind: 'corp'|'alli', id }
 // Intel-wide filter: ships are always counted, fighters are always excluded,
 // the rest are toggleable via the footer chips. Applied by every intel
 // aggregator (short/long/parties) and the scatter renderer.
-const intelFilterKinds = new Set(['structure']);
-let intelFilterNpc = false;
+const INTEL_KINDS_KEY = 'anoikis-intel-kinds';
+const INTEL_NPC_KEY = 'anoikis-intel-npc';
+const intelFilterKinds = new Set(JSON.parse(localStorage.getItem(INTEL_KINDS_KEY)) || ['structure']);
+let intelFilterNpc = localStorage.getItem(INTEL_NPC_KEY) === '1';
 function passesIntelFilter(k) {
   const kind = k.kind;
   if (kind === 'fighter') return false;
@@ -1818,28 +1821,38 @@ function draw() {
     const intensity = twinkle + flare * 1.25;
     const size = spriteSize * (0.45 + s.r * 0.11 + flare * 0.22) * (0.75 + zoomT * 0.95);
 
-    ctx.globalCompositeOperation = 'screen';
-    ctx.globalAlpha = clamp(0.16 + intensity * 0.24 * glowFactor, 0.10, 0.56 + flare * 0.35);
-    ctx.drawImage(spr, p.x - size / 2, p.y - size / 2, size, size);
-
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = clamp(0.75 + zoomT * 0.2 + flare * 0.2, 0.65, 1);
-    const crispR = Math.max(0.75, (0.35 + s.r * 0.16) * (0.7 + zoomT * 0.9));
-    ctx.fillStyle = flare > 0.03 ? 'rgba(255,255,255,0.98)' : rgba(color, 0.95);
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, crispR, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (flare > 0.02) {
-      const haloR = (8 + zoomT * 12) + flare * 24;
-      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, haloR);
-      g.addColorStop(0, `rgba(255,255,255,${0.40 * flare})`);
-      g.addColorStop(0.26, rgba(color, 0.22 * flare));
-      g.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = g;
+    if (potatoMode) {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = clamp(0.80 + flare * 0.2, 0.75, 1);
+      const dotR = Math.max(1.2, (0.6 + s.r * 0.2) * (0.8 + zoomT * 0.8));
+      ctx.fillStyle = flare > 0.03 ? 'rgba(255,255,255,0.98)' : rgba(color, 0.95);
       ctx.beginPath();
-      ctx.arc(p.x, p.y, haloR, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, dotR, 0, Math.PI * 2);
       ctx.fill();
+    } else {
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = clamp(0.16 + intensity * 0.24 * glowFactor, 0.10, 0.56 + flare * 0.35);
+      ctx.drawImage(spr, p.x - size / 2, p.y - size / 2, size, size);
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = clamp(0.75 + zoomT * 0.2 + flare * 0.2, 0.65, 1);
+      const crispR = Math.max(0.75, (0.35 + s.r * 0.16) * (0.7 + zoomT * 0.9));
+      ctx.fillStyle = flare > 0.03 ? 'rgba(255,255,255,0.98)' : rgba(color, 0.95);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, crispR, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (flare > 0.02) {
+        const haloR = (8 + zoomT * 12) + flare * 24;
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, haloR);
+        g.addColorStop(0, `rgba(255,255,255,${0.40 * flare})`);
+        g.addColorStop(0.26, rgba(color, 0.22 * flare));
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, haloR, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
   ctx.globalAlpha = 1;
@@ -2597,11 +2610,20 @@ async function showSdePanel() {
 // other callers (wheel handler, animated reset, etc.) don't need edits.
 function updateZoomLabel() {}
 document.getElementById('reset-view').addEventListener('click', animatedResetView);
-document.getElementById('toggle-labels').addEventListener('click', (e) => {
+const labelsBtn = document.getElementById('toggle-labels');
+if (showLabels) labelsBtn.classList.add('on');
+labelsBtn.addEventListener('click', () => {
   showLabels = !showLabels;
-  const btn = e.currentTarget;
-  btn.classList.toggle('off', !showLabels);
-  btn.textContent = showLabels ? 'On' : 'Off';
+  labelsBtn.classList.toggle('on', showLabels);
+  localStorage.setItem('anoikis-labels', showLabels ? '1' : '0');
+});
+
+const potatoBtn = document.getElementById('toggle-potato');
+if (potatoMode) potatoBtn.classList.add('on');
+potatoBtn.addEventListener('click', () => {
+  potatoMode = !potatoMode;
+  potatoBtn.classList.toggle('on', potatoMode);
+  localStorage.setItem('anoikis-potato', potatoMode ? '1' : '0');
 });
 
 // NOTE: The anoik.is palette ('palette-anoikis') has been removed from the
@@ -2614,12 +2636,14 @@ const paletteGhostBtn   = document.getElementById('palette-ghost');
 const paletteEveBtn     = document.getElementById('palette-eve');
 function setPalette(name) {
   applyPalette(name);
+  localStorage.setItem('anoikis-palette', name);
   paletteEmberBtn?.classList.toggle('on',   name === 'ember');
   paletteAnoikisBtn?.classList.toggle('on', name === 'anoikis');
   paletteWhtypeBtn?.classList.toggle('on',  name === 'whtype');
   paletteGhostBtn?.classList.toggle('on',   name === 'ghost');
   paletteEveBtn?.classList.toggle('on',     name === 'eve');
 }
+if (currentPalette !== 'eve') setPalette(currentPalette);
 paletteEmberBtn?.addEventListener('click',   () => setPalette('ember'));
 paletteAnoikisBtn?.addEventListener('click', () => setPalette('anoikis'));
 paletteWhtypeBtn?.addEventListener('click',  () => setPalette('whtype'));
@@ -2769,8 +2793,10 @@ function techBadge(typeId) {
   return (window.TYPE_META && typeId != null && window.TYPE_META[typeId]) || null;
 }
 
-const activeKinds = new Set(['ship', 'structure']);
-const activeTags = new Set(['npc']);
+const KILL_KINDS_KEY = 'anoikis-kill-kinds';
+const KILL_TAGS_KEY = 'anoikis-kill-tags';
+const activeKinds = new Set(JSON.parse(localStorage.getItem(KILL_KINDS_KEY)) || ['ship', 'structure']);
+const activeTags = new Set(JSON.parse(localStorage.getItem(KILL_TAGS_KEY)) || ['npc']);
 function isKillVisible(kind, isNpc, isDelayed) {
   if (!activeKinds.has(kind)) return false;
   if (isNpc && !activeTags.has('npc')) return false;
@@ -3108,15 +3134,19 @@ historyNextBtn.addEventListener('click', () => {
   if (historyPage < totalPages - 1) { historyPage++; renderHistoryPage(); }
 });
 document.querySelectorAll('#kill-filters .kind-chip').forEach((chip) => {
+  const kind = chip.dataset.kind;
+  const tag  = chip.dataset.tag;
+  if (kind) chip.classList.toggle('on', activeKinds.has(kind));
+  if (tag) chip.classList.toggle('on', activeTags.has(tag));
   chip.addEventListener('click', () => {
-    const kind = chip.dataset.kind;
-    const tag  = chip.dataset.tag;
     if (kind) {
       if (activeKinds.has(kind)) activeKinds.delete(kind);
       else activeKinds.add(kind);
+      localStorage.setItem(KILL_KINDS_KEY, JSON.stringify([...activeKinds]));
     } else if (tag) {
       if (activeTags.has(tag)) activeTags.delete(tag);
       else activeTags.add(tag);
+      localStorage.setItem(KILL_TAGS_KEY, JSON.stringify([...activeTags]));
     }
     chip.classList.toggle('on');
     applyKillFilters();
@@ -3145,14 +3175,18 @@ document.getElementById('intel-footer-toggle').addEventListener('click', () => {
   document.getElementById('intel-footer').classList.toggle('open');
 });
 document.querySelectorAll('#intel-filters .kind-chip').forEach((chip) => {
+  const kind = chip.dataset.kind;
+  const tag  = chip.dataset.tag;
+  if (kind) chip.classList.toggle('on', intelFilterKinds.has(kind));
+  if (tag === 'npc') chip.classList.toggle('on', intelFilterNpc);
   chip.addEventListener('click', () => {
-    const kind = chip.dataset.kind;
-    const tag  = chip.dataset.tag;
     if (kind) {
       if (intelFilterKinds.has(kind)) intelFilterKinds.delete(kind);
       else intelFilterKinds.add(kind);
+      localStorage.setItem(INTEL_KINDS_KEY, JSON.stringify([...intelFilterKinds]));
     } else if (tag === 'npc') {
       intelFilterNpc = !intelFilterNpc;
+      localStorage.setItem(INTEL_NPC_KEY, intelFilterNpc ? '1' : '0');
     }
     chip.classList.toggle('on');
     renderIntelAll();

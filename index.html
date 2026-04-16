@@ -297,21 +297,25 @@
 
 <!-- Settings slide-up panel -->
 <div id="settings-panel">
-  <div class="settings-row">
-    <span>View</span>
-    <button class="ctrl" id="reset-view" data-tip="Reset view" style="width: auto; padding: 0 10px;">Reset</button>
-  </div>
+  <div class="settings-header">Settings</div>
+  <button class="ctrl settings-reset" id="reset-view">Reset view</button>
+  <div class="settings-sep"></div>
   <div class="settings-row">
     <span>Labels</span>
-    <button class="ctrl off" id="toggle-labels" data-tip="Toggle system name labels" style="width: auto; padding: 0 10px;">Off</button>
+    <button class="toggle-pill" id="toggle-labels"><span class="toggle-knob"></span></button>
   </div>
+  <div class="settings-row">
+    <span>Potato map</span>
+    <button class="toggle-pill" id="toggle-potato"><span class="toggle-knob"></span></button>
+  </div>
+  <div class="settings-sep"></div>
   <div class="settings-row settings-row--colors">
     <span>Colors</span>
     <div class="settings-palette-grid">
-      <button class="ctrl on" id="palette-eve"    style="width: auto; padding: 0 10px;">eve</button>
-      <button class="ctrl"    id="palette-ember"  style="width: auto; padding: 0 10px;">ember</button>
-      <button class="ctrl"    id="palette-whtype" style="width: auto; padding: 0 10px;">whtype</button>
-      <button class="ctrl"    id="palette-ghost"  style="width: auto; padding: 0 10px;">wormholer btw</button>
+      <button class="ctrl on settings-palette-wide" id="palette-eve">eve</button>
+      <button class="ctrl"    id="palette-ember">ember</button>
+      <button class="ctrl"    id="palette-whtype">whtype</button>
+      <button class="ctrl settings-palette-wide" id="palette-ghost">wormholer btw</button>
     </div>
   </div>
 </div>

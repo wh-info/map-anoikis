@@ -1011,13 +1011,14 @@ button.ctrl {
 }
 /* text-label buttons (Reset, Off/On) need auto width */
 button.ctrl[style*="width: auto"],
-#reset-view, #toggle-labels {
+#reset-view {
   width: auto;
   padding: 0 10px;
 }
-button.ctrl:hover { border-color: var(--accent); color: var(--accent); }
+button.ctrl       { color: var(--dim); }
+button.ctrl:hover { border-color: rgba(0, 200, 200, 0.45); color: var(--muted); }
 button.ctrl.off   { color: var(--dim); }
-button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
+button.ctrl.on    { border-color: rgba(0, 200, 200, 0.4); color: var(--muted); }
 
 #zoom-val {
   color: var(--text);
@@ -1177,7 +1178,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   display: flex; align-items: center; justify-content: center;
   transition: color 0.12s, border-color 0.12s;
 }
-#settings-btn:hover { color: var(--accent); border-color: var(--accent); }
+#settings-btn:hover { color: rgba(0, 200, 200, 0.7); border-color: rgba(0, 200, 200, 0.45); }
 #settings-btn svg { width: 15px; height: 15px; display: block; }
 
 /* ================================================================ */
@@ -1204,6 +1205,59 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   pointer-events: auto;
 }
 
+.settings-header {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-sep {
+  border: none;
+  border-top: 1px dashed rgba(0, 200, 200, 0.12);
+  margin: 4px 0;
+}
+
+/* Reset view — full-width button */
+.settings-reset {
+  width: 100% !important;
+  padding: 5px 0 !important;
+  text-align: center;
+  margin: 2px 0;
+}
+
+/* Toggle pill (squared) */
+.toggle-pill {
+  position: relative;
+  width: 34px; height: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+.toggle-pill .toggle-knob {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 10px; height: 10px;
+  background: var(--dim);
+  border-radius: 0;
+  transition: left 0.15s, background 0.15s;
+}
+.toggle-pill.on {
+  background: rgba(0, 200, 200, 0.12);
+  border-color: rgba(0, 200, 200, 0.4);
+}
+.toggle-pill.on .toggle-knob {
+  left: 19px;
+  background: rgba(0, 200, 200, 0.7);
+}
+
 .settings-row {
   display: flex; align-items: center; justify-content: space-between;
   gap: 16px;
@@ -1220,9 +1274,16 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 4px;
-  width: 150px;
+  flex: 1;
 }
-.settings-palette-grid .ctrl { width: auto !important; padding: 0 10px !important; }
+.settings-palette-grid .ctrl {
+  width: auto !important;
+  padding: 4px 8px !important;
+  font-size: 12px;
+  text-align: center;
+  justify-content: center;
+}
+.settings-palette-wide { grid-column: 1 / -1; }
 
 /* ================================================================ */
 /* vSDE SECRET PANEL                                                */
@@ -1639,7 +1700,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px dashed var(--border);
-  font-size: 9px;
+  font-size: 10px;
   color: var(--dim);
   min-height: 56px;
 }
@@ -1655,7 +1716,12 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   justify-self: center;
   display: inline-flex;
   align-items: center;
-  gap: 5px 20px;
+  gap: 5px 16px;
+}
+.intel-scatter-legend-bottom > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 .intel-scatter-legend i {
   width: 8px;
