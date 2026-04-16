@@ -623,7 +623,7 @@ async function refresh() {
   // Live feed buffer: ringSize / 360 (MAX_KILLS 60 + HISTORY 300)
   const ring = h?.ringSize ?? 0;
   const bufferCls = ring >= 360 ? 'ok' : ring > 0 ? 'warn' : 'down';
-  setStat('s-buffer', h ? `${ring} / 360` : '—', bufferCls);
+  setStat('s-buffer', h ? `${Math.min(ring, 360)} / 360` : '—', bufferCls);
 
   // Killstore total
   const ks = h?.killstore;
