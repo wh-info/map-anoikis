@@ -1493,7 +1493,7 @@ function setIntelView(view) {
   document.getElementById('intel-view-scatter').style.display = view === 'scatter' ? '' : 'none';
   document.getElementById('panel-intel').classList.toggle('intel-view-scatter', view === 'scatter');
   document.querySelectorAll('[data-view-toggle] button').forEach((b) =>
-    b.classList.toggle('active', b.dataset.view === view));
+    b.classList.toggle('on', b.dataset.view === view));
   if (view === 'scatter') {
     buildScatterLegend();
     renderScatter();
@@ -1501,8 +1501,10 @@ function setIntelView(view) {
   renderIntelAll();
 }
 
-document.querySelector('[data-view-toggle]').addEventListener('click', () => {
-  setIntelView(intelView === 'heatmap' ? 'scatter' : 'heatmap');
+document.querySelector('[data-view-toggle]').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-view]');
+  if (!btn) return;
+  setIntelView(btn.dataset.view);
 });
 
 // Hover tooltip on scatter dots — closest dot within 6px wins.

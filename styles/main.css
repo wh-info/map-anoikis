@@ -1482,21 +1482,28 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   margin: 4px 0 14px;
 }
 .intel-view-toggle {
+  display: flex;
+  gap: 3px;
+}
+.intel-view-btn {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim);
   cursor: pointer;
-  padding: 2px 6px;
+  white-space: nowrap;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
 }
-.intel-view-toggle button {
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  opacity: 0.72;
-}
-.intel-view-toggle button::after { display: none; }
-.intel-view-toggle button.active { opacity: 1; }
-.intel-view-sep {
-  color: var(--fg);
-  opacity: 0.85;
-  font-size: 12px;
-  margin: 0 4px;
+.intel-view-btn:hover { border-color: var(--border-hi); color: var(--accent); }
+.intel-view-btn.on {
+  background: rgba(0,200,200,0.1);
+  border-color: var(--border-hi);
+  color: var(--accent);
   pointer-events: none;
 }
 .intel-range-toggle button:hover { opacity: 0.85; }
@@ -1508,7 +1515,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 .intel-separator {
   border: none;
   border-top: 1px dashed var(--border);
-  margin: 14px 0 0;
+  margin: 14px 0;
 }
 
 #intel-parties-section { margin-top: 18px; }
