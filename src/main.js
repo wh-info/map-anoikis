@@ -862,7 +862,10 @@ function renderHmShort(counts, rgb, mode) {
     if (rebuilt) {
       const lbl = document.createElement('div');
       lbl.className = 'intel-hlabel';
-      lbl.textContent = (h % 6 === 0) ? hStr : '';
+      const hoursAgo = 23 - i;
+      if (hoursAgo === 0) lbl.textContent = 'now';
+      else if (hoursAgo % 6 === 0) lbl.textContent = `-${hoursAgo}h`;
+      else lbl.textContent = '';
       labels.appendChild(lbl);
     }
   }
