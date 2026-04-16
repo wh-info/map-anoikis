@@ -212,6 +212,7 @@ function resetView() {
 }
 
 function animatedResetView() {
+  deselectStar();
   const to = computeResetTarget();
   camera.focusAnim = {
     start: performance.now(),
@@ -2090,7 +2091,7 @@ canvas.addEventListener('touchend', (e) => {
       mode: 'pan',
       startX: e.touches[0].clientX, startY: e.touches[0].clientY,
       ox: camera.offsetX, oy: camera.offsetY,
-      moved: false,
+      moved: true,  // came from pinch — suppress tap
     };
   }
 }, { passive: false });
@@ -2133,6 +2134,7 @@ const customTip = document.getElementById('custom-tip');
 let customTipTarget = null;
 
 document.addEventListener('mouseover', (e) => {
+  if (isTouchDevice) return;
   const el = e.target.closest('[data-tip]');
   if (!el) return;
   customTipTarget = el;
