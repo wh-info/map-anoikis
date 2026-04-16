@@ -3395,7 +3395,7 @@ connectKillFeed();
     const base = location.protocol === 'file:'
       ? 'https://anoikis.info/'
       : `${location.origin}${location.pathname}`;
-    const url = `${base}?sys=${selected.name}`;
+    const url = `${base}?sys=${selected.name.replace(/ /g, '_')}`;
     try {
       await navigator.clipboard.writeText(url);
     } catch {
@@ -3414,11 +3414,11 @@ connectKillFeed();
 // --- URL deep-link: ?sys=J121856 flies to the system on load ----
 {
   const raw = new URLSearchParams(location.search).get('sys');
-  if (raw && /^J\d{6}$/i.test(raw)) {
-    const code = raw.toUpperCase();
-    const s = stars.find((st) => st.name.toUpperCase() === code);
+  if (raw) {
+    const name = raw.replace(/_/g, ' ');
+    const s = stars.find((st) => st.name.toLowerCase() === name.toLowerCase());
     if (s) {
-      initialUrlSys = code;
+      initialUrlSys = s.name.toUpperCase();
       selectStar(s, true);
     } else {
       clearUrlSysParam();
