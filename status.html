@@ -190,11 +190,13 @@ header {
   font-size: 11px;
   letter-spacing: 2px;
   font-weight: 700;
+  text-align: center;
 }
 .stats-24h-sub {
   color: var(--dim);
   font-size: 11px;
   margin-bottom: 10px;
+  text-align: center;
 }
 
 #classified {
@@ -267,8 +269,9 @@ footer a:hover {
 <div id="boot">
 <div class="boot-line" data-text="> status loading ..."></div>
 <div class="boot-line" data-text="> connecting to R2Z2..."></div>
-<div class="boot-line" data-text="> connecting to ESI..."></div>
-<div class="boot-line" data-text="> you have jumped into wormhole space..."></div>
+<div class="boot-line" data-text="> checking ESI..."></div>
+<div class="boot-line" data-text="> polarization timer clear"></div>
+<div class="boot-line" data-text="> jumping into wormhole space..."></div>
 <div class="boot-line" data-text="> nobody can hear you scream..."></div>
 </div>
 
@@ -387,6 +390,7 @@ const QUOTES = [
   "If you see a Loki, you're already dead",
   "Bob provides",
   "The wormhole closes for everyone eventually",
+  "Two Sabers cloaked on a wormhole...",
 ];
 
 // ---- boot sequence (typed animation) ----
@@ -403,9 +407,10 @@ async function typeLine(el, text, charDelay = 14) {
 
 async function runBoot() {
   const lines = document.querySelectorAll('.boot-line');
+  const pauses = [400, 400, 800, 400, 140, 140];
   for (let i = 0; i < lines.length; i++) {
     await typeLine(lines[i], lines[i].dataset.text);
-    await sleep(i < 3 ? 400 : 140);
+    await sleep(pauses[i] ?? 140);
   }
   await sleep(700);
   const boot = document.getElementById('boot');
@@ -491,9 +496,9 @@ function formatDuration(sec) {
 }
 
 function computeMood(h) {
-  if (!h || !h.ok) return { text: '💀 Dead inside', cls: 'down' };
+  if (!h || !h.ok) return { text: '💀 dead inside', cls: 'down' };
   const zk = h.zkill || '';
-  if (zk.startsWith('error:')) return { text: '💀 Dead inside', cls: 'down' };
+  if (zk.startsWith('error:')) return { text: '💀 dead inside', cls: 'down' };
   if (h.uptime < 60) return { text: ':o Just woke up', cls: '' };
   const rate = h.seenAnoikis / (h.uptime / 3600);
   if (rate < 5)  return { text: 'zZz Napping',  cls: '' };
@@ -607,7 +612,7 @@ async function refresh() {
   const zk = computeZkill(h);
   setStat('s-zkill', zk.text, zk.cls);
 
-  setStat('s-esi', esi === 'ok' ? 'connected' : 'unreachable', esi === 'ok' ? 'ok' : 'down');
+  setStat('s-esi', esi === 'ok' ? 'responding' : 'unreachable', esi === 'ok' ? 'ok' : 'down');
 
   const kf = computeKillfeed(h);
   setStat('s-killfeed', kf.text, kf.cls);
