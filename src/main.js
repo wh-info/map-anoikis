@@ -114,11 +114,11 @@ const stars = window.ANOIKIS_SYSTEMS.map((s) => ({
 document.getElementById('star-count').textContent = stars.length + ' wormhole systems';
 // systemID -> star, used by the live kill feed to resolve incoming IDs.
 const starById = new Map(stars.map((s) => [s.id, s]));
-// name (J-code) -> star, used by the static loader to map anoik.is keys.
+// name (J-code) -> star, used by search and static loader.
 const starByName = new Map(stars.map((s) => [s.name, s]));
 
 // Wormhole statics + type properties.
-// statics: scraped once from anoik.is, served from data/wh-statics.json forever.
+// statics: served from data/wh-statics.json.
 // types:   pulled live from the user's own whtype.info site. Browser respects
 //          the server's 10-minute Cache-Control, which is the effective update
 //          cadence. The GH Pages URL (wh-info.github.io) 301s to whtype.info
@@ -1042,7 +1042,7 @@ function markPartiesError(msg) {
 }
 
 // ============================================================================
-// Intel — browser-side kill fetching + aggregation (anoik.is-style)
+// Intel — kill fetching + aggregation
 //
 // Each visitor's browser hits zKillboard and ESI directly, so CCP's per-IP
 // rate-limit budget scales with the number of users instead of being shared
@@ -2629,9 +2629,8 @@ potatoBtn.addEventListener('click', () => {
   localStorage.setItem('anoikis-potato', potatoMode ? '1' : '0');
 });
 
-// NOTE: The anoik.is palette ('palette-anoikis') has been removed from the
-// settings panel UI but the palette data and this handler are preserved so
-// the button can be re-added later without touching src/main.js.
+// NOTE: The 'anoikis' palette has been removed from the settings panel UI
+// but the palette data and this handler are preserved for future use.
 const paletteEmberBtn   = document.getElementById('palette-ember');
 const paletteAnoikisBtn = document.getElementById('palette-anoikis');
 const paletteWhtypeBtn  = document.getElementById('palette-whtype');
