@@ -1610,8 +1610,8 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
-.intel-scatter-legend-wide {
-  grid-column: 1 / -1;
+.intel-scatter-legend-half {
+  grid-column: span 2;
   justify-self: center;
 }
 .intel-scatter-legend i {

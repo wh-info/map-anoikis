@@ -1229,29 +1229,28 @@ const SCATTER_CLASS_LABELS = {
   miningfrigate:     'Industrial',
 };
 const SCATTER_CLASS_COLOR = {
-  Frigate:         '#ff5a5a',
-  Destroyer:       '#ff8a3a',
-  Cruiser:         '#ffd24a',
-  Battlecruiser:   '#a8e060',
-  Battleship:      '#5ab8ff',
-  Capital:         '#c66bff',
-  Industrial:      '#c8a878',
-  Structures:      '#ffffff',
-  Towers:          '#b0a0ff',
-  Deployables:     '#60d0b0',
-  'Pods/Shuttles': '#888888',
+  Frigate:            '#ff5a5a',
+  Destroyer:          '#ff8a3a',
+  Cruiser:            '#ffd24a',
+  Battlecruiser:      '#a8e060',
+  Battleship:         '#5ab8ff',
+  Capital:            '#c66bff',
+  Industrial:         '#c8a878',
+  Structures:         '#ffffff',
+  'Towers/Depl.':     '#b0b0c8',
+  'Pods/Shuttles':    '#888888',
 };
 const SCATTER_LEGEND_ORDER = [
   'Frigate', 'Destroyer', 'Cruiser', 'Industrial',
   'Battlecruiser', 'Battleship', 'Capital', 'Structures',
-  'Towers', 'Deployables', 'Pods/Shuttles',
+  'Pods/Shuttles', 'Towers/Depl.',
 ];
 
 function scatterClassFor(typeId) {
   const kind = window.TYPE_KINDS && window.TYPE_KINDS[typeId];
   if (kind === 'structure')  return 'Structures';
-  if (kind === 'tower')      return 'Towers';
-  if (kind === 'deployable') return 'Deployables';
+  if (kind === 'tower')      return 'Towers/Depl.';
+  if (kind === 'deployable') return 'Towers/Depl.';
   const slug = window.TYPE_ICONS && window.TYPE_ICONS[typeId];
   if (slug && SCATTER_CLASS_LABELS[slug]) return SCATTER_CLASS_LABELS[slug];
   return null; // pods, shuttles, fighters — not plotted
@@ -1261,26 +1260,11 @@ function buildScatterLegend() {
   const el = document.getElementById('intel-scatter-legend-list');
   if (!el) return;
   el.innerHTML = '';
-  if (intelEntityFilter) {
-    // While a corp/alliance filter is active, dots are coloured by role
-    // (victim red, attacker cyan) — swap the legend to match.
-    const entries = [
-      ['Losses', ROLE_COLOR_VICTIM],
-      ['Kills',  ROLE_COLOR_ATTACKER],
-    ];
-    for (const [label, color] of entries) {
-      const span = document.createElement('span');
-      const dot  = document.createElement('i');
-      dot.style.background = color;
-      span.appendChild(dot);
-      span.appendChild(document.createTextNode(label));
-      el.appendChild(span);
-    }
-    return;
-  }
   for (const label of SCATTER_LEGEND_ORDER) {
     const span = document.createElement('span');
-    if (label === 'Pods/Shuttles') span.className = 'intel-scatter-legend-wide';
+    if (label === 'Pods/Shuttles' || label === 'Towers/Depl.') {
+      span.className = 'intel-scatter-legend-half';
+    }
     const dot  = document.createElement('i');
     dot.style.background = SCATTER_CLASS_COLOR[label];
     span.appendChild(dot);
