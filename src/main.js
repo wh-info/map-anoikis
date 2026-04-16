@@ -2415,7 +2415,7 @@ function selectStar(s, focus) {
   document.getElementById('si-effect').textContent = s.effect || 'None';
   const stEl = document.getElementById('si-statics');
   stEl.innerHTML = '';
-  const destOrder = { HS: 0, LS: 1, NS: 2, C1: 3, C2: 4, C3: 5, C4: 6, C5: 7, C6: 8, C13: 9, Thera: 10 };
+  const destOrder = { C1: 0, C2: 1, C3: 2, C4: 3, C5: 4, C6: 5, C13: 6, Thera: 7, HS: 8, LS: 9, NS: 10 };
   const sortedStatics = s.statics.slice().sort((a, b) => {
     const da = (window.WH_TYPES && window.WH_TYPES[a] && window.WH_TYPES[a].leadsTo && window.WH_TYPES[a].leadsTo[0]) || '';
     const db = (window.WH_TYPES && window.WH_TYPES[b] && window.WH_TYPES[b].leadsTo && window.WH_TYPES[b].leadsTo[0]) || '';
