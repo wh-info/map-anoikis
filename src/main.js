@@ -2060,12 +2060,28 @@ canvas.addEventListener('touchmove', (e) => {
   }
 }, { passive: false });
 
+let lastTapTime = 0;
 canvas.addEventListener('touchend', (e) => {
   e.preventDefault();
   if (touchState && touchState.mode === 'pan' && !touchState.moved && e.touches.length === 0) {
-    const hit = pickStar(touchState.startX, touchState.startY);
-    if (hit) selectStar(hit, true);
-    else deselectStar();
+    const now = performance.now();
+    if (now - lastTapTime < 350) {
+      // Double tap — reset view (unless tapping a star)
+      if (!pickStar(touchState.startX, touchState.startY)) {
+        animatedResetView();
+      }
+      lastTapTime = 0;
+    } else {
+      lastTapTime = now;
+      const sx = touchState.startX, sy = touchState.startY;
+      setTimeout(() => {
+        if (lastTapTime === now) {
+          const hit = pickStar(sx, sy);
+          if (hit) selectStar(hit, true);
+          else deselectStar();
+        }
+      }, 350);
+    }
   }
   if (e.touches.length === 0) touchState = null;
   else if (e.touches.length === 1) {
