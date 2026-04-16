@@ -3426,5 +3426,33 @@ connectKillFeed();
   }
 }
 
+// --- Info modal --------------------------------------------------
+{
+  const backdrop = document.getElementById('info-backdrop');
+  const tabAbout = document.getElementById('info-tab-about');
+  const tabLegal = document.getElementById('info-tab-legal');
+  const bodyAbout = document.getElementById('info-body-about');
+  const bodyLegal = document.getElementById('info-body-legal');
+
+  document.getElementById('info-btn').addEventListener('click', () => {
+    backdrop.classList.add('open');
+  });
+  document.getElementById('info-close').addEventListener('click', () => {
+    backdrop.classList.remove('open');
+  });
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) backdrop.classList.remove('open');
+  });
+
+  tabAbout.addEventListener('click', () => {
+    tabAbout.classList.add('on'); tabLegal.classList.remove('on');
+    bodyAbout.style.display = ''; bodyLegal.style.display = 'none';
+  });
+  tabLegal.addEventListener('click', () => {
+    tabLegal.classList.add('on'); tabAbout.classList.remove('on');
+    bodyLegal.style.display = ''; bodyAbout.style.display = 'none';
+  });
+}
+
 // --- Go ----------------------------------------------------------
 requestAnimationFrame(draw);
