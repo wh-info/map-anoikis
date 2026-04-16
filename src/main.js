@@ -1993,6 +1993,90 @@ canvas.addEventListener('dblclick', (e) => {
   animatedResetView();
 });
 
+// --- Touch interaction (mobile) --------------------------------------
+let touchState = null;
+canvas.style.touchAction = 'none';
+
+function touchDist(a, b) {
+  const dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+function touchMid(a, b) {
+  return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+}
+
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const t = e.touches;
+  if (t.length === 1) {
+    touchState = {
+      mode: 'pan',
+      startX: t[0].clientX, startY: t[0].clientY,
+      ox: camera.offsetX, oy: camera.offsetY,
+      moved: false,
+    };
+    camera.focusAnim = null;
+  } else if (t.length === 2) {
+    const mid = touchMid(t[0], t[1]);
+    touchState = {
+      mode: 'pinch',
+      dist0: touchDist(t[0], t[1]),
+      scale0: camera.scale,
+      midX: mid.x, midY: mid.y,
+      ox: camera.offsetX, oy: camera.offsetY,
+    };
+    camera.focusAnim = null;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (!touchState) return;
+  const t = e.touches;
+  if (touchState.mode === 'pan' && t.length === 1) {
+    const dx = t[0].clientX - touchState.startX;
+    const dy = t[0].clientY - touchState.startY;
+    if (!touchState.moved && (dx * dx + dy * dy) > DRAG_THRESHOLD * DRAG_THRESHOLD) {
+      touchState.moved = true;
+    }
+    if (touchState.moved) {
+      camera.offsetX = touchState.ox + dx;
+      camera.offsetY = touchState.oy + dy;
+    }
+  } else if (touchState.mode === 'pinch' && t.length === 2) {
+    const dist = touchDist(t[0], t[1]);
+    const ratio = dist / touchState.dist0;
+    const newScale = clamp(touchState.scale0 * ratio, MIN_SCALE, MAX_SCALE);
+    const rect = canvas.getBoundingClientRect();
+    const mx = touchState.midX - rect.left;
+    const my = touchState.midY - rect.top;
+    const world = screenToWorld(mx, my);
+    camera.scale = newScale;
+    camera.offsetX = mx - world.x * camera.scale;
+    camera.offsetY = my - world.y * camera.scale;
+    updateZoomLabel();
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  if (touchState && touchState.mode === 'pan' && !touchState.moved && e.touches.length === 0) {
+    const hit = pickStar(touchState.startX, touchState.startY);
+    if (hit) selectStar(hit, true);
+    else deselectStar();
+  }
+  if (e.touches.length === 0) touchState = null;
+  else if (e.touches.length === 1) {
+    // Went from pinch back to one finger — start a fresh pan
+    touchState = {
+      mode: 'pan',
+      startX: e.touches[0].clientX, startY: e.touches[0].clientY,
+      ox: camera.offsetX, oy: camera.offsetY,
+      moved: false,
+    };
+  }
+}, { passive: false });
+
 function pickStar(sx, sy) {
   const w = screenToWorld(sx, sy);
   const wRadius = 18 / camera.scale;
