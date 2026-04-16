@@ -1995,6 +1995,7 @@ canvas.addEventListener('dblclick', (e) => {
 
 // --- Touch interaction (mobile) --------------------------------------
 let touchState = null;
+const isTouchDevice = matchMedia('(pointer: coarse)').matches;
 canvas.style.touchAction = 'none';
 
 function touchDist(a, b) {
@@ -2024,6 +2025,7 @@ canvas.addEventListener('touchstart', (e) => {
       scale0: camera.scale,
       midX: mid.x, midY: mid.y,
       ox: camera.offsetX, oy: camera.offsetY,
+      moved: true,  // prevent tap on finger lift
     };
     camera.focusAnim = null;
   }
@@ -2095,7 +2097,7 @@ const tooltip = document.getElementById('tooltip');
 const ttName = tooltip.querySelector('.tt-name');
 const ttClass = tooltip.querySelector('.tt-class');
 function handleHover(sx, sy) {
-  if (dragging) { tooltip.classList.remove('visible'); return; }
+  if (isTouchDevice || dragging) { tooltip.classList.remove('visible'); return; }
   const s = pickStar(sx, sy);
   if (s) {
     ttName.textContent = displayName(s);
