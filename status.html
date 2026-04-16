@@ -434,23 +434,32 @@ function renderYCDate() {
 }
 
 // ---- health fetch + render ----
+let lastHealthData = null;
+let healthFailCount = 0;
 async function fetchHealth() {
   try {
     const r = await fetch(HEALTH_URL, { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    return await r.json();
+    const data = await r.json();
+    lastHealthData = data;
+    healthFailCount = 0;
+    return data;
   } catch {
-    return null;
+    healthFailCount++;
+    return healthFailCount >= 2 ? null : lastHealthData;
   }
 }
 
+let esiFailCount = 0;
 async function checkEsi() {
   try {
     const r = await fetch('https://esi.evetech.net/latest/status/', { cache: 'no-store' });
-    return r.ok ? 'ok' : 'down';
+    if (r.ok) { esiFailCount = 0; return 'ok'; }
+    esiFailCount++;
   } catch {
-    return 'down';
+    esiFailCount++;
   }
+  return esiFailCount >= 2 ? 'down' : 'ok';
 }
 
 async function fetchStats() {
