@@ -496,9 +496,9 @@ function formatDuration(sec) {
 }
 
 function computeMood(h) {
-  if (!h || !h.ok) return { text: '💀 dead inside', cls: 'down' };
+  if (!h || !h.ok) return { text: '💀 Dead inside', cls: 'down' };
   const zk = h.zkill || '';
-  if (zk.startsWith('error:')) return { text: '💀 dead inside', cls: 'down' };
+  if (zk.startsWith('error:')) return { text: '💀 Dead inside', cls: 'down' };
   if (h.uptime < 60) return { text: ':o Just woke up', cls: '' };
   const rate = h.seenAnoikis / (h.uptime / 3600);
   if (rate < 5)  return { text: 'zZz Napping',  cls: '' };
