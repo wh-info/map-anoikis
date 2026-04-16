@@ -1229,28 +1229,28 @@ const SCATTER_CLASS_LABELS = {
   miningfrigate:     'Industrial',
 };
 const SCATTER_CLASS_COLOR = {
-  Frigate:            '#ff5a5a',
+  Frigate:            '#5ab8ff',
   Destroyer:          '#ff8a3a',
   Cruiser:            '#ffd24a',
   Battlecruiser:      '#a8e060',
-  Battleship:         '#5ab8ff',
+  Battleship:         '#ff5a5a',
   Capital:            '#c66bff',
   Industrial:         '#c8a878',
   Structures:         '#ffffff',
-  'Towers/Depl.':     '#b0b0c8',
+  'Towers/Deployables':     '#b0b0c8',
   'Pods/Shuttles':    '#888888',
 };
 const SCATTER_LEGEND_ORDER = [
   'Frigate', 'Destroyer', 'Cruiser', 'Industrial',
   'Battlecruiser', 'Battleship', 'Capital', 'Structures',
-  'Pods/Shuttles', 'Towers/Depl.',
+  'Pods/Shuttles', 'Towers/Deployables',
 ];
 
 function scatterClassFor(typeId) {
   const kind = window.TYPE_KINDS && window.TYPE_KINDS[typeId];
   if (kind === 'structure')  return 'Structures';
-  if (kind === 'tower')      return 'Towers/Depl.';
-  if (kind === 'deployable') return 'Towers/Depl.';
+  if (kind === 'tower')      return 'Towers/Deployables';
+  if (kind === 'deployable') return 'Towers/Deployables';
   const slug = window.TYPE_ICONS && window.TYPE_ICONS[typeId];
   if (slug && SCATTER_CLASS_LABELS[slug]) return SCATTER_CLASS_LABELS[slug];
   return null; // pods, shuttles, fighters — not plotted
@@ -1260,17 +1260,42 @@ function buildScatterLegend() {
   const el = document.getElementById('intel-scatter-legend-list');
   if (!el) return;
   el.innerHTML = '';
-  for (const label of SCATTER_LEGEND_ORDER) {
-    const span = document.createElement('span');
-    if (label === 'Pods/Shuttles' || label === 'Towers/Depl.') {
-      span.className = 'intel-scatter-legend-half';
+  if (intelEntityFilter) {
+    const entries = [
+      ['Losses', ROLE_COLOR_VICTIM],
+      ['Kills',  ROLE_COLOR_ATTACKER],
+    ];
+    for (const [label, color] of entries) {
+      const span = document.createElement('span');
+      const dot  = document.createElement('i');
+      dot.style.background = color;
+      span.appendChild(dot);
+      span.appendChild(document.createTextNode(label));
+      el.appendChild(span);
     }
+    return;
+  }
+  const bottomLabels = ['Pods/Shuttles', 'Towers/Deployables'];
+  for (const label of SCATTER_LEGEND_ORDER) {
+    if (bottomLabels.includes(label)) continue;
+    const span = document.createElement('span');
     const dot  = document.createElement('i');
     dot.style.background = SCATTER_CLASS_COLOR[label];
     span.appendChild(dot);
     span.appendChild(document.createTextNode(label));
     el.appendChild(span);
   }
+  const row = document.createElement('span');
+  row.className = 'intel-scatter-legend-bottom';
+  for (const label of bottomLabels) {
+    const span = document.createElement('span');
+    const dot  = document.createElement('i');
+    dot.style.background = SCATTER_CLASS_COLOR[label];
+    span.appendChild(dot);
+    span.appendChild(document.createTextNode(label));
+    row.appendChild(span);
+  }
+  el.appendChild(row);
 }
 
 function formatIskCompact(n) {
@@ -1551,6 +1576,19 @@ function renderIntelAll() {
   renderParty('intel-corps',     topCorps, 'corporation', 'corp', (id) => `Corp ${id}`);
   renderParty('intel-alliances', topAllis, 'alliance',    'alli', (id) => `Alliance ${id}`);
   if (intelView === 'scatter') renderScatter();
+
+  // Show how many kills are hidden by the current filter.
+  const el = document.getElementById('intel-filtered-count');
+  if (el) {
+    let total = 0;
+    let filtered = 0;
+    for (const k of kills) {
+      if (k.kind === 'fighter') continue;
+      total++;
+      if (!passesIntelFilter(k)) filtered++;
+    }
+    el.textContent = filtered > 0 ? `${filtered} hidden` : '';
+  }
 }
 
 function renderParty(containerId, items, kind, prefix, fallback) {

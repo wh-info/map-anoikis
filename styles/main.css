@@ -359,6 +359,13 @@ html, body {
   transition: color 0.12s;
 }
 .kill-footer-hdr:hover { color: var(--accent); }
+.intel-filtered-count {
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
 #kill-footer.open .kill-footer-hdr .kill-footer-left,
 #intel-footer.open .kill-footer-hdr .kill-footer-left { color: var(--accent); }
 .kill-footer-chevron {
@@ -1610,9 +1617,12 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
-.intel-scatter-legend-half {
-  grid-column: span 2;
+.intel-scatter-legend-bottom {
+  grid-column: 1 / -1;
   justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px 20px;
 }
 .intel-scatter-legend i {
   width: 8px;
