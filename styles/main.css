@@ -360,11 +360,11 @@ html, body {
 }
 .kill-footer-hdr:hover { color: var(--accent); }
 .intel-filtered-count {
-  font-size: 9px;
-  font-weight: 400;
+  font-size: 10px;
+  font-weight: 700;
   color: var(--dim);
-  letter-spacing: 0.06em;
-  opacity: 0.7;
+  letter-spacing: 0.04em;
+  text-transform: none;
 }
 #kill-footer.open .kill-footer-hdr .kill-footer-left,
 #intel-footer.open .kill-footer-hdr .kill-footer-left { color: var(--accent); }
@@ -1486,6 +1486,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   gap: 3px;
 }
 .intel-view-btn {
+  appearance: none;
   font: inherit;
   font-size: 12px;
   font-weight: 700;
@@ -1494,6 +1495,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   padding: 3px 8px;
   background: transparent;
   border: 1px solid var(--border);
+  border-radius: 0;
   color: var(--dim);
   cursor: pointer;
   white-space: nowrap;

@@ -1398,13 +1398,11 @@ function renderScatter() {
   }
 
   scatterHits = [];
-  let filteredTotal = 0;
   for (const k of kills) {
     if (!passesIntelFilter(k)) continue;
     const ts = new Date(k.killmail_time).getTime();
     if (!Number.isFinite(ts) || ts < cutoff) continue;
     const matched = killMatchesEntityFilter(k);
-    if (matched && intelEntityFilter) filteredTotal++;
     const cls = scatterClassFor(k.victim?.ship_type_id);
     if (!cls) continue;
     const v = k._zkbValue || 0;
@@ -1478,11 +1476,7 @@ function renderScatter() {
   }
 
   const legendEl = document.getElementById('intel-scatter-legend');
-  if (intelEntityFilter) {
-    legendEl.textContent = `${scatterHits.length} of ${filteredTotal} kills shown`;
-  } else {
-    legendEl.textContent = `${scatterHits.length} kill${scatterHits.length !== 1 ? 's' : ''}`;
-  }
+  legendEl.textContent = `${scatterHits.length} kill${scatterHits.length !== 1 ? 's' : ''}`;
 }
 
 function setIntelView(view) {
