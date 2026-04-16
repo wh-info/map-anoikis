@@ -125,7 +125,7 @@ const starByName = new Map(stars.map((s) => [s.name, s]));
 //          without CORS headers on the redirect, so we hit whtype.info directly.
 window.WH_STATICS = {};
 window.WH_TYPES   = {};
-fetch('./data/wh-statics.json')
+fetch('./data/wh-statics.json?v=20260417')
   .then((r) => (r.ok ? r.json() : {}))
   .then((data) => {
     window.WH_STATICS = data || {};
