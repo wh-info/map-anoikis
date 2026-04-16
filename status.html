@@ -446,7 +446,7 @@ async function fetchHealth() {
 
 async function checkEsi() {
   try {
-    const r = await fetch('https://esi.evetech.net/ping', { cache: 'no-store' });
+    const r = await fetch('https://esi.evetech.net/latest/status/', { cache: 'no-store' });
     return r.ok ? 'ok' : 'down';
   } catch {
     return 'down';
@@ -496,9 +496,9 @@ function computeMood(h) {
 function computeZkill(h) {
   const zk = h?.zkill || '';
   if (!zk) return { text: '—', cls: '' };
-  if (zk.startsWith('error:')) return { text: zk, cls: 'down' };
-  if (zk === 'connected' || zk === 'init') return { text: zk, cls: 'ok' };
-  return { text: zk, cls: 'warn' };
+  if (zk.startsWith('error:')) return { text: 'disconnected', cls: 'down' };
+  if (zk === 'init') return { text: 'initializing', cls: 'warn' };
+  return { text: 'connected', cls: 'ok' };
 }
 
 function computeKillfeed(h) {

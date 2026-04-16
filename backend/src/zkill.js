@@ -129,7 +129,8 @@ export function connectZkill({ onKill, onStatus, onJump } = {}) {
         const stuckLabel = lastKillAt === null
           ? 'fresh boot'
           : `stuck ${Math.round(stuckFor / 1000)}s`;
-        onStatus?.(`head-rollback: snapped ${from} -> ${headSeq} (${-lag} ahead, ${stuckLabel})`);
+        lastJump = `snapped ${from} -> ${headSeq} (${-lag} ahead, ${stuckLabel})`;
+        onStatus?.(`head-rollback: ${lastJump}`);
         await saveState(nextSeq);
       }
     } catch {
