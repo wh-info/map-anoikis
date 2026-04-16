@@ -2253,6 +2253,26 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   /* Cinema mode hides nav at low opacity — tap to restore */
   body.cinema .mobile-nav { opacity: 0.15; }
 
+  /* --- Kill tap-highlight flash ----------------------------------- */
+  * { -webkit-tap-highlight-color: transparent; }
+  .kill:hover {
+    background: var(--panel-dark);
+    border-color: var(--border);
+  }
+  .si-view-btn:hover {
+    background: rgba(0, 200, 200, 0.06);
+    border-color: var(--border);
+    color: var(--muted);
+  }
+  .kill-btn:hover {
+    border-color: var(--border);
+    color: var(--muted);
+  }
+  button.ctrl:hover {
+    border-color: var(--border);
+    color: var(--dim);
+  }
+
   /* --- Hide desktop-only controls on mobile ---------------------- */
   #settings-btn,
   .cinema-btn,
