@@ -2438,7 +2438,10 @@ function selectStar(s, focus) {
       destEl.className = 'static-chip-dest';
       destEl.textContent = dest;
       chip.appendChild(destEl);
-      chip.appendChild(document.createTextNode(' - ' + st));
+      const sep = document.createElement('span');
+      sep.className = 'static-chip-sep';
+      chip.appendChild(sep);
+      chip.appendChild(document.createTextNode(st));
     } else {
       chip.textContent = st;
     }

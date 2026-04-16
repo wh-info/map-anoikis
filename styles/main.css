@@ -305,7 +305,15 @@ html, body {
   text-decoration: none;
   cursor: pointer;
 }
-.static-chip-dest { font-weight: 800; }
+.static-chip-dest { font-weight: 900; }
+.static-chip-sep {
+  display: inline-block;
+  width: 1px;
+  height: 10px;
+  background: var(--border);
+  margin: 0 5px;
+  vertical-align: middle;
+}
 .static-chip[data-dest="HS"] { color: #0dfa05; }
 .static-chip[data-dest="LS"] { color: #f0a800; }
 .static-chip[data-dest="NS"] { color: #e81e1e; }
