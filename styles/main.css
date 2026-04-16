@@ -1446,6 +1446,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 .intel-section-title {
   color: var(--fg);
   font-weight: 600;
+  font-size: 12px;
 }
 .intel-utc { text-transform: none; letter-spacing: 0; font-size: 9px; }
 .intel-section-count {
@@ -1479,7 +1480,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
 .intel-range-toggle button:last-child::after { content: ''; }
 .intel-section-label.intel-view-toggle-row {
   justify-content: center;
-  margin: 4px 0 14px;
+  margin: 4px 0 20px;
 }
 .intel-view-toggle {
   display: flex;
