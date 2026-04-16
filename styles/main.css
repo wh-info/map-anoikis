@@ -2215,3 +2215,130 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   width: 120px;
   height: auto;
 }
+
+/* ================================================================ */
+/* MOBILE / TOUCH DEVICES                                           */
+/* ================================================================ */
+.mobile-kill-close { display: none; }
+
+@media (pointer: coarse) {
+  /* --- More opaque panel backgrounds ----------------------------- */
+  .panel,
+  #panel-orrery,
+  #panel-intel {
+    background: rgba(2, 6, 6, 0.94);
+  }
+  #kill-footer,
+  #intel-footer,
+  #kill-history-controls,
+  #settings-panel {
+    background: rgba(1, 3, 3, 0.97);
+  }
+
+  /* --- Kill feed — fullscreen overlay ---------------------------- */
+  #panel-right {
+    top: 0; right: 0; bottom: 0; left: 0;
+    width: 100%; max-height: 100vh;
+    border: none;
+  }
+  #panel-right.panel--hidden { transform: translateY(10px); }
+
+  /* Hide corner triangles — mobile uses header close buttons */
+  .panel-minimize-corner { display: none; }
+
+  /* Show X button in kill header on mobile */
+  .mobile-kill-close { display: flex; }
+
+  /* Kill popup hidden on mobile — inline final blow instead */
+  #kill-popup { display: none !important; }
+
+  /* --- Orrery — fullscreen overlay, vertical stack --------------- */
+  #panel-orrery {
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%; max-height: 100vh;
+    overflow-y: auto;
+  }
+  #panel-orrery .orrery-body {
+    flex-direction: column;
+  }
+  #orrery-canvas {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    max-height: 50vh;
+  }
+  #orrery-list {
+    width: 100%;
+    height: auto;
+    max-height: none;
+    overflow-y: visible;
+  }
+  .orrery-header-info { width: auto; }
+  .orrery-view-toggle { width: auto; }
+  #orrery-tip { width: auto; }
+  #orrery-rotate-btn { width: auto; }
+  .orrery-footer { flex-wrap: wrap; }
+
+  /* --- Intel — fullscreen overlay -------------------------------- */
+  #panel-intel {
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%; max-height: 100vh;
+  }
+
+  /* --- Left panel — full width ----------------------------------- */
+  #panel-left {
+    width: calc(100vw - 32px);
+  }
+
+  /* --- Inline final blow (mobile only) --------------------------- */
+  .kill-fb-inline {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 0 0;
+    margin-top: 8px;
+    border-top: 1px dashed var(--border);
+  }
+  .kill-fb-inline .kp-label {
+    position: absolute;
+    top: 0; right: 0;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(0, 220, 220, 0.85);
+    font-weight: 700;
+  }
+  .kill-fb-inline .kp-img {
+    width: 40px; height: 40px;
+    background: #040c0c center / cover no-repeat;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .kill-fb-inline .kp-info {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding-top: 14px;
+  }
+  .kill-fb-inline .kp-ship {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--fg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .kill-fb-inline .kp-pilot,
+  .kill-fb-inline .kp-corp {
+    font-size: 11px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .kill-fb-inline .kp-corp { font-weight: 700; }
+  .kill-fb-inline .kp-corp:empty { display: none; }
+}

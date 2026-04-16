@@ -2687,6 +2687,18 @@ function flashRestoreRight() {
   restoreRightBtn.classList.add('kill-flash');
 }
 
+// --- Mobile: close button in kill header + start hidden ----------
+document.getElementById('mobile-kill-close').addEventListener('click', () => {
+  document.getElementById('panel-right').classList.add('panel--hidden');
+  restoreRightBtn.classList.add('visible');
+  cinemaBtn.classList.add('visible');
+});
+if (isTouchDevice) {
+  document.getElementById('panel-right').classList.add('panel--hidden');
+  restoreRightBtn.classList.add('visible');
+  cinemaBtn.classList.add('visible');
+}
+
 // --- Cinema mode toggle ------------------------------------------
 cinemaBtn.addEventListener('click', () => {
   const on = document.body.classList.toggle('cinema');
@@ -2940,9 +2952,10 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
     el.dataset.killId = String(killId);
     el.addEventListener('click', (ev) => {
       if (ev.target.closest('.kill-btn')) return;
-      openKillPopup(el, killId);
+      if (isTouchDevice) openInlineFinalBlow(el, killId);
+      else openKillPopup(el, killId);
     });
-    el.addEventListener('mouseleave', () => closeKillPopup());
+    if (!isTouchDevice) el.addEventListener('mouseleave', () => closeKillPopup());
   }
 
   if (hasChar) {
@@ -3354,6 +3367,76 @@ async function openKillPopup(rowEl, killId) {
     kpShip.textContent  = 'Failed to load';
     kpPilot.textContent = '';
     kpCorp.textContent  = '';
+  }
+}
+
+// --- Inline final blow (mobile / touch) --------------------------
+let inlineFbEl = null;
+
+function closeInlineFinalBlow() {
+  if (inlineFbEl) { inlineFbEl.remove(); inlineFbEl = null; }
+}
+
+function renderInlineFb(fb, imgEl, shipEl, pilotEl, corpEl, labelEl, guardEl) {
+  if (fb.shipTypeId != null) {
+    imgEl.style.backgroundImage = `url('https://images.evetech.net/types/${fb.shipTypeId}/render?size=64')`;
+    const localName = window.TYPE_NAMES?.[fb.shipTypeId];
+    if (localName) shipEl.textContent = localName;
+    else { shipEl.textContent = 'Type ' + fb.shipTypeId; resolveType(fb.shipTypeId, shipEl, null); }
+  } else { shipEl.textContent = 'Unknown ship'; }
+  if (fb.isNpc) {
+    pilotEl.textContent = 'o7'; corpEl.textContent = ''; labelEl.textContent = 'NPC KILL';
+  } else {
+    labelEl.textContent = 'Final blow';
+    if (fb.characterId) {
+      pilotEl.textContent = 'Loading…';
+      resolveEntityName('char', fb.characterId).then((n) => {
+        if (inlineFbEl !== guardEl) return;
+        pilotEl.textContent = n || 'Unknown pilot';
+      });
+    } else { pilotEl.textContent = 'Unknown pilot'; }
+    if (fb.corporationId) {
+      corpEl.textContent = 'Loading…';
+      resolveEntityName('corp', fb.corporationId).then((n) => {
+        if (inlineFbEl !== guardEl) return;
+        corpEl.textContent = n || '';
+      });
+    } else { corpEl.textContent = ''; }
+  }
+}
+
+async function openInlineFinalBlow(rowEl, killId) {
+  const container = rowEl.querySelector('.kill-main');
+  if (inlineFbEl && inlineFbEl.parentElement === container) {
+    closeInlineFinalBlow(); return;
+  }
+  closeInlineFinalBlow();
+  const fb = document.createElement('div');
+  fb.className = 'kill-fb-inline';
+  fb.innerHTML = `<div class="kp-img"></div><div class="kp-info"><div class="kp-label">Final blow</div><div class="kp-ship">Loading…</div><div class="kp-pilot"></div><div class="kp-corp"></div></div>`;
+  container.appendChild(fb);
+  inlineFbEl = fb;
+  fb.addEventListener('click', (ev) => ev.stopPropagation());
+
+  const imgEl = fb.querySelector('.kp-img');
+  const shipEl = fb.querySelector('.kp-ship');
+  const pilotEl = fb.querySelector('.kp-pilot');
+  const corpEl = fb.querySelector('.kp-corp');
+  const labelEl = fb.querySelector('.kp-label');
+
+  const entry = killBuffer.find((e) => e.kill.id === killId);
+  const raw = entry?.kill;
+  if (raw && raw.fbShipTypeId != null) {
+    renderInlineFb({ shipTypeId: raw.fbShipTypeId, characterId: raw.fbCharacterId, corporationId: raw.fbCorporationId, isNpc: !raw.fbCharacterId }, imgEl, shipEl, pilotEl, corpEl, labelEl, fb);
+    return;
+  }
+  try {
+    const data = await fetchFinalBlow(killId);
+    if (inlineFbEl !== fb) return;
+    renderInlineFb(data, imgEl, shipEl, pilotEl, corpEl, labelEl, fb);
+  } catch {
+    if (inlineFbEl !== fb) return;
+    shipEl.textContent = 'Failed to load';
   }
 }
 
