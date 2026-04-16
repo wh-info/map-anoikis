@@ -2264,9 +2264,16 @@ function pickStar(sx, sy) {
 const tooltip = document.getElementById('tooltip');
 const ttName = tooltip.querySelector('.tt-name');
 const ttClass = tooltip.querySelector('.tt-class');
+function hitsLabel(sx, sy) {
+  for (const lh of labelHits) {
+    if (sx >= lh.x1 && sx <= lh.x2 && sy >= lh.y1 && sy <= lh.y2) return true;
+  }
+  return false;
+}
 function handleHover(sx, sy) {
   if (isTouchDevice || dragging) { tooltip.classList.remove('visible'); return; }
   const s = pickStar(sx, sy);
+  const overLabel = showLabels && hitsLabel(sx, sy);
   if (s) {
     ttName.textContent = displayName(s) + '  ' + displayClass(s);
     ttClass.textContent = shortLabel(s.regionName) + ' · ' + shortLabel(s.constellation);
@@ -2276,7 +2283,7 @@ function handleHover(sx, sy) {
     canvas.style.cursor = 'pointer';
   } else {
     tooltip.classList.remove('visible');
-    canvas.style.cursor = dragging ? 'grabbing' : 'grab';
+    canvas.style.cursor = overLabel ? 'pointer' : (dragging ? 'grabbing' : 'grab');
   }
 }
 
