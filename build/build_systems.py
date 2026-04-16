@@ -275,6 +275,23 @@ def write_js(systems: list[dict]) -> None:
     print(f"wrote {OUTPUT} ({kb} KB, {len(systems)} systems)")
 
 
+OUT_NAMES = ROOT / "backend" / "src" / "system-names.json"
+
+
+def write_names_json(systems: list[dict]) -> None:
+    """Emit a tiny {systemId: {name, class}} JSON for the backend stats."""
+    lookup = {
+        str(s["id"]): {"name": s["name"], "class": s["class"]}
+        for s in systems
+    }
+    OUT_NAMES.parent.mkdir(parents=True, exist_ok=True)
+    OUT_NAMES.write_text(
+        json.dumps(lookup, separators=(",", ":")), encoding="utf-8",
+    )
+    kb = len(OUT_NAMES.read_bytes()) // 1024
+    print(f"wrote {OUT_NAMES} ({kb} KB, {len(lookup)} systems)")
+
+
 def main() -> None:
     (regions, constellations, effects, planets_by_id,
      star_type_by_system, star_info_by_system) = load_lookups()
@@ -288,6 +305,7 @@ def main() -> None:
     print(f"loaded {len(rows)} wspace systems, kept {len(systems)}, "
           f"{with_effect} carry an effect")
     write_js(systems)
+    write_names_json(systems)
 
 
 if __name__ == "__main__":

@@ -247,7 +247,10 @@ def main() -> None:
 
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
     OUT_JSON.write_text(
-        json.dumps({"kinds": {str(k): v for k, v in kinds.items()}}, separators=(",", ":")),
+        json.dumps({
+            "kinds": {str(k): v for k, v in kinds.items()},
+            "names": {str(k): v for k, v in names.items()},
+        }, separators=(",", ":")),
         encoding="utf-8",
     )
     js_kb   = len(OUT_JS.read_bytes())   // 1024

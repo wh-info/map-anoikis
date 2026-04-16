@@ -14,6 +14,7 @@ import { classifyKill } from './filter.js';
 import { connectZkill } from './zkill.js';
 import { createKillstore, buildIntelKill } from './killstore.js';
 import { createBootstrap } from './bootstrap.js';
+import { computeStats, getStats } from './stats.js';
 
 const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -136,6 +137,18 @@ fastify.get('/health', async () => ({
   reconcile: reconcileStats,
 }));
 
+// 24h stats — computed every 60s, served from cache.
+computeStats(killstore);
+const STATS_INTERVAL = 60_000;
+setInterval(() => computeStats(killstore), STATS_INTERVAL).unref?.();
+
+fastify.get('/stats', {
+  config: { rateLimit: { max: 60, timeWindow: '1 minute' } }
+}, async (_req, reply) => {
+  reply.header('Cache-Control', 'public, max-age=60');
+  return getStats() ?? { error: 'not ready' };
+});
+
 // Intel: return every kill we have for a system, newest first. The frontend
 // filters by ts for the 24h / 30d / 60d view ranges. Served purely from the
 // in-memory killstore — no zKB or ESI calls on the request path.
@@ -191,7 +204,7 @@ wss.on('connection', (ws, req) => {
   fastify.log.info({ clients: clients.size }, 'client connected');
 
   try {
-    ws.send(JSON.stringify({ type: 'snapshot', kills: ring.snapshot() }));
+    ws.send(JSON.stringify({ type: 'snapshot', kills: ring.snapshot(), ringSize: ring.size }));
   } catch {
     // If the initial send fails the client was already gone; nothing to do.
   }

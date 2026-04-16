@@ -237,12 +237,12 @@ export function createKillstore({ file } = {}) {
     load,
     has: (id) => byId.has(id),
     size: () => byId.size,
+    values: () => byId.values(),
     getState: () => ({
       size: byId.size,
       systems: bySystem.size,
       coverageFrom: coverageFrom(),
-      compactedAt,
-      file: FILE
+      compactedAt
     })
   };
 }

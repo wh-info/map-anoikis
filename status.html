@@ -25,18 +25,17 @@
   --warn:        #e8d44d;
 }
 
-* { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; }
 
-html, body {
-  margin: 0; padding: 0;
-  min-height: 100%;
+html {
   background: var(--bg);
-  color: var(--text);
-  font: 13px/1.5 'Roboto Mono', 'Courier New', monospace;
-  -webkit-font-smoothing: antialiased;
+  overflow-y: auto;
+  scrollbar-width: none;
 }
+html::-webkit-scrollbar { display: none; }
 
 body {
+  margin: 0;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -44,8 +43,10 @@ body {
   background:
     radial-gradient(ellipse at top, rgba(0, 200, 200, 0.05), transparent 60%),
     radial-gradient(ellipse at bottom, rgba(0, 200, 200, 0.03), transparent 60%),
-    var(--bg);
-  min-height: 100vh;
+    transparent;
+  color: var(--text);
+  font: 13px/1.5 'Roboto Mono', 'Courier New', monospace;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* ----- boot sequence ----- */
@@ -60,6 +61,7 @@ body {
   color: var(--muted);
   font-size: 13px;
   white-space: pre;
+  text-align: center;
   transition: opacity 0.5s ease;
 }
 .boot-line { min-height: 1.5em; }
@@ -81,7 +83,7 @@ body {
 #status-root {
   width: 100%;
   max-width: 680px;
-  min-height: calc(100vh - 100px);  /* body padding: 60 top + 40 bottom */
+  min-height: calc(100vh - 100px);
   display: flex;
   flex-direction: column;
   opacity: 0;
@@ -98,7 +100,6 @@ header {
   font-weight: 700;
   color: var(--text);
   letter-spacing: 0.5px;
-  cursor: pointer;
   user-select: none;
 }
 .cursor-blink {
@@ -152,7 +153,6 @@ header {
   letter-spacing: 1px;
   color: var(--text);
 }
-
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -180,20 +180,30 @@ header {
 .stat-val.warn { color: var(--warn); }
 .stat-val.down { color: var(--danger); }
 
+#stats-24h {
+  margin-top: 12px;
+  margin-bottom: 14px;
+}
+#stats-24h h2 {
+  margin: 0 0 4px;
+  color: var(--highlight);
+  font-size: 11px;
+  letter-spacing: 2px;
+  font-weight: 700;
+}
+.stats-24h-sub {
+  color: var(--dim);
+  font-size: 11px;
+  margin-bottom: 10px;
+}
+
 #classified {
   background: var(--panel-dark);
   border: 1px solid var(--border-hi);
   padding: 16px 18px;
   margin-bottom: 14px;
-  max-height: 260px;
-  overflow-y: auto;
   animation: unlock 0.5s ease;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-hi) transparent;
 }
-#classified::-webkit-scrollbar        { width: 8px; }
-#classified::-webkit-scrollbar-track  { background: transparent; }
-#classified::-webkit-scrollbar-thumb  { background: var(--border-hi); border-radius: 4px; }
 @keyframes unlock {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -225,7 +235,7 @@ footer {
   text-align: center;
   color: var(--dim);
   font-size: 11px;
-  margin-top: auto;   /* pin to bottom of #status-root flex column */
+  margin-top: auto;
   padding-top: 40px;
   line-height: 1.8;
 }
@@ -244,7 +254,6 @@ footer a:hover {
   margin-bottom: 8px;
 }
 .powered-by { margin-bottom: 10px; }
-.map-link   { margin-top: 6px; }
 
 @media (max-width: 520px) {
   .stats-grid { grid-template-columns: 1fr; }
@@ -256,10 +265,11 @@ footer a:hover {
 <body>
 
 <div id="boot">
+<div class="boot-line" data-text="> status loading ..."></div>
 <div class="boot-line" data-text="> connecting to R2Z2..."></div>
-<div class="boot-line" data-text="> handshaking with Cloudflare..."></div>
-<div class="boot-line" data-text="> you have jumped into wormhole space."></div>
-<div class="boot-line" data-text="> nobody can hear you scream."></div>
+<div class="boot-line" data-text="> connecting to ESI..."></div>
+<div class="boot-line" data-text="> you have jumped into wormhole space..."></div>
+<div class="boot-line" data-text="> nobody can hear you scream..."></div>
 </div>
 
 <main id="status-root" hidden>
@@ -281,16 +291,55 @@ footer a:hover {
       <div id="s-mood" class="stat-val">—</div>
     </div>
     <div class="stat">
-      <label>Time since last pod popped</label>
-      <div id="s-silence" class="stat-val">—</div>
+      <label>Killfeed</label>
+      <div id="s-killfeed" class="stat-val">—</div>
+    </div>
+    <div class="stat">
+      <label>Backend uptime</label>
+      <div id="s-uptime" class="stat-val">—</div>
+    </div>
+    <div class="stat">
+      <label>Live feed buffer</label>
+      <div id="s-buffer" class="stat-val">—</div>
+    </div>
+    <div class="stat">
+      <label>zKill R2Z2</label>
+      <div id="s-zkill" class="stat-val">—</div>
+    </div>
+    <div class="stat">
+      <label>EVE ESI</label>
+      <div id="s-esi" class="stat-val">—</div>
     </div>
     <div class="stat">
       <label>Pilots watching the feed</label>
       <div id="s-pilots" class="stat-val">—</div>
     </div>
     <div class="stat">
-      <label>Worker uptime</label>
-      <div id="s-uptime" class="stat-val">—</div>
+      <label>Kills tracked (60d)</label>
+      <div id="s-killstore" class="stat-val">—</div>
+    </div>
+  </section>
+
+  <section id="stats-24h">
+    <h2>// ANOIKIS STATS LAST 24 HOURS //</h2>
+    <div class="stats-24h-sub">2,604 systems tracked</div>
+    <div class="stats-grid">
+      <div class="stat">
+        <label>Most violent hole (excl. Thera)</label>
+        <div id="s-violent" class="stat-val">—</div>
+      </div>
+      <div class="stat">
+        <label>ISK destroyed</label>
+        <div id="s-isk" class="stat-val">—</div>
+      </div>
+      <div class="stat">
+        <label>Biggest loss</label>
+        <div id="s-biggest" class="stat-val">—</div>
+      </div>
+      <div class="stat">
+        <label>NPC kills</label>
+        <div id="s-npc" class="stat-val">—</div>
+      </div>
     </div>
   </section>
 
@@ -305,10 +354,8 @@ footer a:hover {
       powered by
       <a href="https://zkillboard.com/" target="_blank" rel="noopener">zKillboard R2Z2</a> ·
       <a href="https://developers.eveonline.com/" target="_blank" rel="noopener">EVE ESI</a> ·
-      <a href="https://www.cloudflare.com/" target="_blank" rel="noopener">Cloudflare</a> ·
       <a href="https://whtype.info/" target="_blank" rel="noopener">whtype.info</a>
     </div>
-    <div class="map-link"><a href="/">← back to map</a></div>
   </footer>
 </main>
 
@@ -319,6 +366,7 @@ footer a:hover {
 // a missing localhost backend.
 const IS_DEV = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 const HEALTH_URL = IS_DEV ? 'http://localhost:8080/health' : 'https://ws.anoikis.info/health';
+const STATS_URL  = IS_DEV ? 'http://localhost:8080/stats'  : 'https://ws.anoikis.info/stats';
 const POLL_MS = 30_000;
 
 // ---- quotes ----
@@ -355,9 +403,9 @@ async function typeLine(el, text, charDelay = 14) {
 
 async function runBoot() {
   const lines = document.querySelectorAll('.boot-line');
-  for (const line of lines) {
-    await typeLine(line, line.dataset.text);
-    await sleep(140);
+  for (let i = 0; i < lines.length; i++) {
+    await typeLine(lines[i], lines[i].dataset.text);
+    await sleep(i < 3 ? 400 : 140);
   }
   await sleep(700);
   const boot = document.getElementById('boot');
@@ -396,6 +444,33 @@ async function fetchHealth() {
   }
 }
 
+async function checkEsi() {
+  try {
+    const r = await fetch('https://esi.evetech.net/ping', { cache: 'no-store' });
+    return r.ok ? 'ok' : 'down';
+  } catch {
+    return 'down';
+  }
+}
+
+async function fetchStats() {
+  try {
+    const r = await fetch(STATS_URL, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+function formatIsk(value) {
+  if (value >= 1e12) return (value / 1e12).toFixed(1) + 'T ISK';
+  if (value >= 1e9)  return (value / 1e9).toFixed(1) + 'B ISK';
+  if (value >= 1e6)  return (value / 1e6).toFixed(1) + 'M ISK';
+  if (value >= 1e3)  return (value / 1e3).toFixed(0) + 'K ISK';
+  return value.toLocaleString() + ' ISK';
+}
+
 function formatDuration(sec) {
   if (sec < 60) return `${sec}s`;
   const m = Math.floor(sec / 60);
@@ -418,16 +493,18 @@ function computeMood(h) {
   return { text: '>:D Feasting', cls: 'ok' };
 }
 
-function computeSilence(h) {
-  // Prefer the Anoikis-filtered timestamp from server.js; fall back to the
-  // upstream poller's any-kill timestamp for older backends that don't yet
-  // expose lastAnoikisKillAt.
-  const last = h?.lastAnoikisKillAt ?? h?.poller?.lastKillAt;
-  if (!last) return { text: '—', cls: '' };
-  const sec = Math.floor((Date.now() - last) / 1000);
-  if (sec < 0) return { text: 'just now', cls: 'ok' };
-  const cls = sec < 300 ? 'ok' : sec < 1800 ? 'warn' : 'down';
-  return { text: formatDuration(sec) + ' ago', cls };
+function computeZkill(h) {
+  const zk = h?.zkill || '';
+  if (!zk) return { text: '—', cls: '' };
+  if (zk.startsWith('error:')) return { text: zk, cls: 'down' };
+  if (zk === 'connected' || zk === 'init') return { text: zk, cls: 'ok' };
+  return { text: zk, cls: 'warn' };
+}
+
+function computeKillfeed(h) {
+  if (!h) return { text: 'offline', cls: 'down' };
+  if (!h.ok) return { text: 'degraded', cls: 'warn' };
+  return { text: 'online', cls: 'ok' };
 }
 
 function computePilots(h) {
@@ -437,11 +514,12 @@ function computePilots(h) {
   return `${n} pilots`;
 }
 
-function computeBadge(h) {
+function computeBadge(h, esiStatus) {
   if (!h)        return { text: 'BACKEND UNREACHABLE', cls: 'down' };
   if (!h.ok)     return { text: 'DEGRADED',            cls: 'warn' };
   const zk = h.zkill || '';
   if (zk.startsWith('error:')) return { text: 'POLLER DEGRADED', cls: 'warn' };
+  if (esiStatus === 'down')    return { text: 'PARTIALLY DEGRADED', cls: 'warn' };
   return { text: 'ALL SYSTEMS NOMINAL', cls: 'ok' };
 }
 
@@ -449,6 +527,19 @@ function setStat(id, text, cls = '') {
   const el = document.getElementById(id);
   el.textContent = text;
   el.className = 'stat-val' + (cls ? ' ' + cls : '');
+}
+
+function fmt(n) { return n != null ? n.toLocaleString() : '—'; }
+function fmtDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  const ago = Math.floor((Date.now() - d) / 1000);
+  return formatDuration(ago) + ' ago  (' + d.toISOString().slice(0, 19).replace('T', ' ') + ' UTC)';
+}
+function fmtLag(lag) {
+  if (lag == null) return '—';
+  if (lag === 0) return 'none';
+  return fmt(lag) + ' behind';
 }
 
 function renderClassified(h) {
@@ -464,28 +555,29 @@ function renderClassified(h) {
   const k = h.killstore || {};
   const r = h.reconcile || {};
   const rows = [
-    ['ws clients',          h.clients],
-    ['ring buffer',         h.ringSize],
-    ['seen (total)',        h.seenTotal],
-    ['seen (anoikis)',      h.seenAnoikis],
-    ['poller nextSeq',      p.nextSeq],
-    ['poller headSeq',      p.headSeq],
-    ['poller lag',          p.lag],
-    ['jumps total',         p.jumpsTotal],
-    ['last kill at',        p.lastKillAt ? new Date(p.lastKillAt).toISOString() : '—'],
-    ['killstore size',      k.size],
-    ['killstore systems',   k.systems],
-    ['coverage from',       k.coverageFrom ? new Date(k.coverageFrom * 1000).toISOString() : '—'],
-    ['compacted at',        k.compactedAt ? new Date(k.compactedAt).toISOString() : '—'],
-    ['reconcile runs',      r.totalRuns],
-    ['reconcile last run',  r.lastRunAt ? new Date(r.lastRunAt).toISOString() : '—'],
-    ['zkill status',        h.zkill],
+    ['ws clients',          fmt(h.clients)],
+    ['ring buffer',         fmt(h.ringSize)],
+    ['seen (total)',        fmt(h.seenTotal)],
+    ['seen (anoikis)',      fmt(h.seenAnoikis)],
+    ['next sequence',       p.nextSeq ?? '—'],
+    ['head sequence',       p.headSeq ?? '—'],
+    ['sequence lag',        fmtLag(p.lag)],
+    ['head-skips',          fmt(p.jumpsTotal)],
+    ['last head-skip',      p.lastJump ?? '—'],
+    ['last upstream kill',  fmtDate(p.lastKillAt)],
+    ['killstore kills',     fmt(k.size)],
+    ['killstore systems',   fmt(k.systems)],
+    ['coverage from',       k.coverageFrom ? fmtDate(k.coverageFrom * 1000) : '—'],
+    ['last compaction',     fmtDate(k.compactedAt)],
+    ['reconcile runs',      fmt(r.totalRuns)],
+    ['last reconcile',      fmtDate(r.lastRunAt)],
+    ['zkill status',        h.zkill ?? '—'],
   ];
   for (const [label, value] of rows) {
     const dt = document.createElement('dt');
     dt.textContent = label;
     const dd = document.createElement('dd');
-    dd.textContent = value ?? '—';
+    dd.textContent = value;
     dl.appendChild(dt);
     dl.appendChild(dd);
   }
@@ -493,8 +585,9 @@ function renderClassified(h) {
 
 async function refresh() {
   const h = await fetchHealth();
+  const esi = await checkEsi();
 
-  const badge = computeBadge(h);
+  const badge = computeBadge(h, esi);
   const badgeEl = document.getElementById('status-badge');
   badgeEl.className = badge.cls;
   document.getElementById('badge-text').textContent = badge.text;
@@ -502,21 +595,46 @@ async function refresh() {
   const mood = computeMood(h);
   setStat('s-mood', mood.text, mood.cls);
 
-  const silence = computeSilence(h);
-  setStat('s-silence', silence.text, silence.cls);
+  const zk = computeZkill(h);
+  setStat('s-zkill', zk.text, zk.cls);
+
+  setStat('s-esi', esi === 'ok' ? 'connected' : 'unreachable', esi === 'ok' ? 'ok' : 'down');
+
+  const kf = computeKillfeed(h);
+  setStat('s-killfeed', kf.text, kf.cls);
 
   setStat('s-pilots', computePilots(h), '');
 
   setStat('s-uptime', h ? formatDuration(h.uptime) : '—', '');
 
+  // Live feed buffer: ringSize / 360 (MAX_KILLS 60 + HISTORY 300)
+  const ring = h?.ringSize ?? 0;
+  const bufferCls = ring >= 360 ? 'ok' : ring > 0 ? 'warn' : 'down';
+  setStat('s-buffer', h ? `${ring} / 360` : '—', bufferCls);
+
+  // Killstore total
+  const ks = h?.killstore;
+  setStat('s-killstore', ks ? `${fmt(ks.size)} kills · ${fmt(ks.systems)} systems` : '—', '');
+
   renderClassified(h);
+
+  // 24h stats
+  const s = await fetchStats();
+  if (s && !s.error) {
+    const mv = s.mostViolent;
+    setStat('s-violent', mv ? `${mv.name} · ${mv.class} (${mv.kills} kills)` : 'no kills', '');
+    setStat('s-isk', formatIsk(s.iskDestroyed || 0), '');
+    const bl = s.biggestLoss;
+    setStat('s-biggest', bl ? `${bl.shipName} — ${formatIsk(bl.value)}` : '—', '');
+    setStat('s-npc', `${s.npcPercent}%`, '');
+  }
 }
 
-// ---- hidden classified panel (10 brand clicks) ----
+// ---- hidden classified panel (15 brand clicks) ----
 let brandClicks = 0;
 document.getElementById('brand').addEventListener('click', () => {
   brandClicks++;
-  if (brandClicks >= 10) {
+  if (brandClicks >= 15) {
     const c = document.getElementById('classified');
     if (c.hidden) {
       c.hidden = false;

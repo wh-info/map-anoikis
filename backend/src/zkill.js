@@ -88,6 +88,7 @@ export function connectZkill({ onKill, onStatus, onJump } = {}) {
   let nextSeq          = null;
   let headSeq          = null;
   let lastKillAt       = null;
+  let lastJump         = null;
   let lastHeadCheckAt  = 0;
   let jumpsTotal       = 0;
 
@@ -107,7 +108,8 @@ export function connectZkill({ onKill, onStatus, onJump } = {}) {
         const from = nextSeq;
         nextSeq = headSeq;
         jumpsTotal++;
-        onStatus?.(`head-skip: jumped ${from} -> ${headSeq} (${lag} behind)`);
+        lastJump = `jumped ${from} -> ${headSeq} (${lag} behind)`;
+        onStatus?.(`head-skip: ${lastJump}`);
         onJump?.({ from, to: headSeq, lag, at: Date.now() });
         await saveState(nextSeq);
         return;
@@ -196,6 +198,7 @@ export function connectZkill({ onKill, onStatus, onJump } = {}) {
         lag: (headSeq != null && nextSeq != null) ? headSeq - nextSeq : null,
         lastKillAt,
         jumpsTotal,
+        lastJump,
       };
     },
   };
