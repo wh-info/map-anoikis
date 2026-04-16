@@ -194,7 +194,7 @@ function computeResetTarget() {
     MIN_SCALE, 1.5
   );
   const anchorX = RESET_ANCHOR ? RESET_ANCHOR.x : (starBounds.minX + starBounds.maxX) / 2;
-  const anchorShiftPx = 100; // push anchor right of true screen centre
+  const anchorShiftPx = 75; // push anchor right of true screen centre
   return {
     scale,
     offsetX: cw / 2 + anchorShiftPx - anchorX * scale,
@@ -2664,15 +2664,20 @@ document.getElementById('restore-left').addEventListener('click', () => {
   document.getElementById('panel-left').classList.remove('panel--hidden');
   document.getElementById('restore-left').classList.remove('visible');
 });
+const cinemaBtn = document.getElementById('cinema-btn');
 document.getElementById('hide-right').addEventListener('click', () => {
   document.getElementById('panel-right').classList.add('panel--hidden');
   document.getElementById('restore-right').classList.add('visible');
+  cinemaBtn.classList.add('visible');
 });
 const restoreRightBtn = document.getElementById('restore-right');
 restoreRightBtn.addEventListener('click', () => {
   document.getElementById('panel-right').classList.remove('panel--hidden');
   restoreRightBtn.classList.remove('visible');
   restoreRightBtn.classList.remove('kill-flash');
+  cinemaBtn.classList.remove('visible');
+  document.body.classList.remove('cinema');
+  cinemaBtn.classList.remove('active');
 });
 
 function flashRestoreRight() {
@@ -2681,6 +2686,12 @@ function flashRestoreRight() {
   void restoreRightBtn.offsetWidth; // force reflow to restart animation
   restoreRightBtn.classList.add('kill-flash');
 }
+
+// --- Cinema mode toggle ------------------------------------------
+cinemaBtn.addEventListener('click', () => {
+  const on = document.body.classList.toggle('cinema');
+  cinemaBtn.classList.toggle('active', on);
+});
 
 // --- Settings panel toggle ---------------------------------------
 const settingsBtn = document.getElementById('settings-btn');
