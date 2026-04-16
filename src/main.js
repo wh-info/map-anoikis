@@ -2687,24 +2687,6 @@ function flashRestoreRight() {
   restoreRightBtn.classList.add('kill-flash');
 }
 
-// --- Mobile: close button in kill header + start hidden ----------
-document.getElementById('mobile-kill-close').addEventListener('click', () => {
-  document.getElementById('panel-right').classList.add('panel--hidden');
-  restoreRightBtn.classList.add('visible');
-  cinemaBtn.classList.add('visible');
-});
-if (isTouchDevice) {
-  document.getElementById('panel-right').classList.add('panel--hidden');
-  restoreRightBtn.classList.add('visible');
-  cinemaBtn.classList.add('visible');
-}
-
-// --- Cinema mode toggle ------------------------------------------
-cinemaBtn.addEventListener('click', () => {
-  const on = document.body.classList.toggle('cinema');
-  cinemaBtn.classList.toggle('active', on);
-});
-
 // --- Settings panel toggle ---------------------------------------
 const settingsBtn = document.getElementById('settings-btn');
 const settingsPanel = document.getElementById('settings-panel');
@@ -2714,6 +2696,72 @@ settingsBtn.addEventListener('click', (e) => {
 });
 document.addEventListener('click', () => settingsPanel.classList.remove('open'));
 settingsPanel.addEventListener('click', (e) => e.stopPropagation());
+
+// --- Mobile bottom nav bar ---------------------------------------
+if (isTouchDevice) {
+  const leftPanel  = document.getElementById('panel-left');
+  const rightPanel = document.getElementById('panel-right');
+  const mnavSearch   = document.getElementById('mnav-search');
+  const mnavKillfeed = document.getElementById('mnav-killfeed');
+  const mnavSettings = document.getElementById('mnav-settings');
+  const mnavCinema   = document.getElementById('mnav-cinema');
+
+  function syncMobileNav() {
+    mnavSearch.classList.toggle('active', !leftPanel.classList.contains('panel--hidden'));
+    mnavKillfeed.classList.toggle('active', !rightPanel.classList.contains('panel--hidden'));
+  }
+
+  // Start both panels hidden on mobile
+  leftPanel.classList.add('panel--hidden');
+  rightPanel.classList.add('panel--hidden');
+  syncMobileNav();
+
+  mnavSearch.addEventListener('click', () => {
+    const wasOpen = !leftPanel.classList.contains('panel--hidden');
+    if (wasOpen) {
+      leftPanel.classList.add('panel--hidden');
+    } else {
+      leftPanel.classList.remove('panel--hidden');
+      rightPanel.classList.add('panel--hidden');   // mutual exclusion
+    }
+    settingsPanel.classList.remove('open');
+    syncMobileNav();
+  });
+
+  mnavKillfeed.addEventListener('click', () => {
+    const wasOpen = !rightPanel.classList.contains('panel--hidden');
+    if (wasOpen) {
+      rightPanel.classList.add('panel--hidden');
+    } else {
+      rightPanel.classList.remove('panel--hidden');
+      leftPanel.classList.add('panel--hidden');    // mutual exclusion
+    }
+    settingsPanel.classList.remove('open');
+    syncMobileNav();
+  });
+
+  mnavSettings.addEventListener('click', (e) => {
+    e.stopPropagation();
+    settingsPanel.classList.toggle('open');
+  });
+
+  mnavCinema.addEventListener('click', () => {
+    const on = document.body.classList.toggle('cinema');
+    mnavCinema.classList.toggle('active', on);
+  });
+
+  // Kill header X button on mobile
+  document.getElementById('mobile-kill-close').addEventListener('click', () => {
+    rightPanel.classList.add('panel--hidden');
+    syncMobileNav();
+  });
+}
+
+// --- Cinema mode toggle ------------------------------------------
+cinemaBtn.addEventListener('click', () => {
+  const on = document.body.classList.toggle('cinema');
+  cinemaBtn.classList.toggle('active', on);
+});
 
 // --- Kill feed ---------------------------------------------------
 const killList = document.getElementById('kill-list');

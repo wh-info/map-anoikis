@@ -13,7 +13,7 @@
 <meta name="description" content="Interactive map of Anoikis - Eve Online wormhole space.">
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
-<link rel="stylesheet" href="./styles/main.css?v=20260417b" />
+<link rel="stylesheet" href="./styles/main.css?v=20260417c" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="57ac0157-6021-4a9e-b0a0-73fddc9eb45d"></script>
 </head>
 <body>
@@ -357,8 +357,8 @@
 
 <div id="custom-tip"></div>
 
-<script src="./data/anoikis-systems.js?v=20260417b"></script>
-<script src="./data/type-kinds.js?v=20260417b"></script>
+<script src="./data/anoikis-systems.js?v=20260417c"></script>
+<script src="./data/type-kinds.js?v=20260417c"></script>
 <!-- INFO MODAL -->
 <div id="info-backdrop" class="info-backdrop">
   <div class="info-modal">
@@ -388,6 +388,22 @@
   </div>
 </div>
 
-<script src="./src/main.js?v=20260417b"></script>
+<!-- Mobile bottom nav (hidden on desktop via CSS) -->
+<nav id="mobile-nav" class="mobile-nav">
+  <button class="mobile-nav-btn" id="mnav-settings" aria-label="Settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>
+  <button class="mobile-nav-btn" id="mnav-search" aria-label="Search and system info">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+  </button>
+  <button class="mobile-nav-btn" id="mnav-killfeed" aria-label="Kill feed">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+  </button>
+  <button class="mobile-nav-btn" id="mnav-cinema" aria-label="Hide UI">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+  </button>
+</nav>
+
+<script src="./src/main.js?v=20260417c"></script>
 </body>
 </html>
