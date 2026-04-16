@@ -40,7 +40,7 @@ const CLASS_COLORS = { ...PALETTES.ghost };
 
 // 'ghost' | 'ember' | 'anoikis' | 'whtype' → class-based colouring.
 // 'eve'   → per-star colouring from SUN_COLORS[sunTypeId].
-let currentPalette = 'ghost';
+let currentPalette = 'eve';
 
 function applyPalette(name) {
   currentPalette = name;
