@@ -226,6 +226,56 @@ resetView();
 
 let showLabels = false;
 
+// --- Region & constellation bounding-box centers for label LOD -----
+const regionBounds = new Map();
+const constBounds = new Map();
+for (const s of stars) {
+  // Regions
+  if (!regionBounds.has(s.regionName)) regionBounds.set(s.regionName, { minX: s.x, maxX: s.x, minY: s.y, maxY: s.y });
+  else {
+    const rb = regionBounds.get(s.regionName);
+    if (s.x < rb.minX) rb.minX = s.x; if (s.x > rb.maxX) rb.maxX = s.x;
+    if (s.y < rb.minY) rb.minY = s.y; if (s.y > rb.maxY) rb.maxY = s.y;
+  }
+  // Constellations
+  if (!constBounds.has(s.constellation)) constBounds.set(s.constellation, { minX: s.x, maxX: s.x, minY: s.y, maxY: s.y });
+  else {
+    const cb = constBounds.get(s.constellation);
+    if (s.x < cb.minX) cb.minX = s.x; if (s.x > cb.maxX) cb.maxX = s.x;
+    if (s.y < cb.minY) cb.minY = s.y; if (s.y > cb.maxY) cb.maxY = s.y;
+  }
+}
+function shortLabel(name) {
+  return name.replace(/(-[RC])0+(\d)/, '$1$2');
+}
+const regionLabels = [];
+for (const [name, b] of regionBounds) {
+  regionLabels.push({ name: shortLabel(name), key: name, x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 });
+}
+const constLabels = [];
+for (const [name, b] of constBounds) {
+  constLabels.push({ name: shortLabel(name), key: name, x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 });
+}
+
+// Clickable label hit areas (rebuilt every frame)
+const labelHits = [];  // {x1, y1, x2, y2, type: 'region'|'const', key: originalName}
+
+function zoomToBounds(minX, minY, maxX, maxY, maxZoom) {
+  const padding = 80;
+  const cw = window.innerWidth, ch = window.innerHeight;
+  const w = maxX - minX || 1, h = maxY - minY || 1;
+  const raw = Math.min((cw - padding * 2) / w, (ch - padding * 2) / h);
+  const scale = clamp(raw * 0.75, MIN_SCALE, maxZoom || MAX_SCALE);
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  camera.focusAnim = {
+    start: performance.now(),
+    duration: 380,
+    easePow: 4,
+    from: { scale: camera.scale, offsetX: camera.offsetX, offsetY: camera.offsetY },
+    to: { scale, offsetX: cw / 2 - cx * scale, offsetY: ch / 2 - cy * scale }
+  };
+}
+
 // Spatial index for hit testing (grid)
 const GRID = 200;
 const grid = new Map();
@@ -1815,20 +1865,109 @@ function draw() {
     ctx.stroke();
   }
 
-  if (showLabels && camera.scale > 2.4) {
+  labelHits.length = 0;
+
+  if (showLabels) {
     ctx.globalCompositeOperation = 'source-over';
-    const labelAlpha = Math.min(1, (camera.scale - 2.4) / 1.5);
-    const labelSize = 11 + clamp((camera.scale - 2.4) / 3.6, 0, 1) * 4;
-    const labelOffset = 6 + labelSize * 0.25;
-    ctx.font = labelSize.toFixed(1) + 'px -apple-system, Segoe UI, Roboto, sans-serif';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = `rgba(232,239,255,${labelAlpha * 0.85})`;
-    for (const s of stars) {
-      if (s.x < topLeft.x || s.x > botRight.x) continue;
-      if (s.y < topLeft.y || s.y > botRight.y) continue;
-      const p = worldToScreen(s.x, s.y);
-      ctx.fillText(drifterDisplay(s)?.displayName ?? s.name, p.x, p.y + labelOffset);
+
+    // Shared label collision helper — nudges labels to avoid overlap
+    const placed = [];  // {x1, y1, x2, y2} screen-space rects
+    function rectsOverlap(a, b) {
+      return a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
+    }
+    function findSlot(cx, cy, hw, hh) {
+      const offsets = [
+        [0, 0], [0, -hh * 2.2], [0, hh * 2.2],
+        [-hw * 1.1, 0], [hw * 1.1, 0],
+        [-hw * 1.1, -hh * 2.2], [hw * 1.1, -hh * 2.2],
+        [-hw * 1.1, hh * 2.2], [hw * 1.1, hh * 2.2],
+      ];
+      for (const [dx, dy] of offsets) {
+        const r = { x1: cx - hw + dx, y1: cy - hh + dy, x2: cx + hw + dx, y2: cy + hh + dy };
+        let ok = true;
+        for (const p of placed) {
+          if (rectsOverlap(r, p)) { ok = false; break; }
+        }
+        if (ok) { placed.push(r); return { x: cx + dx, y: cy + dy }; }
+      }
+      // All slots taken — draw at original position anyway
+      const r = { x1: cx - hw, y1: cy - hh, x2: cx + hw, y2: cy + hh };
+      placed.push(r);
+      return { x: cx, y: cy };
+    }
+
+    // Region labels: visible at reset zoom, fade out as you zoom in
+    const regionFade = camera.scale < 1.4 ? 1
+                     : camera.scale < 2.0 ? 1 - (camera.scale - 1.4) / 0.6
+                     : 0;
+    if (regionFade > 0) {
+      placed.length = 0;
+      const rSize = 16;
+      ctx.font = `600 ${rSize}px -apple-system, Segoe UI, Roboto, sans-serif`;
+      ctx.textBaseline = 'middle';
+      const rPadH = 6, rPadV = 3;
+      for (const r of regionLabels) {
+        if (r.x < topLeft.x || r.x > botRight.x) continue;
+        if (r.y < topLeft.y || r.y > botRight.y) continue;
+        const p = worldToScreen(r.x, r.y);
+        const tw = ctx.measureText(r.name).width;
+        const hw = tw / 2 + rPadH, hh = rSize / 2 + rPadV;
+        const slot = findSlot(p.x, p.y, hw, hh);
+        ctx.fillStyle = `rgba(0,0,0,${regionFade * 0.4})`;
+        ctx.fillRect(slot.x - hw, slot.y - hh, hw * 2, hh * 2);
+        ctx.fillStyle = `rgba(200,220,255,${regionFade * 0.9})`;
+        ctx.fillText(r.name, slot.x, slot.y);
+        labelHits.push({ x1: slot.x - hw, y1: slot.y - hh, x2: slot.x + hw, y2: slot.y + hh, type: 'region', key: r.key });
+      }
+    }
+
+    // Constellation labels: fade in at mid zoom, fade out before system labels
+    const constFade = camera.scale < 1.8 ? 0
+                    : camera.scale < 2.4 ? (camera.scale - 1.8) / 0.6
+                    : camera.scale < 9.0 ? 1
+                    : camera.scale < 11.0 ? 1 - (camera.scale - 9.0) / 2.0
+                    : 0;
+    if (constFade > 0) {
+      placed.length = 0;
+      const cSize = 14;
+      ctx.font = `600 ${cSize}px -apple-system, Segoe UI, Roboto, sans-serif`;
+      ctx.textBaseline = 'middle';
+      const cPadH = 5, cPadV = 2;
+      for (const c of constLabels) {
+        if (c.x < topLeft.x || c.x > botRight.x) continue;
+        if (c.y < topLeft.y || c.y > botRight.y) continue;
+        const p = worldToScreen(c.x, c.y);
+        const tw = ctx.measureText(c.name).width;
+        const hw = tw / 2 + cPadH, hh = cSize / 2 + cPadV;
+        const slot = findSlot(p.x, p.y, hw, hh);
+        ctx.fillStyle = `rgba(0,0,0,${constFade * 0.35})`;
+        ctx.fillRect(slot.x - hw, slot.y - hh, hw * 2, hh * 2);
+        ctx.fillStyle = `rgba(200,220,255,${constFade * 0.9})`;
+        ctx.fillText(c.name, slot.x, slot.y);
+        labelHits.push({ x1: slot.x - hw, y1: slot.y - hh, x2: slot.x + hw, y2: slot.y + hh, type: 'const', key: c.key });
+      }
+    }
+
+    // System labels (J-codes): fade in at high zoom
+    if (camera.scale > 10.0) {
+      placed.length = 0;
+      const labelAlpha = Math.min(1, (camera.scale - 10.0) / 1.5);
+      const labelSize = 11 + clamp((camera.scale - 10.0) / 3.6, 0, 1) * 4;
+      const labelOffset = 6 + labelSize * 0.25;
+      ctx.font = labelSize.toFixed(1) + 'px -apple-system, Segoe UI, Roboto, sans-serif';
+      ctx.textBaseline = 'top';
+      for (const s of stars) {
+        if (s.x < topLeft.x || s.x > botRight.x) continue;
+        if (s.y < topLeft.y || s.y > botRight.y) continue;
+        const p = worldToScreen(s.x, s.y);
+        const name = drifterDisplay(s)?.displayName ?? s.name;
+        const tw = ctx.measureText(name).width;
+        const hw = tw / 2 + 2, hh = labelSize / 2 + 1;
+        const slot = findSlot(p.x, p.y + labelOffset, hw, hh);
+        ctx.fillStyle = `rgba(232,239,255,${labelAlpha * 0.9})`;
+        ctx.fillText(name, slot.x, slot.y - hh + 1);
+      }
     }
   }
 
@@ -1984,6 +2123,18 @@ function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
 canvas.addEventListener('click', (e) => {
   if (dragMoved) return;
+  // Labels take priority over stars (labels cover stars visually)
+  if (showLabels) {
+    const sx = e.clientX, sy = e.clientY;
+    for (const lh of labelHits) {
+      if (sx >= lh.x1 && sx <= lh.x2 && sy >= lh.y1 && sy <= lh.y2) {
+        const b = lh.type === 'region' ? regionBounds.get(lh.key) : constBounds.get(lh.key);
+        const cap = lh.type === 'region' ? 5 : MAX_SCALE;
+        if (b) { deselectStar(); zoomToBounds(b.minX, b.minY, b.maxX, b.maxY, cap); }
+        return;
+      }
+    }
+  }
   const hit = pickStar(e.clientX, e.clientY);
   if (hit) selectStar(hit, true);
   else deselectStar();
@@ -2117,8 +2268,8 @@ function handleHover(sx, sy) {
   if (isTouchDevice || dragging) { tooltip.classList.remove('visible'); return; }
   const s = pickStar(sx, sy);
   if (s) {
-    ttName.textContent = displayName(s);
-    ttClass.textContent = displayClass(s) + ' · ' + s.regionName;
+    ttName.textContent = displayName(s) + '  ' + displayClass(s);
+    ttClass.textContent = shortLabel(s.regionName) + ' · ' + shortLabel(s.constellation);
     tooltip.style.left = (sx + 14) + 'px';
     tooltip.style.top = (sy + 14) + 'px';
     tooltip.classList.add('visible');
@@ -2314,6 +2465,44 @@ searchEl.addEventListener('input', () => {
   }
 
   if (q.length < 2) return;
+
+  // Region & constellation matches (only when labels are ON)
+  if (showLabels) {
+    for (const [fullName, b] of regionBounds) {
+      const short = shortLabel(fullName);
+      const fl = fullName.toLowerCase(), sl = short.toLowerCase();
+      if (fl.includes(q) || sl.includes(q)) {
+        const item = document.createElement('div');
+        item.className = 'sr-item';
+        item.innerHTML = `<span class="sr-name">${escapeHtml(fullName)}</span><span class="sr-class">${escapeHtml(short)}</span>`;
+        item.addEventListener('click', () => {
+          deselectStar();
+          zoomToBounds(b.minX, b.minY, b.maxX, b.maxY, 5);
+          searchEl.value = '';
+          searchResults.innerHTML = '';
+        });
+        searchResults.appendChild(item);
+      }
+    }
+    for (const [fullName, b] of constBounds) {
+      const short = shortLabel(fullName);
+      const fl = fullName.toLowerCase(), sl = short.toLowerCase();
+      if (fl.includes(q) || sl.includes(q)) {
+        const item = document.createElement('div');
+        item.className = 'sr-item';
+        item.innerHTML = `<span class="sr-name">${escapeHtml(fullName)}</span><span class="sr-class">${escapeHtml(short)}</span>`;
+        item.addEventListener('click', () => {
+          deselectStar();
+          zoomToBounds(b.minX, b.minY, b.maxX, b.maxY);
+          searchEl.value = '';
+          searchResults.innerHTML = '';
+        });
+        searchResults.appendChild(item);
+      }
+    }
+  }
+
+  // Star matches
   const matches = [];
   for (const s of stars) {
     const dn = displayName(s).toLowerCase();

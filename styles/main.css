@@ -1031,7 +1031,7 @@ button.ctrl.on    { border-color: var(--accent); color: var(--accent); }
   position: fixed;
   pointer-events: none;
   background: var(--panel-dark);
-  border: 1px solid var(--accent);
+  border: 1px solid var(--border);
   border-radius: 0;
   padding: 5px 10px;
   font-size: 11px;
