@@ -1585,10 +1585,8 @@ function setIntelView(view) {
   renderIntelAll();
 }
 
-document.querySelector('[data-view-toggle]').addEventListener('click', (e) => {
-  const btn = e.target.closest('[data-view]');
-  if (!btn) return;
-  setIntelView(btn.dataset.view);
+document.querySelectorAll('[data-view-toggle] button[data-view]').forEach((btn) => {
+  btn.addEventListener('click', () => setIntelView(btn.dataset.view));
 });
 
 // Hover tooltip on scatter dots — closest dot within 6px wins.
