@@ -1241,6 +1241,7 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.85);
   padding: 10px 14px;
   min-width: 164px;
+  z-index: 15;
   transform-origin: bottom left;
   transform: scaleY(0.85) translateY(6px);
   opacity: 0;
@@ -2419,12 +2420,24 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   }
   .intel-scatter-legend-bottom {
     grid-column: 1 / -1;
+    justify-self: start;
     display: grid;
     grid-template-columns: repeat(2, max-content);
     gap: 4px 12px;
   }
   .intel-scatter-legend-bottom > span + span {
     margin-left: 0;
+  }
+
+  /* --- Drifter statics 3-per-row --------------------------------- */
+  .statics--grid3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+  .statics--grid3 .static-chip {
+    text-align: center;
+    justify-content: center;
   }
 
   /* --- Settings panel — above nav bar ---------------------------- */

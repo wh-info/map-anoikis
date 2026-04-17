@@ -2141,13 +2141,18 @@ function draw() {
   ctx.restore();
   updateCorners(cw, ch);
   if (orreryOpen && selected) drawOrrery(selected);
-  // Mobile: keep tooltip anchored to selected star.
+  // Mobile: keep tooltip anchored to selected star; hide if a panel covers the map.
   if (isTouchDevice && selected) {
     const tt = document.getElementById('tooltip');
-    if (tt && tt.classList.contains('visible')) {
-      const sp = worldToScreen(selected.x, selected.y);
-      tt.style.left = (sp.x + 14) + 'px';
-      tt.style.top  = (sp.y - 40) + 'px';
+    if (tt) {
+      const panelCovers = !document.getElementById('panel-left').classList.contains('panel--hidden');
+      if (panelCovers) {
+        tt.classList.remove('visible');
+      } else if (tt.classList.contains('visible')) {
+        const sp = worldToScreen(selected.x, selected.y);
+        tt.style.left = (sp.x + 14) + 'px';
+        tt.style.top  = (sp.y - 40) + 'px';
+      }
     }
   }
   requestAnimationFrame(draw);
@@ -2493,6 +2498,7 @@ function selectStar(s, focus) {
   document.getElementById('si-effect').textContent = s.effect || 'None';
   const stEl = document.getElementById('si-statics');
   stEl.innerHTML = '';
+  stEl.classList.toggle('statics--grid3', _isMobile && s.statics.length >= 6);
   const destOrder = { C1: 0, C2: 1, C3: 2, C4: 3, C5: 4, C6: 5, C13: 6, Thera: 7, HS: 8, LS: 9, NS: 10 };
   const sortedStatics = s.statics.slice().sort((a, b) => {
     const da = (window.WH_TYPES && window.WH_TYPES[a] && window.WH_TYPES[a].leadsTo && window.WH_TYPES[a].leadsTo[0]) || '';
@@ -2813,7 +2819,9 @@ if (isTouchDevice) {
       leftPanel.classList.add('panel--hidden');
     } else {
       leftPanel.classList.remove('panel--hidden');
-      rightPanel.classList.add('panel--hidden');   // mutual exclusion
+      rightPanel.classList.add('panel--hidden');
+      closeOrrery();
+      closeIntel();
     }
     settingsPanel.classList.remove('open');
     syncMobileNav();
