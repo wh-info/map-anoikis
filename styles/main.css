@@ -2413,6 +2413,11 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     padding: 20px 20px;
   }
 
+  /* --- Intel view toggle — bigger tap targets -------------------- */
+  .intel-view-btn {
+    padding: 8px 14px;
+  }
+
   /* --- Intel scatter legend — wrap on narrow screens -------------- */
   .intel-scatter-legend {
     grid-template-columns: repeat(2, max-content);

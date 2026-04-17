@@ -2825,8 +2825,16 @@ if (isTouchDevice) {
   syncMobileNav();
 
   mnavSearch.addEventListener('click', () => {
+    const orreryWasOpen = document.getElementById('panel-orrery').classList.contains('open');
+    const intelWasOpen  = document.getElementById('panel-intel').classList.contains('open');
     closeOrrery();
     closeIntel();
+    if (orreryWasOpen || intelWasOpen) {
+      // Just closed a sub-panel — keep left panel visible (back to system info)
+      settingsPanel.classList.remove('open');
+      syncMobileNav();
+      return;
+    }
     const wasOpen = !leftPanel.classList.contains('panel--hidden');
     if (wasOpen) {
       leftPanel.classList.add('panel--hidden');
