@@ -1573,7 +1573,7 @@ function renderScatter() {
 }
 
 function setIntelView(view) {
-  if (view === intelView) { document.title = 'SKIP:' + view + '==' + intelView; return; }
+  if (view === intelView) return;
   if (view === 'heatmap' && intelEntityFilter) intelEntityFilter = null;
   intelView = view;
   document.getElementById('intel-view-heatmap').style.display = view === 'heatmap' ? '' : 'none';
@@ -1586,14 +1586,10 @@ function setIntelView(view) {
     renderScatter();
   }
   renderIntelAll();
-  document.title = 'DONE:' + view + '|now=' + intelView;
 }
 
 document.querySelectorAll('[data-view-toggle] button[data-view]').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.title = btn.dataset.view + '|cur=' + intelView + '|' + Date.now();
-    setIntelView(btn.dataset.view);
-  });
+  btn.addEventListener('click', () => setIntelView(btn.dataset.view));
 });
 
 // Hover tooltip on scatter dots — closest dot within 6px wins.
@@ -2852,12 +2848,14 @@ if (isTouchDevice) {
   });
 
   mnavKillfeed.addEventListener('click', () => {
+    closeOrrery();
+    closeIntel();
     const wasOpen = !rightPanel.classList.contains('panel--hidden');
     if (wasOpen) {
       rightPanel.classList.add('panel--hidden');
     } else {
       rightPanel.classList.remove('panel--hidden');
-      leftPanel.classList.add('panel--hidden');    // mutual exclusion
+      leftPanel.classList.add('panel--hidden');
     }
     settingsPanel.classList.remove('open');
     syncMobileNav();

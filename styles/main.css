@@ -1640,7 +1640,6 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   background: rgba(0,200,200,0.1);
   border-color: var(--border-hi);
   color: var(--accent);
-  pointer-events: none;
 }
 .intel-range-toggle button:hover { opacity: 0.85; }
 .intel-range-toggle button.active {
