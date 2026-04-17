@@ -2186,7 +2186,7 @@ canvas.addEventListener('dblclick', (e) => {
 // --- Touch interaction (mobile) --------------------------------------
 let touchState = null;
 const isTouchDevice = matchMedia('(pointer: coarse)').matches;
-if (isTouchDevice) MIN_SCALE = 0.24;
+if (isTouchDevice) MIN_SCALE = 0.30;
 canvas.style.touchAction = 'none';
 
 function touchDist(a, b) {
