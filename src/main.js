@@ -2439,7 +2439,10 @@ function selectStar(s, focus) {
   for (const el of Object.values(cornerEls)) el.classList.add('corner--active');
   siEl.classList.remove('empty');
   const dd = drifterDisplay(s);
-  document.getElementById('si-name').textContent = displayName(s);
+  const nameEl = document.getElementById('si-name');
+  const name = displayName(s);
+  nameEl.textContent = name;
+  nameEl.style.fontSize = name.length > 8 ? '12px' : '';
   const jcodeRow = document.getElementById('si-jcode-row');
   jcodeRow.style.display = dd ? '' : 'none';
   if (dd) document.getElementById('si-jcode').textContent = dd.jcode;
