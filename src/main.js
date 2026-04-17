@@ -54,12 +54,27 @@ function applyPalette(name) {
 const canvas = document.getElementById('map');
 const ctx = canvas.getContext('2d', { alpha: false });
 let DPR = Math.min(window.devicePixelRatio || 1, 2);
+/* On mobile, innerHeight varies with the address bar state. Measure 100lvh
+   (large viewport height = address bar collapsed) once and use it for both
+   canvas sizing and camera reset so initial load matches double-tap reset. */
+const _isMobile = matchMedia('(pointer: coarse)').matches;
+const _largeVH = (() => {
+  if (!_isMobile) return 0;
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;top:0;height:100lvh;pointer-events:none;visibility:hidden';
+  document.body.appendChild(el);
+  const h = el.offsetHeight;
+  el.remove();
+  return h;
+})();
+function _viewH() { return _isMobile ? _largeVH : window.innerHeight; }
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const vh = _viewH();
   canvas.width = Math.floor(window.innerWidth * DPR);
-  canvas.height = Math.floor(window.innerHeight * DPR);
+  canvas.height = Math.floor(vh * DPR);
   canvas.style.width = window.innerWidth + 'px';
-  canvas.style.height = window.innerHeight + 'px';
+  canvas.style.height = vh + 'px';
 }
 // On resize: keep whatever world point was under the screen center under
 // the screen center after resize.
@@ -184,20 +199,9 @@ const starBounds = (() => {
 // bbox centre, so framing on it pushes the whole cluster slightly leftward.
 const RESET_ANCHOR = stars.find((s) => s.name === 'J130621');
 
-/* On mobile, innerHeight varies with the address bar state. Measure 100lvh
-   (large viewport height = address bar collapsed) so initial load and
-   double-tap reset always produce the same result. */
-const _lvhEl = document.createElement('div');
-_lvhEl.style.cssText = 'position:fixed;top:0;height:100lvh;pointer-events:none;visibility:hidden';
-document.body.appendChild(_lvhEl);
-const _largeVH = _lvhEl.offsetHeight;
-_lvhEl.remove();
-
 function computeResetTarget() {
   const padding = 50;
-  const isTouch = matchMedia('(pointer: coarse)').matches;
-  const cw = window.innerWidth, ch = isTouch ? _largeVH : window.innerHeight;
-  document.title = `cw=${cw} ch=${ch} iH=${window.innerHeight} lvh=${_largeVH}`;
+  const cw = window.innerWidth, ch = _viewH();
   const mapW = starBounds.maxX - starBounds.minX;
   const mapH = starBounds.maxY - starBounds.minY;
   const scale = clamp(
@@ -205,8 +209,8 @@ function computeResetTarget() {
     MIN_SCALE, 1.5
   );
   const anchorX = RESET_ANCHOR ? RESET_ANCHOR.x : (starBounds.minX + starBounds.maxX) / 2;
-  const anchorShiftPx = isTouch ? -30 : 75;
-  const anchorShiftPy = isTouch ? -20 : 0;
+  const anchorShiftPx = _isMobile ? -30 : 75;
+  const anchorShiftPy = _isMobile ? -20 : 0;
   return {
     scale,
     offsetX: cw / 2 + anchorShiftPx - anchorX * scale,
