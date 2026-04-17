@@ -197,6 +197,7 @@ function computeResetTarget() {
   const padding = 50;
   const isTouch = matchMedia('(pointer: coarse)').matches;
   const cw = window.innerWidth, ch = isTouch ? _largeVH : window.innerHeight;
+  document.title = `cw=${cw} ch=${ch} iH=${window.innerHeight} lvh=${_largeVH}`;
   const mapW = starBounds.maxX - starBounds.minX;
   const mapH = starBounds.maxY - starBounds.minY;
   const scale = clamp(
