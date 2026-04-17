@@ -186,7 +186,7 @@ const starBounds = (() => {
 const RESET_ANCHOR = stars.find((s) => s.name === 'J130621');
 
 function computeResetTarget() {
-  const padding = _isMobile ? 170 : 50;
+  const padding = 50;
   const cw = window.innerWidth, ch = window.innerHeight;
   const mapW = starBounds.maxX - starBounds.minX;
   const mapH = starBounds.maxY - starBounds.minY;
@@ -2186,7 +2186,7 @@ canvas.addEventListener('dblclick', (e) => {
 // --- Touch interaction (mobile) --------------------------------------
 let touchState = null;
 const isTouchDevice = matchMedia('(pointer: coarse)').matches;
-if (isTouchDevice) MIN_SCALE = 0.32;
+if (isTouchDevice) MIN_SCALE = 0.24;
 canvas.style.touchAction = 'none';
 
 function touchDist(a, b) {
