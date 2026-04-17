@@ -2346,13 +2346,15 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     overflow-y: visible;
   }
   .orrery-header-info { width: auto; }
-  .orrery-view-toggle {
-    width: auto;
-    align-self: flex-end;
+  .orrery-controls-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin: 8px 0 4px;
   }
-  #orrery-tip { width: auto; }
+  .orrery-view-toggle { width: auto; }
   #orrery-rotate-btn { width: auto; }
+  #orrery-tip { width: auto; }
   .orrery-footer { flex-wrap: wrap; justify-content: center; }
 
   /* --- Intel — fullscreen overlay -------------------------------- */

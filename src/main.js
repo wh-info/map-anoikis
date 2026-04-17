@@ -56,9 +56,15 @@ const ctx = canvas.getContext('2d', { alpha: false });
 let DPR = Math.min(window.devicePixelRatio || 1, 2);
 const _isMobile = matchMedia('(pointer: coarse)').matches;
 if (_isMobile) {
-  const ovt = document.querySelector('.orrery-view-toggle');
   const olist = document.getElementById('orrery-list');
-  if (ovt && olist) olist.parentNode.insertBefore(ovt, olist);
+  const obody = olist && olist.parentNode;
+  if (obody) {
+    const row = document.createElement('div');
+    row.className = 'orrery-controls-row';
+    row.appendChild(document.getElementById('orrery-rotate-btn'));
+    row.appendChild(document.querySelector('.orrery-view-toggle'));
+    obody.insertBefore(row, olist);
+  }
 }
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
