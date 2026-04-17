@@ -184,9 +184,19 @@ const starBounds = (() => {
 // bbox centre, so framing on it pushes the whole cluster slightly leftward.
 const RESET_ANCHOR = stars.find((s) => s.name === 'J130621');
 
+/* On mobile, innerHeight varies with the address bar state. Measure 100lvh
+   (large viewport height = address bar collapsed) so initial load and
+   double-tap reset always produce the same result. */
+const _lvhEl = document.createElement('div');
+_lvhEl.style.cssText = 'position:fixed;top:0;height:100lvh;pointer-events:none;visibility:hidden';
+document.body.appendChild(_lvhEl);
+const _largeVH = _lvhEl.offsetHeight;
+_lvhEl.remove();
+
 function computeResetTarget() {
   const padding = 50;
-  const cw = window.innerWidth, ch = window.innerHeight;
+  const isTouch = matchMedia('(pointer: coarse)').matches;
+  const cw = window.innerWidth, ch = isTouch ? _largeVH : window.innerHeight;
   const mapW = starBounds.maxX - starBounds.minX;
   const mapH = starBounds.maxY - starBounds.minY;
   const scale = clamp(
@@ -194,7 +204,6 @@ function computeResetTarget() {
     MIN_SCALE, 1.5
   );
   const anchorX = RESET_ANCHOR ? RESET_ANCHOR.x : (starBounds.minX + starBounds.maxX) / 2;
-  const isTouch = matchMedia('(pointer: coarse)').matches;
   const anchorShiftPx = isTouch ? -30 : 75;
   const anchorShiftPy = isTouch ? -20 : 0;
   return {
@@ -225,15 +234,6 @@ function animatedResetView() {
   };
 }
 resetView();
-/* Mobile browsers report a smaller innerHeight on initial load (address bar
-   expanded). Re-run resetView after the viewport settles so the initial view
-   matches double-tap reset. */
-if (matchMedia('(pointer: coarse)').matches) {
-  window.addEventListener('resize', function onFirstResize() {
-    window.removeEventListener('resize', onFirstResize);
-    resetView();
-  }, { once: true });
-}
 
 let showLabels = localStorage.getItem('anoikis-labels') === '1';
 let potatoMode = localStorage.getItem('anoikis-potato') === '1';
@@ -673,8 +673,14 @@ function buildOrreryList(star) {
       `<div class="olist-sub">${escapeHtml(SUN_NAMES[star.sunTypeId] || 'Sun')}</div></div>`;
     el.appendChild(row);
     if (isTouchDevice) {
-      const pop = document.getElementById('sun-popup');
-      pop.remove();
+      let pop = document.getElementById('sun-popup');
+      if (!pop) {
+        pop = document.createElement('div');
+        pop.id = 'sun-popup';
+      } else {
+        pop.remove();
+      }
+      pop.classList.remove('open');
       el.insertBefore(pop, row.nextSibling);
     }
     attachRowHover(row, { isSun: true, typeId: star.sunTypeId });
