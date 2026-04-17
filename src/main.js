@@ -2319,22 +2319,19 @@ canvas.addEventListener('touchend', (e) => {
   e.preventDefault();
   if (touchState && touchState.mode === 'pan' && !touchState.moved && e.touches.length === 0) {
     const now = performance.now();
+    const sx = touchState.startX, sy = touchState.startY;
     if (now - lastTapTime < 350) {
       // Double tap — reset view (unless tapping a star)
-      if (!pickStar(touchState.startX, touchState.startY)) {
+      lastTapTime = 0;
+      if (!pickStar(sx, sy)) {
         animatedResetView();
       }
-      lastTapTime = 0;
     } else {
       lastTapTime = now;
-      const sx = touchState.startX, sy = touchState.startY;
-      setTimeout(() => {
-        if (lastTapTime === now) {
-          const hit = pickStar(sx, sy);
-          if (hit) selectStar(hit, true);
-          else deselectStar();
-        }
-      }, 350);
+      // Fire star selection immediately — no 350ms wait
+      const hit = pickStar(sx, sy);
+      if (hit) selectStar(hit, true);
+      else deselectStar();
     }
   }
   if (e.touches.length === 0) touchState = null;
