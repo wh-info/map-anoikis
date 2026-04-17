@@ -2713,8 +2713,16 @@ restoreRightBtn.addEventListener('click', () => {
 function flashRestoreRight() {
   if (!document.getElementById('panel-right').classList.contains('panel--hidden')) return;
   restoreRightBtn.classList.remove('kill-flash');
-  void restoreRightBtn.offsetWidth; // force reflow to restart animation
+  void restoreRightBtn.offsetWidth;
   restoreRightBtn.classList.add('kill-flash');
+  if (isTouchDevice) {
+    const btn = document.getElementById('mnav-killfeed');
+    if (btn) {
+      btn.classList.remove('kill-flash');
+      void btn.offsetWidth;
+      btn.classList.add('kill-flash');
+    }
+  }
 }
 
 // --- Settings panel toggle ---------------------------------------

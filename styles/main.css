@@ -2251,6 +2251,11 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     transition: color 0.12s;
   }
   .mobile-nav-btn.active { color: var(--accent); }
+  .mobile-nav-btn.kill-flash { animation: mnav-kill-flash 0.6s ease-in-out 4; }
+  @keyframes mnav-kill-flash {
+    0%, 100% { color: var(--dim); }
+    50%      { color: var(--accent); }
+  }
   .mobile-nav-btn svg { width: 22px; height: 22px; display: block; }
 
   /* Cinema mode hides nav at low opacity — tap to restore */
@@ -2417,7 +2422,6 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     display: grid;
     grid-template-columns: repeat(2, max-content);
     gap: 4px 12px;
-    justify-content: center;
   }
   .intel-scatter-legend-bottom > span + span {
     margin-left: 0;
