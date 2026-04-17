@@ -672,6 +672,11 @@ function buildOrreryList(star) {
       `<div><div class="olist-name">${escapeHtml(star.name)} Star</div>` +
       `<div class="olist-sub">${escapeHtml(SUN_NAMES[star.sunTypeId] || 'Sun')}</div></div>`;
     el.appendChild(row);
+    if (isTouchDevice) {
+      const pop = document.getElementById('sun-popup');
+      pop.remove();
+      el.insertBefore(pop, row.nextSibling);
+    }
     attachRowHover(row, { isSun: true, typeId: star.sunTypeId });
     if (!isTouchDevice) row.addEventListener('mouseleave', closeSunPopup);
   }
