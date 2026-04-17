@@ -743,6 +743,7 @@ function openOrrery(star) {
 }
 
 function closeOrrery() {
+  const wasOpen = orreryOpen;
   orreryOpen      = false;
   orreryListHover = null;
   orreryRotate    = false;
@@ -750,7 +751,7 @@ function closeOrrery() {
   rotBtn.textContent = 'Rotation: Off';
   rotBtn.classList.remove('on');
   orreryPanel.classList.remove('open');
-  if (isTouchDevice) document.getElementById('panel-left').classList.remove('panel--hidden');
+  if (isTouchDevice && wasOpen) document.getElementById('panel-left').classList.remove('panel--hidden');
   orreryTip.textContent = '';
   closeSunPopup();
   document.getElementById('si-system-view').classList.remove('active');
@@ -1831,10 +1832,11 @@ function openIntel(star) {
 }
 
 function closeIntel() {
+  const wasOpen = intelOpen;
   intelOpen = false;
   intelPanel.classList.remove('open');
   document.getElementById('si-intel').classList.remove('active');
-  if (isTouchDevice) document.getElementById('panel-left').classList.remove('panel--hidden');
+  if (isTouchDevice && wasOpen) document.getElementById('panel-left').classList.remove('panel--hidden');
 }
 
 document.getElementById('close-intel').addEventListener('click', closeIntel);
