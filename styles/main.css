@@ -1744,7 +1744,7 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   grid-template-columns: repeat(4, max-content);
   justify-content: center;
   align-content: center;
-  gap: 5px 16px;
+  gap: 5px 24px;
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px dashed var(--border);
@@ -1764,7 +1764,7 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   justify-self: center;
   display: inline-flex;
   align-items: center;
-  gap: 5px 16px;
+  gap: 5px 28px;
 }
 .intel-scatter-legend-bottom > span {
   display: inline-flex;
