@@ -194,11 +194,12 @@ function computeResetTarget() {
     MIN_SCALE, 1.5
   );
   const anchorX = RESET_ANCHOR ? RESET_ANCHOR.x : (starBounds.minX + starBounds.maxX) / 2;
-  const anchorShiftPx = 75; // push anchor right of true screen centre
+  const anchorShiftPx = isTouchDevice ? -30 : 75;
+  const anchorShiftPy = isTouchDevice ? -20 : 0;
   return {
     scale,
     offsetX: cw / 2 + anchorShiftPx - anchorX * scale,
-    offsetY: ch / 2 - ((starBounds.minY + starBounds.maxY) / 2) * scale
+    offsetY: ch / 2 + anchorShiftPy - ((starBounds.minY + starBounds.maxY) / 2) * scale
   };
 }
 
