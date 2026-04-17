@@ -1153,7 +1153,7 @@ button.ctrl.on    { border-color: rgba(0, 200, 200, 0.4); color: var(--muted); }
   transform: scale(1);
   pointer-events: auto;
 }
-.panel-restore-btn:hover { color: var(--accent); border-color: var(--accent); }
+.panel-restore-btn:hover { color: rgba(0, 200, 200, 0.7); border-color: rgba(0, 200, 200, 0.45); }
 .panel-restore-btn svg   { width: 14px; height: 14px; display: block; }
 
 /* blinking _ on the left restore button */
