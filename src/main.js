@@ -225,6 +225,15 @@ function animatedResetView() {
   };
 }
 resetView();
+/* Mobile browsers report a smaller innerHeight on initial load (address bar
+   expanded). Re-run resetView after the viewport settles so the initial view
+   matches double-tap reset. */
+if (matchMedia('(pointer: coarse)').matches) {
+  window.addEventListener('resize', function onFirstResize() {
+    window.removeEventListener('resize', onFirstResize);
+    resetView();
+  }, { once: true });
+}
 
 let showLabels = localStorage.getItem('anoikis-labels') === '1';
 let potatoMode = localStorage.getItem('anoikis-potato') === '1';
