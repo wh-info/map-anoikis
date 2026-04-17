@@ -2416,6 +2416,10 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   /* --- Intel view toggle — bigger tap targets -------------------- */
   .intel-view-btn {
     padding: 8px 14px;
+    flex: 1;
+  }
+  .intel-view-btn.on {
+    pointer-events: auto;
   }
 
   /* --- Intel scatter legend — wrap on narrow screens -------------- */
