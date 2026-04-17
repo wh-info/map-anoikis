@@ -2355,7 +2355,22 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     font-size: 13px;
     touch-action: manipulation;
   }
-  .si-view-btn svg { pointer-events: none; }
+  .si-view-btn svg,
+  .si-view-btn svg * { pointer-events: none; }
+
+  /* --- Search bar — bigger touch target -------------------------- */
+  #search {
+    padding: 12px 10px;
+    font-size: 15px;
+    touch-action: manipulation;
+  }
+
+  /* --- Search bar — bigger touch target -------------------------- */
+  #search {
+    padding: 12px 10px;
+    font-size: 15px;
+    touch-action: manipulation;
+  }
 
   /* --- Close buttons — bigger on mobile -------------------------- */
   #close-orrery,
