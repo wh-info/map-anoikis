@@ -1364,17 +1364,28 @@ function buildScatterLegend() {
     span.appendChild(document.createTextNode(label));
     el.appendChild(span);
   }
-  const row = document.createElement('span');
-  row.className = 'intel-scatter-legend-bottom';
-  for (const label of bottomLabels) {
-    const span = document.createElement('span');
-    const dot  = document.createElement('i');
-    dot.style.background = SCATTER_CLASS_COLOR[label];
-    span.appendChild(dot);
-    span.appendChild(document.createTextNode(label));
-    row.appendChild(span);
+  if (_isMobile) {
+    for (const label of bottomLabels) {
+      const span = document.createElement('span');
+      const dot  = document.createElement('i');
+      dot.style.background = SCATTER_CLASS_COLOR[label];
+      span.appendChild(dot);
+      span.appendChild(document.createTextNode(label));
+      el.appendChild(span);
+    }
+  } else {
+    const row = document.createElement('span');
+    row.className = 'intel-scatter-legend-bottom';
+    for (const label of bottomLabels) {
+      const span = document.createElement('span');
+      const dot  = document.createElement('i');
+      dot.style.background = SCATTER_CLASS_COLOR[label];
+      span.appendChild(dot);
+      span.appendChild(document.createTextNode(label));
+      row.appendChild(span);
+    }
+    el.appendChild(row);
   }
-  el.appendChild(row);
 }
 
 function formatIskCompact(n) {
@@ -2814,14 +2825,14 @@ if (isTouchDevice) {
   syncMobileNav();
 
   mnavSearch.addEventListener('click', () => {
+    closeOrrery();
+    closeIntel();
     const wasOpen = !leftPanel.classList.contains('panel--hidden');
     if (wasOpen) {
       leftPanel.classList.add('panel--hidden');
     } else {
       leftPanel.classList.remove('panel--hidden');
       rightPanel.classList.add('panel--hidden');
-      closeOrrery();
-      closeIntel();
     }
     settingsPanel.classList.remove('open');
     syncMobileNav();
