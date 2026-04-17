@@ -2423,6 +2423,9 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     padding: 8px 14px;
     flex: 1;
     touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
   .intel-view-btn.on {
     pointer-events: auto;
