@@ -1573,7 +1573,7 @@ function renderScatter() {
 }
 
 function setIntelView(view) {
-  if (view === intelView) return;
+  if (view === intelView) { document.title = 'SKIP:' + view + '==' + intelView; return; }
   if (view === 'heatmap' && intelEntityFilter) intelEntityFilter = null;
   intelView = view;
   document.getElementById('intel-view-heatmap').style.display = view === 'heatmap' ? '' : 'none';
@@ -1586,6 +1586,7 @@ function setIntelView(view) {
     renderScatter();
   }
   renderIntelAll();
+  document.title = 'DONE:' + view + '|now=' + intelView;
 }
 
 document.querySelectorAll('[data-view-toggle] button[data-view]').forEach((btn) => {
