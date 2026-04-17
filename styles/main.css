@@ -2350,6 +2350,7 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     display: flex;
     justify-content: space-between;
     align-items: center;
+    width: 100%;
     margin: 8px 0 4px;
   }
   .orrery-view-toggle { width: auto; }
