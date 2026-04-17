@@ -2375,6 +2375,29 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     margin-bottom: 4px;
   }
 
+  /* --- Info modal — use full screen on mobile --------------------- */
+  .info-backdrop {
+    padding-top: 2vh;
+  }
+  .info-modal {
+    max-height: calc(100vh - 4vh - 52px);
+    max-width: calc(100vw - 16px);
+  }
+  .info-modal-body {
+    padding: 20px 20px;
+  }
+
+  /* --- Intel scatter legend — wrap on narrow screens -------------- */
+  .intel-scatter-legend {
+    grid-template-columns: repeat(2, max-content);
+    gap: 4px 12px;
+  }
+  .intel-scatter-legend-bottom {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px 12px;
+  }
+
   /* --- Settings panel — above nav bar ---------------------------- */
   #settings-panel {
     bottom: 56px;
