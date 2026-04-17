@@ -1590,7 +1590,7 @@ function setIntelView(view) {
 
 document.querySelectorAll('[data-view-toggle] button[data-view]').forEach((btn) => {
   btn.addEventListener('click', () => {
-    document.title = btn.dataset.view + ':' + Date.now();
+    document.title = btn.dataset.view + '|cur=' + intelView + '|' + Date.now();
     setIntelView(btn.dataset.view);
   });
 });
