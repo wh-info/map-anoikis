@@ -2350,7 +2350,7 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   .orrery-view-toggle { width: auto; }
   #orrery-tip { width: auto; }
   #orrery-rotate-btn { width: auto; }
-  .orrery-footer { flex-wrap: wrap; }
+  .orrery-footer { flex-wrap: wrap; justify-content: center; }
 
   /* --- Intel — fullscreen overlay -------------------------------- */
   #panel-intel {
