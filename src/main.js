@@ -736,6 +736,7 @@ function openOrrery(star) {
   if (intelOpen) closeIntel();
   orreryOpen = true;
   orreryPanel.classList.add('open');
+  if (isTouchDevice) document.getElementById('panel-left').classList.add('panel--hidden');
   updateOrreryHeader(star);
   buildOrreryList(star);
   document.getElementById('si-system-view').classList.add('active');
@@ -749,6 +750,7 @@ function closeOrrery() {
   rotBtn.textContent = 'Rotation: Off';
   rotBtn.classList.remove('on');
   orreryPanel.classList.remove('open');
+  if (isTouchDevice) document.getElementById('panel-left').classList.remove('panel--hidden');
   orreryTip.textContent = '';
   closeSunPopup();
   document.getElementById('si-system-view').classList.remove('active');
@@ -1586,14 +1588,7 @@ function setIntelView(view) {
 }
 
 document.querySelectorAll('[data-view-toggle] button[data-view]').forEach((btn) => {
-  if (_isMobile) {
-    btn.addEventListener('pointerup', (e) => {
-      e.preventDefault();
-      setIntelView(btn.dataset.view);
-    });
-  } else {
-    btn.addEventListener('click', () => setIntelView(btn.dataset.view));
-  }
+  btn.addEventListener('click', () => setIntelView(btn.dataset.view));
 });
 
 // Hover tooltip on scatter dots — closest dot within 6px wins.
@@ -1823,6 +1818,7 @@ function openIntel(star) {
   if (orreryOpen) closeOrrery();
   intelOpen = true;
   intelPanel.classList.add('open');
+  if (isTouchDevice) document.getElementById('panel-left').classList.add('panel--hidden');
   document.getElementById('intel-title').textContent =
     displayName(star) + ' · ' + displayClass(star);
   document.getElementById('intel-subtitle').textContent = '';
@@ -1838,6 +1834,7 @@ function closeIntel() {
   intelOpen = false;
   intelPanel.classList.remove('open');
   document.getElementById('si-intel').classList.remove('active');
+  if (isTouchDevice) document.getElementById('panel-left').classList.remove('panel--hidden');
 }
 
 document.getElementById('close-intel').addEventListener('click', closeIntel);
