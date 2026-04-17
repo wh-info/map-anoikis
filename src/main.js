@@ -186,7 +186,7 @@ const starBounds = (() => {
 const RESET_ANCHOR = stars.find((s) => s.name === 'J130621');
 
 function computeResetTarget() {
-  const padding = 50;
+  const padding = _isMobile ? 70 : 50;
   const cw = window.innerWidth, ch = window.innerHeight;
   const mapW = starBounds.maxX - starBounds.minX;
   const mapH = starBounds.maxY - starBounds.minY;
@@ -195,7 +195,7 @@ function computeResetTarget() {
     MIN_SCALE, 1.5
   );
   const anchorX = RESET_ANCHOR ? RESET_ANCHOR.x : (starBounds.minX + starBounds.maxX) / 2;
-  const anchorShiftPx = _isMobile ? -30 : 75;
+  const anchorShiftPx = _isMobile ? -50 : 75;
   const anchorShiftPy = _isMobile ? -20 : 0;
   return {
     scale,
