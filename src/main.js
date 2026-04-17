@@ -1626,44 +1626,6 @@ document.querySelector('[data-view-toggle]').addEventListener('click', (e) => {
     tip.style.top  = `${ty}px`;
   });
   canvas.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
-  if (isTouchDevice) {
-    canvas.addEventListener('click', (e) => {
-      if (intelView !== 'scatter' || scatterHits.length === 0) { tip.style.display = 'none'; return; }
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      let best = null;
-      let bestD2 = 400; // 20px radius for easier tap
-      for (const h of scatterHits) {
-        const dx = h.x - mx;
-        const dy = h.y - my;
-        const d2 = dx * dx + dy * dy;
-        if (d2 < bestD2) { bestD2 = d2; best = h; }
-      }
-      if (!best) { tip.style.display = 'none'; return; }
-      const k = best.k;
-      const shipId   = k.victim?.ship_type_id;
-      const shipName = (window.TYPE_NAMES && window.TYPE_NAMES[shipId]) || `Type ${shipId}`;
-      const isk = k._zkbValue || 0;
-      const when = new Date(k.killmail_time);
-      const ago = Math.floor((Date.now() - when.getTime()) / (60 * 60 * 1000));
-      const agoLbl = ago < 24 ? `${ago}h ago` : `${Math.floor(ago / 24)}d ago`;
-      tip.innerHTML =
-        `<div style="color:${best.color};font-weight:600;">${shipName}</div>` +
-        `<div style="color:var(--muted);">${best.cls}</div>` +
-        `<div>${formatIsk(isk)} ISK</div>` +
-        `<div style="color:var(--dim);">${agoLbl}</div>`;
-      tip.style.display = 'block';
-      const tipW = tip.offsetWidth;
-      const tipH = tip.offsetHeight;
-      let tx = best.x + 8;
-      let ty = best.y - tipH - 6;
-      if (tx + tipW > rect.width)  tx = best.x - tipW - 8;
-      if (ty < 0)                  ty = best.y + 8;
-      tip.style.left = `${tx}px`;
-      tip.style.top  = `${ty}px`;
-    });
-  }
 })();
 
 // Re-render every intel section from the current cached kill set + toggle
@@ -2141,15 +2103,6 @@ function draw() {
   ctx.restore();
   updateCorners(cw, ch);
   if (orreryOpen && selected) drawOrrery(selected);
-  // Mobile: keep tooltip anchored to selected star.
-  if (isTouchDevice && selected) {
-    const tt = document.getElementById('tooltip');
-    if (tt && tt.classList.contains('visible')) {
-      const sp = worldToScreen(selected.x, selected.y);
-      tt.style.left = (sp.x + 14) + 'px';
-      tt.style.top  = (sp.y - 40) + 'px';
-    }
-  }
   requestAnimationFrame(draw);
 }
 
@@ -2469,7 +2422,6 @@ function deselectStar() {
   closeOrrery();
   closeIntel();
   clearUrlSysParam();
-  if (isTouchDevice) tooltip.classList.remove('visible');
 }
 
 function selectStar(s, focus) {
@@ -2538,11 +2490,6 @@ function selectStar(s, focus) {
     closeSunPopup();
   }
   if (intelOpen) openIntel(s);
-  if (isTouchDevice) {
-    ttName.textContent = displayName(s) + '  ' + displayClass(s);
-    ttClass.textContent = shortLabel(s.regionName) + ' · ' + shortLabel(s.constellation);
-    tooltip.classList.add('visible');
-  }
 }
 
 function locateStar(s) {
