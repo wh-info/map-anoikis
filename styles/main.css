@@ -2353,7 +2353,9 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   .si-view-btn {
     padding: 12px 10px;
     font-size: 13px;
+    touch-action: manipulation;
   }
+  .si-view-btn svg { pointer-events: none; }
 
   /* --- Close buttons — bigger on mobile -------------------------- */
   #close-orrery,

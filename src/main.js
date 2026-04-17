@@ -3011,8 +3011,10 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
       document.getElementById('mnav-killfeed')?.classList.remove('active');
     }
   });
-  locateBtn.addEventListener('mouseenter', () => { locateHover = { el: locateBtn, star }; });
-  locateBtn.addEventListener('mouseleave', () => { locateHover = null; });
+  if (!isTouchDevice) {
+    locateBtn.addEventListener('mouseenter', () => { locateHover = { el: locateBtn, star }; });
+    locateBtn.addEventListener('mouseleave', () => { locateHover = null; });
+  }
 
   if (killId != null) {
     el.dataset.killId = String(killId);
