@@ -2345,6 +2345,10 @@ const RETICLE_R  = 22; // px from star centre to inner edge of each bracket
 
 
 function updateCorners(cw, ch) {
+  // On mobile, corners stay as screen decorations — no reticle repositioning.
+  // The canvas glow + dot already marks the selected star.
+  if (isTouchDevice) return;
+
   const R = RETICLE_R, S = CORNER_SIZE, M = 10;
   const nat = {
     tl: { x: M,          y: M          },
@@ -2992,6 +2996,10 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
   locateBtn.addEventListener('click', (ev) => {
     ev.stopPropagation();
     locateStar(star);
+    if (isTouchDevice) {
+      document.getElementById('panel-right').classList.add('panel--hidden');
+      document.getElementById('mnav-killfeed')?.classList.remove('active');
+    }
   });
   locateBtn.addEventListener('mouseenter', () => { locateHover = { el: locateBtn, star }; });
   locateBtn.addEventListener('mouseleave', () => { locateHover = null; });
