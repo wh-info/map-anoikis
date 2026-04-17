@@ -55,6 +55,11 @@ const canvas = document.getElementById('map');
 const ctx = canvas.getContext('2d', { alpha: false });
 let DPR = Math.min(window.devicePixelRatio || 1, 2);
 const _isMobile = matchMedia('(pointer: coarse)').matches;
+if (_isMobile) {
+  const ovt = document.querySelector('.orrery-view-toggle');
+  const olist = document.getElementById('orrery-list');
+  if (ovt && olist) olist.parentNode.insertBefore(ovt, olist);
+}
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.floor(window.innerWidth * DPR);
