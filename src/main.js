@@ -1589,7 +1589,10 @@ function setIntelView(view) {
 }
 
 document.querySelectorAll('[data-view-toggle] button[data-view]').forEach((btn) => {
-  btn.addEventListener('click', () => setIntelView(btn.dataset.view));
+  btn.addEventListener('click', () => {
+    document.title = btn.dataset.view + ':' + Date.now();
+    setIntelView(btn.dataset.view);
+  });
 });
 
 // Hover tooltip on scatter dots — closest dot within 6px wins.
