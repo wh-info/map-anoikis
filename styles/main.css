@@ -2449,9 +2449,45 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     justify-content: center;
   }
 
-  /* --- Settings panel — above nav bar ---------------------------- */
+  /* --- Settings panel — bigger on mobile -------------------------- */
   #settings-panel {
     bottom: 56px;
+    padding: 14px 18px;
+    min-width: 220px;
+  }
+  .settings-header {
+    font-size: 12px;
+    padding-bottom: 10px;
+  }
+  .settings-reset {
+    padding: 10px 0 !important;
+    font-size: 13px;
+  }
+  .settings-row {
+    padding: 8px 0;
+    font-size: 13px;
+  }
+  .settings-sep {
+    margin: 6px 0;
+  }
+  .toggle-pill {
+    width: 44px; height: 24px;
+    touch-action: manipulation;
+  }
+  .toggle-pill .toggle-knob {
+    top: 4px; left: 4px;
+    width: 14px; height: 14px;
+  }
+  .toggle-pill.on .toggle-knob {
+    left: 24px;
+  }
+  .settings-palette-grid {
+    gap: 6px;
+  }
+  .settings-palette-grid .ctrl {
+    padding: 8px 10px !important;
+    font-size: 13px;
+    touch-action: manipulation;
   }
 
   /* --- Screen corners — above nav -------------------------------- */
