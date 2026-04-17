@@ -3,7 +3,7 @@
 // Data globals loaded before this script: window.ANOIKIS_SYSTEMS, window.TYPE_NAMES, window.TYPE_KINDS.
 
 // --- Constants ---------------------------------------------------
-const MIN_SCALE = 0.56;
+let MIN_SCALE = 0.56;
 const MAX_SCALE = 35;
 const FLARE_MS = 1100;
 const RING_MS  = 2000;
@@ -639,8 +639,17 @@ function buildOrreryList(star) {
 
   function attachRowHover(row, hoverData) {
     const img = row.querySelector('.olist-img');
-    row.addEventListener('mouseenter', () => { orreryListHover = { imgEl: img, ...hoverData }; });
-    row.addEventListener('mouseleave', () => { orreryListHover = null; });
+    if (isTouchDevice) {
+      row.addEventListener('click', (ev) => {
+        if (hoverData.isSun) return; // sun has its own click handler
+        ev.stopPropagation();
+        const same = orreryListHover && orreryListHover.ci === hoverData.ci && orreryListHover.isSun === hoverData.isSun;
+        orreryListHover = same ? null : { imgEl: img, ...hoverData };
+      });
+    } else {
+      row.addEventListener('mouseenter', () => { orreryListHover = { imgEl: img, ...hoverData }; });
+      row.addEventListener('mouseleave', () => { orreryListHover = null; });
+    }
   }
 
   // Sun row.
@@ -653,7 +662,7 @@ function buildOrreryList(star) {
       `<div class="olist-sub">${escapeHtml(SUN_NAMES[star.sunTypeId] || 'Sun')}</div></div>`;
     el.appendChild(row);
     attachRowHover(row, { isSun: true, typeId: star.sunTypeId });
-    row.addEventListener('mouseleave', closeSunPopup);
+    if (!isTouchDevice) row.addEventListener('mouseleave', closeSunPopup);
   }
 
   // Planet rows sorted by celestialIndex.
@@ -2164,6 +2173,7 @@ canvas.addEventListener('dblclick', (e) => {
 // --- Touch interaction (mobile) --------------------------------------
 let touchState = null;
 const isTouchDevice = matchMedia('(pointer: coarse)').matches;
+if (isTouchDevice) MIN_SCALE = 0.32;
 canvas.style.touchAction = 'none';
 
 function touchDist(a, b) {

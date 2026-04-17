@@ -2349,6 +2349,32 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     width: 100%; max-height: none;
   }
 
+  /* --- System/Intel buttons — bigger touch targets ---------------- */
+  .si-view-btn {
+    padding: 12px 10px;
+    font-size: 13px;
+  }
+
+  /* --- Close buttons — bigger on mobile -------------------------- */
+  #close-orrery,
+  #close-intel {
+    width: 36px; height: 36px;
+  }
+  #close-orrery svg,
+  #close-intel svg {
+    width: 20px; height: 20px;
+  }
+
+  /* --- Sun popup — flows inline below orrery body ---------------- */
+  #sun-popup {
+    position: static;
+    right: auto;
+    top: auto;
+    width: 100%;
+    border: 1px dashed var(--border);
+    margin-bottom: 4px;
+  }
+
   /* --- Settings panel — above nav bar ---------------------------- */
   #settings-panel {
     bottom: 56px;
