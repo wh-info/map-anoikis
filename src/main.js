@@ -2142,10 +2142,13 @@ function draw() {
   updateCorners(cw, ch);
   if (orreryOpen && selected) drawOrrery(selected);
   // Mobile: keep tooltip anchored to selected star.
-  if (isTouchDevice && selected && tooltip.classList.contains('visible')) {
-    const sp = worldToScreen(selected.x, selected.y);
-    tooltip.style.left = (sp.x + 14) + 'px';
-    tooltip.style.top  = (sp.y - 40) + 'px';
+  if (isTouchDevice && selected) {
+    const tt = document.getElementById('tooltip');
+    if (tt && tt.classList.contains('visible')) {
+      const sp = worldToScreen(selected.x, selected.y);
+      tt.style.left = (sp.x + 14) + 'px';
+      tt.style.top  = (sp.y - 40) + 'px';
+    }
   }
   requestAnimationFrame(draw);
 }
