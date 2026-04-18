@@ -3755,8 +3755,20 @@ connectKillFeed();
   const bodyAbout = document.getElementById('info-body-about');
   const bodyLegal = document.getElementById('info-body-legal');
 
+  const statusDot = document.querySelector('.info-status-dot');
+
+  function checkBackendStatus() {
+    if (!statusDot) return;
+    statusDot.className = 'info-status-dot';
+    fetch(intelApiBase() + '/health', { signal: AbortSignal.timeout(5000) })
+      .then(r => r.json())
+      .then(d => { statusDot.classList.add(d.ok ? 'green' : 'yellow'); })
+      .catch(() => { statusDot.classList.add('red'); });
+  }
+
   document.getElementById('info-btn').addEventListener('click', () => {
     backdrop.classList.add('open');
+    checkBackendStatus();
   });
   document.getElementById('info-close').addEventListener('click', () => {
     backdrop.classList.remove('open');
