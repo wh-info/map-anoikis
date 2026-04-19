@@ -16,7 +16,7 @@
 //
 // Head-skip watchdog: on a wall-clock cadence (every HEAD_CHECK_MS,
 // regardless of poll success) re-fetch sequence.json and reconcile nextSeq
-// against the current head. Two cases it handles:
+// against the current head. Three cases it handles:
 //   - nextSeq is far behind head (restart backlog, zKB hole run): jump
 //     forward to head, losing the skipped kills so the feed stays real-time.
 //   - nextSeq is ahead of head AND we're stuck (no successful kill within
@@ -25,6 +25,11 @@
 //     files — we can be fetching real kills at seqs the sequence.json hasn't
 //     caught up to yet. Snapping back on every head check in that window
 //     would reprocess the same seqs in a loop.
+//   - nextSeq is behind head AND stuck on a seq that keeps 404ing past
+//     STUCK_MS: skip forward by 1. R2Z2 sometimes assigns a sequence but
+//     never publishes content for it; the 6s-retry-same-seq contract loops
+//     forever and Case 1 won't fire until lag crosses HEAD_SKIP_THRESHOLD.
+//     The onJump hook tells the reconciler to backfill the skipped window.
 // Running on wall-clock rather than poll-success cadence is load-bearing:
 // if every poll 404s the watchdog would otherwise never fire and we'd be
 // stuck until a manual restart.
@@ -132,6 +137,27 @@ export function connectZkill({ onKill, onStatus, onJump } = {}) {
         lastJump = `snapped ${from} -> ${headSeq} (${-lag} ahead, ${stuckLabel})`;
         onStatus?.(`head-rollback: ${lastJump}`);
         await saveState(nextSeq);
+        return;
+      }
+
+      // Case 3: behind head AND stuck on a 404ing seq. Skip forward by 1.
+      // Requires at least one successful kill in this process (lastKillAt
+      // set) so a fresh boot that's legitimately catching up from saved
+      // state doesn't get forced forward before it's had a chance to poll.
+      if (lag > 0 && lastKillAt !== null) {
+        const stuckFor = Date.now() - lastKillAt;
+        if (stuckFor < STUCK_MS) return;
+        const from = nextSeq;
+        nextSeq = nextSeq + 1;
+        jumpsTotal++;
+        lastJump = `skipped dead seq ${from} -> ${nextSeq} (lag ${lag}, stuck ${Math.round(stuckFor / 1000)}s)`;
+        onStatus?.(`forward-stall: ${lastJump}`);
+        onJump?.({ from, to: nextSeq, lag: 1, at: Date.now() });
+        await saveState(nextSeq);
+        // Reset lastKillAt so we wait another STUCK_MS before skipping
+        // again — prevents walking rapidly through the tail end of a legit
+        // zero-kill lull.
+        lastKillAt = Date.now();
       }
     } catch {
       // A failed head check is harmless — we'll retry next cycle.
