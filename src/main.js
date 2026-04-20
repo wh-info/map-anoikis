@@ -309,9 +309,15 @@ function renderTheraConnectionList() {
     row.appendChild(typeLink);
     row.appendChild(navBtn);
 
-    row.addEventListener('mouseenter', () => { theraHoverId = c.id; });
+    row.addEventListener('mouseenter', () => {
+      theraHoverId = c.id;
+      // Reuse the kill-feed locate-trace effect: dashed line from the row to
+      // the destination star + additive glow + solid dot in the star's colour.
+      if (dest) locateHover = { el: row, star: dest };
+    });
     row.addEventListener('mouseleave', () => {
       if (theraHoverId === c.id) theraHoverId = null;
+      if (locateHover && locateHover.el === row) locateHover = null;
     });
 
     el.appendChild(row);
@@ -1996,6 +2002,7 @@ function triggerKillAnim(star, delayed) {
 // inward flows toward Thera. Colour encodes the max ship size.
 const THERA_DASH_PX_PER_SEC = 10;
 const THERA_DASH_PATTERN = [8, 6];
+const THERA_ALPHA_SCALE = 0.9;
 function drawTheraConnections(now) {
   const thera = starById.get(THERA_SYSTEM_ID);
   if (!thera) return;
@@ -2031,13 +2038,15 @@ function drawTheraConnections(now) {
     // Two-state brightness: full above 4h remaining, 50% at/under 4h.
     // When the user hovers a sidebar row, isolate that arc: hovered = full,
     // everything else dims to 0.15 regardless of lifetime.
+    // Then scale the whole thing by THERA_ALPHA_SCALE to take ~10% off —
+    // user wanted arcs a touch dimmer than raw brightness.
     const hours = c.remaining_hours ?? 12;
     let alpha = hours > 4 ? 1 : 0.5;
     if (theraHoverId !== null) {
       alpha = c.id === theraHoverId ? 1 : 0.15;
     }
     ctx.strokeStyle = theraSizeColor(c.max_ship_size);
-    ctx.globalAlpha = alpha;
+    ctx.globalAlpha = alpha * THERA_ALPHA_SCALE;
     ctx.lineWidth = 1.4;
     // Path runs Thera → dest. positive offset shifts dashes toward start
     // (toward Thera); negative toward end (toward dest). Outward = dashes
