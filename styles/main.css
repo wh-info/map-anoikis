@@ -1226,7 +1226,8 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   display: flex; align-items: center; justify-content: center;
   transition: color 0.12s, border-color 0.12s;
 }
-#settings-btn:hover { color: rgba(0, 200, 200, 0.7); border-color: rgba(0, 200, 200, 0.45); }
+#settings-btn:hover,
+#settings-btn.active { color: rgba(0, 200, 200, 0.7); border-color: rgba(0, 200, 200, 0.45); }
 #settings-btn svg { width: 15px; height: 15px; display: block; }
 
 /* ================================================================ */

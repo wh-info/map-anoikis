@@ -309,16 +309,22 @@ function renderTheraConnectionList() {
     row.appendChild(typeLink);
     row.appendChild(navBtn);
 
-    row.addEventListener('mouseenter', () => {
-      theraHoverId = c.id;
-      // Reuse the kill-feed locate-trace effect: dashed line from the row to
-      // the destination star + additive glow + solid dot in the star's colour.
-      if (dest) locateHover = { el: row, star: dest, noTrace: true };
-    });
-    row.addEventListener('mouseleave', () => {
-      if (theraHoverId === c.id) theraHoverId = null;
-      if (locateHover && locateHover.el === row) locateHover = null;
-    });
+    // Hover-isolate + locate-glow are desktop-only. On touch devices browsers
+    // fire mouseenter on tap and the hover state sticks until the next tap,
+    // which would highlight a row every time the user tried to jump to a
+    // system. The type link remains tappable independently.
+    if (!_isMobile) {
+      row.addEventListener('mouseenter', () => {
+        theraHoverId = c.id;
+        // Reuse the kill-feed locate-trace effect: dashed line from the row to
+        // the destination star + additive glow + solid dot in the star's colour.
+        if (dest) locateHover = { el: row, star: dest, noTrace: true };
+      });
+      row.addEventListener('mouseleave', () => {
+        if (theraHoverId === c.id) theraHoverId = null;
+        if (locateHover && locateHover.el === row) locateHover = null;
+      });
+    }
 
     el.appendChild(row);
   }
@@ -3028,12 +3034,29 @@ function flashRestoreRight() {
 // --- Settings panel toggle ---------------------------------------
 const settingsBtn = document.getElementById('settings-btn');
 const settingsPanel = document.getElementById('settings-panel');
-settingsBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  settingsPanel.classList.toggle('open');
+// Single source of truth for the panel state so both the desktop gear and the
+// mobile bottom-nav icon get their `.active` class in sync with the panel.
+function setSettingsOpen(open) {
+  settingsPanel.classList.toggle('open', open);
+  settingsBtn.classList.toggle('active', open);
+  const mnav = document.getElementById('mnav-settings');
+  if (mnav) mnav.classList.toggle('active', open);
+}
+settingsBtn.addEventListener('click', () => {
+  setSettingsOpen(!settingsPanel.classList.contains('open'));
 });
-document.addEventListener('click', () => settingsPanel.classList.remove('open'));
-settingsPanel.addEventListener('click', (e) => e.stopPropagation());
+// Close on outside tap. Using `pointerdown` instead of `click` — mobile
+// sometimes swallows click events (scroll gesture, 300ms phantom, etc.) which
+// made the panel randomly refuse to close. pointerdown fires reliably the
+// moment a finger touches the screen.
+document.addEventListener('pointerdown', (e) => {
+  if (!settingsPanel.classList.contains('open')) return;
+  if (settingsPanel.contains(e.target)) return;
+  if (settingsBtn.contains(e.target)) return;
+  const mnav = document.getElementById('mnav-settings');
+  if (mnav && mnav.contains(e.target)) return;
+  setSettingsOpen(false);
+});
 
 // --- Mobile bottom nav bar ---------------------------------------
 if (isTouchDevice) {
@@ -3061,7 +3084,7 @@ if (isTouchDevice) {
     closeIntel();
     if (orreryWasOpen || intelWasOpen) {
       // Just closed a sub-panel — keep left panel visible (back to system info)
-      settingsPanel.classList.remove('open');
+      setSettingsOpen(false);
       syncMobileNav();
       return;
     }
@@ -3072,7 +3095,7 @@ if (isTouchDevice) {
       leftPanel.classList.remove('panel--hidden');
       rightPanel.classList.add('panel--hidden');
     }
-    settingsPanel.classList.remove('open');
+    setSettingsOpen(false);
     syncMobileNav();
   });
 
@@ -3086,13 +3109,12 @@ if (isTouchDevice) {
       rightPanel.classList.remove('panel--hidden');
       leftPanel.classList.add('panel--hidden');
     }
-    settingsPanel.classList.remove('open');
+    setSettingsOpen(false);
     syncMobileNav();
   });
 
-  mnavSettings.addEventListener('click', (e) => {
-    e.stopPropagation();
-    settingsPanel.classList.toggle('open');
+  mnavSettings.addEventListener('click', () => {
+    setSettingsOpen(!settingsPanel.classList.contains('open'));
   });
 
   mnavCinema.addEventListener('click', () => {
