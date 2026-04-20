@@ -12,7 +12,7 @@
 <meta name="description" content="Interactive map of Anoikis - Eve Online wormhole space.">
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
-<link rel="stylesheet" href="./styles/main.css?v=20260418d" />
+<link rel="stylesheet" href="./styles/main.css?v=20260420d" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="57ac0157-6021-4a9e-b0a0-73fddc9eb45d"></script>
 </head>
 <body>
@@ -118,7 +118,14 @@
 <div id="panel-intel">
   <div class="intel-header">
     <div class="intel-header-info">
-      <div class="title" style="margin:0;" id="intel-title">—</div>
+      <div class="intel-title-row">
+        <div class="title" style="margin:0;" id="intel-title">—</div>
+        <span class="intel-title-sep" aria-hidden="true"></span>
+        <div class="intel-live" id="intel-live">
+          <span class="intel-live-square"></span>
+          <span class="intel-live-text">—</span>
+        </div>
+      </div>
       <div id="intel-subtitle"></div>
     </div>
     <button class="panel-hide-btn" id="close-intel">
@@ -406,6 +413,6 @@
   </button>
 </nav>
 
-<script src="./src/main.js?v=20260418a"></script>
+<script src="./src/main.js?v=20260420c"></script>
 </body>
 </html>

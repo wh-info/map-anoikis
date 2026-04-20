@@ -1474,6 +1474,51 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
 }
 .intel-header-info { flex: 1; min-width: 0; }
 
+.intel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.intel-title-sep {
+  display: inline-block;
+  width: 1px;
+  height: 12px;
+  background: var(--dim);
+  opacity: 0.5;
+}
+.intel-title-effect {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+}
+
+.intel-live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.intel-live-square {
+  display: inline-block;
+  width: 9px; height: 9px;
+  background: var(--accent);
+  transition: background 160ms, box-shadow 160ms;
+}
+.intel-live.active  .intel-live-square { background: var(--danger);    box-shadow: 0 0 8px rgba(254, 55, 67, 0.55); }
+.intel-live.quiet   .intel-live-square { background: var(--highlight); box-shadow: 0 0 6px rgba(232, 212, 77, 0.4); }
+.intel-live.dormant .intel-live-square { background: var(--accent);    box-shadow: 0 0 4px rgba(0, 200, 200, 0.35); }
+.intel-live.active  .intel-live-text { color: var(--danger); }
+.intel-live.quiet   .intel-live-text { color: var(--highlight); }
+.intel-live.dormant .intel-live-text { color: var(--dim); }
+.intel-live-text strong { font-weight: 700; color: var(--text); }
+.intel-live.active  .intel-live-text strong { color: var(--danger); }
+.intel-live.quiet   .intel-live-text strong { color: var(--highlight); }
+
 #intel-subtitle {
   font-size: 10px;
   color: var(--dim);

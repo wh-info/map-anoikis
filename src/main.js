@@ -1692,10 +1692,46 @@ document.querySelectorAll('[data-view-toggle] button[data-view]').forEach((btn) 
 // Re-render every intel section from the current cached kill set + toggle
 // state. Called on every batch during loading, and by the range-toggle
 // handlers when the user flips 24h↔7d or 30d↔60d.
+// Liveness pill in the intel header. Active (red) = kill in last 24h,
+// quiet (amber) = 24–72h, dormant (cyan) = older or none. Uses the newest
+// kill across the full 60d cache — liveness is a global system property,
+// not tied to the selected heatmap window.
+function fmtLiveAge(ts) {
+  const sec = Math.floor(Date.now() / 1000) - ts;
+  if (sec < 3600)       return `${Math.max(1, Math.floor(sec / 60))}min ago`;
+  if (sec < 86400)      return `${Math.floor(sec / 3600)}h ago`;
+  if (sec < 30 * 86400) return `${Math.floor(sec / 86400)}d ago`;
+  return `${Math.floor(sec / (30 * 86400))}mo ago`;
+}
+function renderLiveness() {
+  const el = document.getElementById('intel-live');
+  if (!el) return;
+  const textEl = el.querySelector('.intel-live-text');
+  const kills = intelCurrentKills;
+  let latestTs = 0;
+  if (kills) {
+    for (const k of kills) {
+      const ts = k.ts || (k.killmail_time ? Math.floor(new Date(k.killmail_time).getTime() / 1000) : 0);
+      if (ts > latestTs) latestTs = ts;
+    }
+  }
+  el.classList.remove('active', 'quiet', 'dormant');
+  if (!latestTs) {
+    el.classList.add('dormant');
+    textEl.textContent = 'No kills in 60d';
+    return;
+  }
+  const age = Math.floor(Date.now() / 1000) - latestTs;
+  const cls = age < 24 * 3600 ? 'active' : age < 72 * 3600 ? 'quiet' : 'dormant';
+  el.classList.add(cls);
+  textEl.innerHTML = `Last kill: <strong>${fmtLiveAge(latestTs)}</strong>`;
+}
+
 function renderIntelAll() {
   const kills = intelCurrentKills;
   const rgb   = intelCurrentRgb;
   if (!kills || !rgb) return;
+  renderLiveness();
   const short = intelAggregateShort(kills, intelRangeShort);
   renderHmShort(short.counts, rgb, intelRangeShort);
   const longDays = intelRangeLong === '60d' ? 60 : 30;
@@ -1831,9 +1867,18 @@ function openIntel(star) {
   intelOpen = true;
   intelPanel.classList.add('open');
   if (isTouchDevice) document.getElementById('panel-left').classList.add('panel--hidden');
-  document.getElementById('intel-title').textContent =
-    displayName(star) + ' · ' + displayClass(star);
+  const titleEl = document.getElementById('intel-title');
+  titleEl.textContent = displayName(star) + ' · ' + displayClass(star);
+  if (star.effect) {
+    const eff = document.createElement('span');
+    eff.className = 'intel-title-effect';
+    eff.textContent = ' · ' + star.effect;
+    titleEl.appendChild(eff);
+  }
   document.getElementById('intel-subtitle').textContent = '';
+  const liveEl = document.getElementById('intel-live');
+  liveEl.classList.remove('active', 'quiet', 'dormant');
+  liveEl.querySelector('.intel-live-text').textContent = '—';
   // Single full-panel loader; flipped to body on first batch of kills.
   document.getElementById('intel-loading').style.display = '';
   document.getElementById('intel-body').style.display    = 'none';
@@ -3698,6 +3743,7 @@ function connectKillFeed() {
           });
           const short = intelAggregateShort(intelCurrentKills, intelRangeShort);
           renderHmShort(short.counts, intelCurrentRgb, intelRangeShort);
+          renderLiveness();
         }
       }
     });
