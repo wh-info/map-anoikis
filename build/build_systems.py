@@ -107,6 +107,7 @@ def load_lookups() -> tuple[dict, dict, dict, dict, dict, dict]:
 
     # planetID → {typeId, r (AU), moons} — loaded from mapPlanets.jsonl if present.
     planets_by_id: dict[int, dict] = {}
+    planet_xz:     dict[int, tuple[float, float]] = {}  # pid -> (x, z) for moon math
     planets_path = SDE_CACHE / "mapPlanets.jsonl"
     if planets_path.exists():
         AU = 1.496e11
@@ -122,10 +123,41 @@ def load_lookups() -> tuple[dict, dict, dict, dict, dict, dict]:
             angle    = round(math.atan2(pz, px), 4)  # XZ plane, same projection as starmap
             ci       = rec.get("celestialIndex") or 0  # 1-based planet index (I, II, III…)
             moon_count = len(rec.get("moonIDs") or [])
-            planets_by_id[int(pid)] = {
+            pid_i = int(pid)
+            planets_by_id[pid_i] = {
                 "typeId": type_id, "r": orbit_au, "a": angle,
                 "ci": ci, "moons": moon_count,
             }
+            if moon_count:
+                planet_xz[pid_i] = (px, pz)
+
+    # planetID → list of (orbit_radius_m, angle_rad) for each moon — SDE XZ projection.
+    # Sorted inner-first at read time. Capped per planet when attached below.
+    moons_by_planet: dict[int, list[tuple[float, float]]] = {}
+    moons_path = SDE_CACHE / "mapMoons.jsonl"
+    if moons_path.exists() and planet_xz:
+        for _, rec in iter_jsonl(moons_path):
+            ssid = rec.get("solarSystemID")
+            if ssid is None or not (31000000 <= int(ssid) < 32000000):
+                continue
+            orbit_pid = rec.get("orbitID")
+            if orbit_pid is None:
+                continue
+            pp = planet_xz.get(int(orbit_pid))
+            if pp is None:
+                continue
+            mpos = rec.get("position") or {}
+            mx, mz = float(mpos.get("x", 0)), float(mpos.get("z", 0))
+            dx, dz = mx - pp[0], mz - pp[1]
+            stats = rec.get("statistics") or {}
+            orbit_r = float(stats.get("orbitRadius") or (dx*dx + dz*dz) ** 0.5)
+            angle   = math.atan2(dz, dx)
+            moons_by_planet.setdefault(int(orbit_pid), []).append((orbit_r, angle))
+
+    # Attach capped angle lists to each planet (inner 6, sorted by orbit radius).
+    for pid_i, moon_list in moons_by_planet.items():
+        moon_list.sort(key=lambda t: t[0])
+        planets_by_id[pid_i]["mA"] = [round(a, 3) for _, a in moon_list[:6]]
 
     # solarSystemID → star typeID / star statistics — loaded from mapStars.jsonl if present.
     star_type_by_system: dict[int, int] = {}

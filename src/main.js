@@ -681,11 +681,13 @@ function drawOrrery(star) {
     oc.arc(px, py, pR, 0, Math.PI * 2);
     oc.fill();
 
-    const moonCount = Math.min(p.moons || 0, 6);
+    const mAngles   = p.mA || [];
+    const moonCount = Math.min(mAngles.length || (p.moons || 0), 6);
     for (let m = 0; m < moonCount; m++) {
-      const mBase  = (m / moonCount) * Math.PI * 2;
-      const mAngle = orreryRotate ? mBase + t * omega * 6 : mBase;
+      const mBase  = mAngles[m] != null ? mAngles[m] : (m / moonCount) * Math.PI * 2;
       const mDist  = pR + 5 + m * 2.5;
+      const mOmega = 250 / Math.pow(mDist, 1.5);
+      const mAngle = orreryRotate ? mBase + t * mOmega : mBase;
       oc.fillStyle = 'rgba(160,160,160,0.65)';
       oc.beginPath();
       oc.arc(px + Math.cos(mAngle) * mDist, py + Math.sin(mAngle) * mDist, 1.5, 0, Math.PI * 2);

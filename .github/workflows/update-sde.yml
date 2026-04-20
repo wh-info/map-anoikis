@@ -64,6 +64,7 @@ jobs:
             "mapConstellations.jsonl" \
             "mapSecondarySuns.jsonl" \
             "mapPlanets.jsonl" \
+            "mapMoons.jsonl" \
             "mapStars.jsonl" \
             -d build/sde_cache/
           rm /tmp/sde.zip
