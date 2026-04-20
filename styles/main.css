@@ -1499,7 +1499,6 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   gap: 6px;
   font-size: 10px;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--dim);
   white-space: nowrap;
 }
