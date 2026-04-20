@@ -1994,13 +1994,17 @@ function triggerKillAnim(star, delayed) {
 // connection. Dashes animate along the arc to show the direction of
 // the wormhole: outward (exits Thera) flows toward the destination,
 // inward flows toward Thera. Colour encodes the max ship size.
-const THERA_DASH_PX_PER_SEC = 30;
+const THERA_DASH_PX_PER_SEC = 18;
 const THERA_DASH_PATTERN = [8, 6];
 function drawTheraConnections(now) {
   const thera = starById.get(THERA_SYSTEM_ID);
   if (!thera) return;
   const tp = worldToScreen(thera.x, thera.y);
-  const dashShift = (now / 1000) * THERA_DASH_PX_PER_SEC;
+  // Multiply by camera.scale so the dashes appear to flow at a constant
+  // speed relative to arc length regardless of zoom — in screen pixels per
+  // second the animation gets faster at higher zoom, which cancels out the
+  // fact that the arc itself is longer on screen when zoomed in.
+  const dashShift = (now / 1000) * THERA_DASH_PX_PER_SEC * camera.scale;
 
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
