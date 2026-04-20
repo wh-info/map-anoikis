@@ -12,6 +12,7 @@ import { WebSocketServer } from 'ws';
 import { createRing } from './ring.js';
 import { classifyKill } from './filter.js';
 import { connectZkill } from './zkill.js';
+import { connectEvescout } from './evescout.js';
 import { createKillstore, buildIntelKill } from './killstore.js';
 import { createBootstrap } from './bootstrap.js';
 import { computeStats, getStats } from './stats.js';
@@ -29,6 +30,8 @@ let seenTotal = 0;
 let seenAnoikis = 0;
 let lastAnoikisKillAt = null;
 let zkillClient = null;
+let evescoutClient = null;
+let evescoutStatus = 'init';
 
 // Compact the ESI+zkb payload down to just what the frontend uses. This
 // keeps fan-out bandwidth small and hides R2Z2's envelope from clients.
@@ -135,6 +138,8 @@ fastify.get('/health', async () => ({
   poller: zkillClient?.getState?.() ?? null,
   killstore: killstore.getState(),
   reconcile: reconcileStats,
+  evescout: evescoutStatus,
+  evescoutState: evescoutClient?.getState?.() ?? null,
 }));
 
 // 24h stats — computed every 60s, served from cache.
@@ -205,6 +210,8 @@ wss.on('connection', (ws, req) => {
 
   try {
     ws.send(JSON.stringify({ type: 'snapshot', kills: ring.snapshot(), ringSize: ring.size }));
+    const conns = evescoutClient?.getConnections?.() ?? [];
+    ws.send(JSON.stringify({ type: 'thera-snapshot', connections: conns }));
   } catch {
     // If the initial send fails the client was already gone; nothing to do.
   }
@@ -282,6 +289,18 @@ zkillClient = connectZkill({
     const nowSec = Math.floor(Date.now() / 1000);
     const windowSec = Math.max(300, lag * 7);
     runReconcile(nowSec - windowSec, nowSec, 'watchdog-jump');
+  }
+});
+
+// Eve-Scout Thera connections. Polls the public API on a 3-min cadence and
+// broadcasts the filtered list to all connected clients whenever it changes.
+evescoutClient = connectEvescout({
+  onStatus: (s) => {
+    evescoutStatus = s;
+    fastify.log.info({ evescout: s }, 'evescout status');
+  },
+  onUpdate: (connections) => {
+    broadcast({ type: 'thera', connections });
   }
 });
 

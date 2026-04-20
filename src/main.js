@@ -239,6 +239,62 @@ resetView();
 
 let showLabels = localStorage.getItem('anoikis-labels') === '1';
 let potatoMode = localStorage.getItem('anoikis-potato') === '1';
+let showThera  = localStorage.getItem('anoikis-thera')  === '1';
+
+// Active Eve-Scout Thera connections, pushed by the backend over /ws.
+// Each entry: { id, in_system_id, in_system_name, in_system_class,
+//   wh_type, max_ship_size, remaining_hours, wh_exits_outward,
+//   in_signature, out_signature, expires_at }.
+let theraConnections = [];
+const THERA_SYSTEM_ID = 31000005;
+const THERA_COLORS = {
+  frigate: '#1f5eeb',
+  medium:  '#36cccc',
+  large:   '#d6d9cc',
+  capital: '#f0a800',
+  xlarge:  '#f0a800',
+};
+const THERA_DEFAULT_COLOR = '#888888';
+function theraSizeColor(size) {
+  return THERA_COLORS[size] || THERA_DEFAULT_COLOR;
+}
+
+// Re-render the Thera connection list in the system-info panel. Only has any
+// effect when Thera is the selected system; otherwise the container is empty
+// but hidden by the parent `#si-thera-links` block. Called from selectStar
+// (on selection change) and from the WS handler (on poll update).
+function renderTheraConnectionList() {
+  const el = document.getElementById('si-thera-connections');
+  if (!el) return;
+  if (!selected || selected.whClass !== 'Thera') {
+    el.innerHTML = '';
+    return;
+  }
+  if (!theraConnections.length) {
+    el.innerHTML = '<div class="si-thera-empty">No active connections</div>';
+    return;
+  }
+  const rows = theraConnections.slice().sort((a, b) => a.wh_type.localeCompare(b.wh_type));
+  el.innerHTML = '';
+  for (const c of rows) {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'si-thera-row';
+    row.dataset.systemId = String(c.in_system_id);
+    const color = theraSizeColor(c.max_ship_size);
+    const dest = starById.get(c.in_system_id);
+    const cls = dest ? displayClass(dest) : (c.in_system_class || '');
+    row.innerHTML =
+      `<span class="si-thera-type" style="color:${color}">${escapeHtml(c.wh_type)}</span>`
+      + `<span class="si-thera-dir">${c.wh_exits_outward ? '&gt;' : '&lt;'}</span>`
+      + `<span class="si-thera-jcode">${escapeHtml(c.in_system_name || '')}</span>`
+      + `<span class="si-thera-class">${escapeHtml(cls)}</span>`;
+    row.addEventListener('click', () => {
+      if (dest) selectStar(dest, true);
+    });
+    el.appendChild(row);
+  }
+}
 
 // --- Region & constellation bounding-box centers for label LOD -----
 const regionBounds = new Map();
@@ -1911,6 +1967,64 @@ function triggerKillAnim(star, delayed) {
   activeAnims.push({ star, t0: now, dur: RING_MS, delayed: !!delayed });
 }
 
+// --- Thera connections (Eve-Scout) -------------------------------
+// Draws a curved dashed arc between Thera and each active w-space
+// connection. Dashes animate along the arc to show the direction of
+// the wormhole: outward (exits Thera) flows toward the destination,
+// inward flows toward Thera. Colour encodes the max ship size.
+const THERA_DASH_PX_PER_SEC = 30;
+const THERA_DASH_PATTERN = [8, 6];
+function drawTheraConnections(now) {
+  const thera = starById.get(THERA_SYSTEM_ID);
+  if (!thera) return;
+  const tp = worldToScreen(thera.x, thera.y);
+  const dashShift = (now / 1000) * THERA_DASH_PX_PER_SEC;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.lineCap = 'round';
+  ctx.setLineDash(THERA_DASH_PATTERN);
+
+  for (const c of theraConnections) {
+    const dest = starById.get(c.in_system_id);
+    if (!dest) continue;
+    const dp = worldToScreen(dest.x, dest.y);
+    const dx = dp.x - tp.x;
+    const dy = dp.y - tp.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) continue;
+
+    // Perpendicular offset for a consistent slight bulge on every arc.
+    const nx = -dy / len;
+    const ny =  dx / len;
+    const bulge = Math.min(140, len * 0.18);
+    const cx = (tp.x + dp.x) / 2 + nx * bulge;
+    const cy = (tp.y + dp.y) / 2 + ny * bulge;
+
+    // Fade as the wormhole nears end-of-life. Clamped so fresh connections
+    // don't over-saturate and near-dead ones still stay visible.
+    const hours = c.remaining_hours ?? 12;
+    const life = Math.max(0.35, Math.min(1, hours / 16));
+
+    ctx.strokeStyle = theraSizeColor(c.max_ship_size);
+    ctx.globalAlpha = 0.85 * life;
+    ctx.lineWidth = 1.4;
+    // Path runs Thera → dest. positive offset shifts dashes toward start
+    // (toward Thera); negative toward end (toward dest). Outward = dashes
+    // flow to the destination.
+    ctx.lineDashOffset = c.wh_exits_outward ? -dashShift : dashShift;
+
+    ctx.beginPath();
+    ctx.moveTo(tp.x, tp.y);
+    ctx.quadraticCurveTo(cx, cy, dp.x, dp.y);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+}
+
 // --- Render ------------------------------------------------------
 function draw() {
   const W = canvas.width, H = canvas.height;
@@ -1991,6 +2105,8 @@ function draw() {
   }
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'lighter';
+
+  if (showThera && theraConnections.length) drawTheraConnections(now);
 
   ctx.globalCompositeOperation = 'lighter';
   for (let i = activeAnims.length - 1; i >= 0; i--) {
@@ -2601,6 +2717,7 @@ function selectStar(s, focus) {
   }
   document.getElementById('si-ember-info').style.display = s.name === 'J101145' ? '' : 'none';
   document.getElementById('si-thera-links').style.display = s.whClass === 'Thera' ? '' : 'none';
+  renderTheraConnectionList();
   if (focus) {
     flyTo(s.x, s.y, 10, 520);
     searchMarker = { star: s, start: performance.now(), duration: 2600 };
@@ -2787,6 +2904,14 @@ potatoBtn.addEventListener('click', () => {
   potatoMode = !potatoMode;
   potatoBtn.classList.toggle('on', potatoMode);
   localStorage.setItem('anoikis-potato', potatoMode ? '1' : '0');
+});
+
+const theraBtn = document.getElementById('toggle-thera');
+if (showThera) theraBtn.classList.add('on');
+theraBtn.addEventListener('click', () => {
+  showThera = !showThera;
+  theraBtn.classList.toggle('on', showThera);
+  localStorage.setItem('anoikis-thera', showThera ? '1' : '0');
 });
 
 // NOTE: The 'anoikis' palette has been removed from the settings panel UI
@@ -3724,6 +3849,7 @@ function connectKillFeed() {
           updateHistoryBanner();
           flashRestoreRight();
         }
+        // (Thera connection handlers are in the else-if chain below.)
         // Live-inject into the open intel panel's 24h/12d heatmap.
         if (intelOpen && intelCurrentKills && intelCurrentStar
             && msg.kill.systemId === intelCurrentStar.id) {
@@ -3745,6 +3871,12 @@ function connectKillFeed() {
           renderHmShort(short.counts, intelCurrentRgb, intelRangeShort);
           renderLiveness();
         }
+      } else if (
+        (msg.type === 'thera-snapshot' || msg.type === 'thera')
+        && Array.isArray(msg.connections)
+      ) {
+        theraConnections = msg.connections;
+        renderTheraConnectionList();
       }
     });
     ws.addEventListener('close', schedule);
