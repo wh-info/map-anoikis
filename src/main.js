@@ -302,7 +302,19 @@ function renderTheraConnectionList() {
       `<span class="si-thera-dir">${c.wh_exits_outward ? '&gt;' : '&lt;'}</span>`
       + `<span class="si-thera-jcode">${escapeHtml(c.in_system_name || '')}</span>`
       + `<span class="si-thera-class">${escapeHtml(cls)}</span>`;
+    // Clear hover state on commit — without this the cursor is still
+    // physically over the row after click, so `theraHoverId` / `locateHover`
+    // stay set and the arc + star glow linger until the user manually moves
+    // the mouse off the row. Applies to both nav click (flies to dest) and
+    // the type link (opens whtype in a new tab; on tab-return the state
+    // would otherwise still be live).
+    function clearTheraHover() {
+      if (theraHoverId === c.id) theraHoverId = null;
+      if (locateHover && locateHover.el === row) locateHover = null;
+    }
+    typeLink.addEventListener('click', clearTheraHover);
     navBtn.addEventListener('click', () => {
+      clearTheraHover();
       if (dest) selectStar(dest, true);
     });
 
