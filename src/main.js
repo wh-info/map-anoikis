@@ -1698,10 +1698,10 @@ document.querySelectorAll('[data-view-toggle] button[data-view]').forEach((btn) 
 // not tied to the selected heatmap window.
 function fmtLiveAge(ts) {
   const sec = Math.floor(Date.now() / 1000) - ts;
-  if (sec < 3600)       return `<strong>${Math.max(1, Math.floor(sec / 60))}</strong>min ago`;
-  if (sec < 86400)      return `<strong>${Math.floor(sec / 3600)}</strong>h ago`;
-  if (sec < 30 * 86400) return `<strong>${Math.floor(sec / 86400)}</strong>d ago`;
-  return `<strong>${Math.floor(sec / (30 * 86400))}</strong>mo ago`;
+  if (sec < 3600)       return `${Math.max(1, Math.floor(sec / 60))}min ago`;
+  if (sec < 86400)      return `${Math.floor(sec / 3600)}h ago`;
+  if (sec < 30 * 86400) return `${Math.floor(sec / 86400)}d ago`;
+  return `${Math.floor(sec / (30 * 86400))}mo ago`;
 }
 function renderLiveness() {
   const el = document.getElementById('intel-live');
@@ -1724,7 +1724,7 @@ function renderLiveness() {
   const age = Math.floor(Date.now() / 1000) - latestTs;
   const cls = age < 24 * 3600 ? 'active' : age < 72 * 3600 ? 'quiet' : 'dormant';
   el.classList.add(cls);
-  textEl.innerHTML = `Last kill: ${fmtLiveAge(latestTs)}`;
+  textEl.innerHTML = `Last kill: <strong>${fmtLiveAge(latestTs)}</strong>`;
 }
 
 function renderIntelAll() {
