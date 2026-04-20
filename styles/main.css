@@ -1438,6 +1438,16 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   font-weight: 400;
 }
 
+.si-thera-show-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding: 4px 2px;
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
 .si-thera-connections {
   display: flex;
   flex-direction: column;

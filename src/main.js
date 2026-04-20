@@ -2001,13 +2001,10 @@ function drawTheraConnections(now) {
     const cx = (tp.x + dp.x) / 2 + nx * bulge;
     const cy = (tp.y + dp.y) / 2 + ny * bulge;
 
-    // Fade as the wormhole nears end-of-life. Clamped so fresh connections
-    // don't over-saturate and near-dead ones still stay visible.
+    // Two-state brightness: full above 4h remaining, 50% at/under 4h.
     const hours = c.remaining_hours ?? 12;
-    const life = Math.max(0.35, Math.min(1, hours / 16));
-
     ctx.strokeStyle = theraSizeColor(c.max_ship_size);
-    ctx.globalAlpha = 0.85 * life;
+    ctx.globalAlpha = hours > 4 ? 1 : 0.5;
     ctx.lineWidth = 1.4;
     // Path runs Thera → dest. positive offset shifts dashes toward start
     // (toward Thera); negative toward end (toward dest). Outward = dashes
@@ -2906,13 +2903,20 @@ potatoBtn.addEventListener('click', () => {
   localStorage.setItem('anoikis-potato', potatoMode ? '1' : '0');
 });
 
-const theraBtn = document.getElementById('toggle-thera');
-if (showThera) theraBtn.classList.add('on');
-theraBtn.addEventListener('click', () => {
-  showThera = !showThera;
+// Two buttons share the same showThera state: the one in the settings panel
+// and a contextual one inside the system-info panel (visible only when Thera
+// is selected). Flipping either should update both visuals and persist.
+const theraBtn   = document.getElementById('toggle-thera');
+const siTheraBtn = document.getElementById('si-toggle-thera');
+function setShowThera(v) {
+  showThera = v;
   theraBtn.classList.toggle('on', showThera);
+  siTheraBtn.classList.toggle('on', showThera);
   localStorage.setItem('anoikis-thera', showThera ? '1' : '0');
-});
+}
+setShowThera(showThera);
+theraBtn.addEventListener('click',   () => setShowThera(!showThera));
+siTheraBtn.addEventListener('click', () => setShowThera(!showThera));
 
 // NOTE: The 'anoikis' palette has been removed from the settings panel UI
 // but the palette data and this handler are preserved for future use.
