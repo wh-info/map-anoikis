@@ -1452,8 +1452,11 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
 .si-thera-connections {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 0;
   margin-top: 8px;
+}
+.si-thera-connections .si-thera-row + .si-thera-row {
+  border-top: 0;
 }
 .si-thera-empty {
   font-size: 11px;
