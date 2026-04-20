@@ -1456,7 +1456,13 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   margin-top: 8px;
 }
 .si-thera-connections .si-thera-row + .si-thera-row {
-  border-top: 0;
+  margin-top: -1px;
+}
+.si-thera-row {
+  position: relative;
+}
+.si-thera-row:hover {
+  z-index: 1;
 }
 .si-thera-empty {
   font-size: 11px;
@@ -1472,7 +1478,7 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   border: 1px solid rgba(255, 255, 255, 0.05);
   transition: border-color 120ms, background 120ms;
 }
-.si-thera-row:hover {
+.si-thera-row:has(.si-thera-nav:hover) {
   border-color: rgba(0, 200, 200, 0.25);
 }
 .si-thera-type {
@@ -1490,7 +1496,8 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
 }
 .si-thera-type:hover {
   background: rgba(0, 200, 200, 0.08);
-  text-decoration: underline;
+  outline: 1px solid rgba(0, 200, 200, 0.45);
+  outline-offset: -1px;
 }
 .si-thera-nav {
   display: grid;
