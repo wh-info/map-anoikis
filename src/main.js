@@ -2020,7 +2020,7 @@ function triggerKillAnim(star, delayed) {
 // inward flows toward Thera. Colour encodes the max ship size.
 const THERA_DASH_PX_PER_SEC = 10;
 const THERA_DASH_PATTERN = [8, 6];
-const THERA_ALPHA_SCALE = 0.9;
+const THERA_ALPHA_SCALE = 0.7;
 function drawTheraConnections(now) {
   const thera = starById.get(THERA_SYSTEM_ID);
   if (!thera) return;
