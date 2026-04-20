@@ -2614,4 +2614,12 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   }
   .kill-fb-inline .kp-corp { font-weight: 700; }
   .kill-fb-inline .kp-corp:empty { display: none; }
+
+  /* Liveness wraps to its own row below the title on touch. */
+  .intel-header { flex-wrap: wrap; }
+  .intel-live {
+    order: 3;
+    flex: 0 0 100%;
+    margin-top: 4px;
+  }
 }
