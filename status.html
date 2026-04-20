@@ -266,9 +266,9 @@ footer a:hover {
 
 <div id="boot">
 <div class="boot-line" data-text="> status loading ..."></div>
-<div class="boot-line" data-text="> connecting to R2Z2..."></div>
-<div class="boot-line" data-text="> checking ESI..."></div>
-<div class="boot-line" data-text="> eve-scout connections..."></div>
+<div class="boot-line" data-text="> connecting to R2Z2..." data-blink="true"></div>
+<div class="boot-line" data-text="> checking ESI..." data-blink="true"></div>
+<div class="boot-line" data-text="> eve-scout connections..." data-blink="true"></div>
 <div class="boot-line" data-text="> polarization timer clear"></div>
 <div class="boot-line" data-text="> jumping K162..."></div>
 </div>
@@ -398,14 +398,14 @@ async function typeLine(el, text, charDelay = 14) {
   el.classList.add('typing');
   for (let i = 0; i <= text.length; i++) {
     el.textContent = text.slice(0, i);
-    await sleep(charDelay);
+    if (i < text.length) await sleep(charDelay);
   }
-  el.classList.remove('typing');
+  if (el.dataset.blink !== 'true') el.classList.remove('typing');
 }
 
 async function runBoot() {
   const lines = document.querySelectorAll('.boot-line');
-  const pauses = [400, 400, 400, 800, 400, 140];
+  const pauses = [400, 400, 400, 1000, 400, 140];
   for (let i = 0; i < lines.length; i++) {
     await typeLine(lines[i], lines[i].dataset.text);
     await sleep(pauses[i] ?? 140);
