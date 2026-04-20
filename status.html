@@ -268,6 +268,7 @@ footer a:hover {
 <div class="boot-line" data-text="> status loading ..."></div>
 <div class="boot-line" data-text="> connecting to R2Z2..."></div>
 <div class="boot-line" data-text="> checking ESI..."></div>
+<div class="boot-line" data-text="> eve-scout connections..."></div>
 <div class="boot-line" data-text="> polarization timer clear"></div>
 <div class="boot-line" data-text="> jumping K162..."></div>
 </div>
@@ -311,8 +312,8 @@ footer a:hover {
       <div id="s-esi" class="stat-val">—</div>
     </div>
     <div class="stat">
-      <label>Pilots watching the feed</label>
-      <div id="s-pilots" class="stat-val">—</div>
+      <label>Eve-Scout API</label>
+      <div id="s-evescout" class="stat-val">—</div>
     </div>
     <div class="stat">
       <label>Kills tracked (60d)</label>
@@ -354,6 +355,7 @@ footer a:hover {
       powered by
       <a href="https://zkillboard.com/" target="_blank" rel="noopener">zKillboard R2Z2</a> ·
       <a href="https://developers.eveonline.com/" target="_blank" rel="noopener">EVE ESI</a> ·
+      <a href="https://eve-scout.com" target="_blank" rel="noopener">EVE-SCOUT</a> ·
       <a href="https://whtype.info/" target="_blank" rel="noopener">whtype.info</a>
     </div>
   </footer>
@@ -403,7 +405,7 @@ async function typeLine(el, text, charDelay = 14) {
 
 async function runBoot() {
   const lines = document.querySelectorAll('.boot-line');
-  const pauses = [400, 400, 800, 400, 140, 140];
+  const pauses = [400, 400, 400, 800, 400, 140];
   for (let i = 0; i < lines.length; i++) {
     await typeLine(lines[i], lines[i].dataset.text);
     await sleep(pauses[i] ?? 140);
@@ -506,8 +508,16 @@ function computeMood(h) {
 function computeZkill(h) {
   const zk = h?.zkill || '';
   if (!zk) return { text: '—', cls: '' };
-  if (zk.startsWith('error:')) return { text: 'disconnected', cls: 'down' };
-  if (zk === 'init') return { text: 'initializing', cls: 'warn' };
+  if (zk.startsWith('error:')) return { text: 'down', cls: 'down' };
+  if (zk === 'init') return { text: 'stalled', cls: 'warn' };
+  return { text: 'streaming', cls: 'ok' };
+}
+
+function computeEvescout(h) {
+  const es = h?.evescout || '';
+  if (!es) return { text: '—', cls: '' };
+  if (es.startsWith('error:')) return { text: 'disconnected', cls: 'down' };
+  if (es === 'init') return { text: 'initializing', cls: 'warn' };
   return { text: 'connected', cls: 'ok' };
 }
 
@@ -517,19 +527,14 @@ function computeKillfeed(h) {
   return { text: 'online', cls: 'ok' };
 }
 
-function computePilots(h) {
-  const n = h?.clients ?? 0;
-  if (n === 0) return 'nobody (the void stares back)';
-  if (n === 1) return '1 pilot (it\'s probably you)';
-  return `${n} pilots`;
-}
-
 function computeBadge(h, esiStatus) {
   if (!h)        return { text: 'BACKEND UNREACHABLE', cls: 'down' };
   if (!h.ok)     return { text: 'DEGRADED',            cls: 'warn' };
   const zk = h.zkill || '';
   if (zk.startsWith('error:')) return { text: 'POLLER DEGRADED', cls: 'warn' };
   if (esiStatus === 'down')    return { text: 'PARTIALLY DEGRADED', cls: 'warn' };
+  const es = h.evescout || '';
+  if (es.startsWith('error:')) return { text: 'PARTIALLY DEGRADED', cls: 'warn' };
   return { text: 'ALL SYSTEMS NOMINAL', cls: 'ok' };
 }
 
@@ -610,10 +615,11 @@ async function refresh() {
 
   setStat('s-esi', esi === 'ok' ? 'responding' : 'unreachable', esi === 'ok' ? 'ok' : 'down');
 
+  const es = computeEvescout(h);
+  setStat('s-evescout', es.text, es.cls);
+
   const kf = computeKillfeed(h);
   setStat('s-killfeed', kf.text, kf.cls);
-
-  setStat('s-pilots', computePilots(h), '');
 
   setStat('s-uptime', h ? formatDuration(h.uptime) : '—', '');
 
