@@ -313,7 +313,7 @@ function renderTheraConnectionList() {
       theraHoverId = c.id;
       // Reuse the kill-feed locate-trace effect: dashed line from the row to
       // the destination star + additive glow + solid dot in the star's colour.
-      if (dest) locateHover = { el: row, star: dest };
+      if (dest) locateHover = { el: row, star: dest, noTrace: true };
     });
     row.addEventListener('mouseleave', () => {
       if (theraHoverId === c.id) theraHoverId = null;
@@ -2274,24 +2274,26 @@ function draw() {
   }
 
   if (locateHover) {
-    const rect = locateHover.el.getBoundingClientRect();
-    const bx = rect.left + rect.width / 2;
-    const by = rect.top + rect.height / 2;
     const sp = worldToScreen(locateHover.star.x, locateHover.star.y);
     const traceColor = starColor(locateHover.star);
-    const grad = ctx.createLinearGradient(bx, by, sp.x, sp.y);
-    grad.addColorStop(0, 'rgba(0,200,200,0.80)');
-    grad.addColorStop(1, rgba(traceColor, 0.80));
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([5, 5]);
-    ctx.lineDashOffset = 0;
-    ctx.beginPath();
-    ctx.moveTo(bx, by);
-    ctx.lineTo(sp.x, sp.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    if (!locateHover.noTrace) {
+      const rect = locateHover.el.getBoundingClientRect();
+      const bx = rect.left + rect.width / 2;
+      const by = rect.top + rect.height / 2;
+      const grad = ctx.createLinearGradient(bx, by, sp.x, sp.y);
+      grad.addColorStop(0, 'rgba(0,200,200,0.80)');
+      grad.addColorStop(1, rgba(traceColor, 0.80));
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.lineDashOffset = 0;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(sp.x, sp.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
     // Highlight the target star with a subtle glowing dot in its own color.
     ctx.globalCompositeOperation = 'lighter';
     const glow = ctx.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, 14);
