@@ -1441,8 +1441,9 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
 .si-thera-show-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-top: 8px;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
   padding: 4px 2px;
   font-size: 11px;
   color: var(--dim);
@@ -1462,25 +1463,48 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
 }
 .si-thera-row {
   display: grid;
-  grid-template-columns: 48px 14px 1fr auto;
+  grid-template-columns: auto 1fr;
+  align-items: stretch;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: border-color 120ms, background 120ms;
+}
+.si-thera-row:hover {
+  border-color: rgba(0, 200, 200, 0.25);
+}
+.si-thera-type {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 120ms;
+}
+.si-thera-type:hover {
+  background: rgba(0, 200, 200, 0.08);
+  text-decoration: underline;
+}
+.si-thera-nav {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 0;
   color: var(--fg);
   font: inherit;
+  text-align: left;
   cursor: pointer;
-  transition: border-color 120ms, background 120ms;
+  transition: background 120ms;
 }
-.si-thera-row:hover {
+.si-thera-nav:hover {
   background: rgba(0, 200, 200, 0.06);
-  border-color: rgba(0, 200, 200, 0.25);
-}
-.si-thera-type {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
 }
 .si-thera-dir {
   color: var(--dim);

@@ -246,6 +246,9 @@ let showThera  = localStorage.getItem('anoikis-thera')  === '1';
 //   wh_type, max_ship_size, remaining_hours, wh_exits_outward,
 //   in_signature, out_signature, expires_at }.
 let theraConnections = [];
+// id of the Thera connection currently hovered in the sidebar list, or null.
+// When set, drawTheraConnections dims every other arc so the hovered one pops.
+let theraHoverId = null;
 const THERA_SYSTEM_ID = 31000005;
 const THERA_COLORS = {
   frigate: '#1f5eeb',
@@ -277,21 +280,40 @@ function renderTheraConnectionList() {
   const rows = theraConnections.slice().sort((a, b) => a.wh_type.localeCompare(b.wh_type));
   el.innerHTML = '';
   for (const c of rows) {
-    const row = document.createElement('button');
-    row.type = 'button';
+    const row = document.createElement('div');
     row.className = 'si-thera-row';
     row.dataset.systemId = String(c.in_system_id);
     const color = theraSizeColor(c.max_ship_size);
     const dest = starById.get(c.in_system_id);
     const cls = dest ? displayClass(dest) : (c.in_system_class || '');
-    row.innerHTML =
-      `<span class="si-thera-type" style="color:${color}">${escapeHtml(c.wh_type)}</span>`
-      + `<span class="si-thera-dir">${c.wh_exits_outward ? '&gt;' : '&lt;'}</span>`
+
+    const typeLink = document.createElement('a');
+    typeLink.className = 'si-thera-type';
+    typeLink.href = `https://whtype.info?type=${encodeURIComponent(c.wh_type)}`;
+    typeLink.target = '_blank';
+    typeLink.rel = 'noopener noreferrer';
+    typeLink.style.color = color;
+    typeLink.textContent = c.wh_type;
+
+    const navBtn = document.createElement('button');
+    navBtn.type = 'button';
+    navBtn.className = 'si-thera-nav';
+    navBtn.innerHTML =
+      `<span class="si-thera-dir">${c.wh_exits_outward ? '&gt;' : '&lt;'}</span>`
       + `<span class="si-thera-jcode">${escapeHtml(c.in_system_name || '')}</span>`
       + `<span class="si-thera-class">${escapeHtml(cls)}</span>`;
-    row.addEventListener('click', () => {
+    navBtn.addEventListener('click', () => {
       if (dest) selectStar(dest, true);
     });
+
+    row.appendChild(typeLink);
+    row.appendChild(navBtn);
+
+    row.addEventListener('mouseenter', () => { theraHoverId = c.id; });
+    row.addEventListener('mouseleave', () => {
+      if (theraHoverId === c.id) theraHoverId = null;
+    });
+
     el.appendChild(row);
   }
 }
@@ -2002,9 +2024,15 @@ function drawTheraConnections(now) {
     const cy = (tp.y + dp.y) / 2 + ny * bulge;
 
     // Two-state brightness: full above 4h remaining, 50% at/under 4h.
+    // When the user hovers a sidebar row, isolate that arc: hovered = full,
+    // everything else dims to 0.15 regardless of lifetime.
     const hours = c.remaining_hours ?? 12;
+    let alpha = hours > 4 ? 1 : 0.5;
+    if (theraHoverId !== null) {
+      alpha = c.id === theraHoverId ? 1 : 0.15;
+    }
     ctx.strokeStyle = theraSizeColor(c.max_ship_size);
-    ctx.globalAlpha = hours > 4 ? 1 : 0.5;
+    ctx.globalAlpha = alpha;
     ctx.lineWidth = 1.4;
     // Path runs Thera → dest. positive offset shifts dashes toward start
     // (toward Thera); negative toward end (toward dest). Outward = dashes
