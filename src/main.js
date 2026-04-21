@@ -133,8 +133,8 @@ const starByName = new Map(stars.map((s) => [s.name, s]));
 // statics: served from data/wh-statics.json.
 // types:   pulled live from the user's own whtype.info site. Browser respects
 //          the server's 10-minute Cache-Control, which is the effective update
-//          cadence. The GH Pages URL (wh-info.github.io) 301s to whtype.info
-//          without CORS headers on the redirect, so we hit whtype.info directly.
+//          cadence. The GH Pages URL 301s to whtype.info without CORS headers
+//          on the redirect, so we hit whtype.info directly.
 window.WH_STATICS = {};
 window.WH_TYPES   = {};
 fetch('./data/wh-statics.json?v=20260417')
