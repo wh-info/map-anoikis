@@ -1690,18 +1690,18 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
 .intel-section-label {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   font-size: 10px;
   color: var(--dim);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  margin: 12px 0 5px;
+  margin: 12px 0 9px;
 }
 .intel-section-label:first-child { margin-top: 0; }
 .intel-section-title-group {
   display: inline-flex;
   gap: 16px;
-  align-items: baseline;
+  align-items: center;
 }
 .intel-section-title {
   color: var(--fg);
