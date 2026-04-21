@@ -1939,7 +1939,7 @@ function renderPrimeTime(prime, longDays) {
   if (!el) return;
   if (!prime) {
     const tail = longDays === 60
-      ? 'No meaningful traffic in the last 60 days.'
+      ? 'No meaningful pattern to extract.'
       : 'Try 60 days for a wider sample.';
     el.innerHTML = `<span class="ipt-empty">Not enough activity for a reliable peak window. ${tail}</span>`;
     return;
@@ -2001,7 +2001,7 @@ function renderRhythm(rh, longDays) {
   if (!el) return;
   if (!rh) {
     const tail = longDays === 60
-      ? 'No meaningful traffic in the last 60 days.'
+      ? 'No meaningful pattern to extract.'
       : 'Try 60 days for a wider sample.';
     el.innerHTML = `<span class="ir-empty">Not enough activity for a reliable rhythm read. ${tail}</span>`;
     return;
