@@ -1894,7 +1894,7 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
 #intel-rhythm .ir-label {
   color: var(--dim);
   text-transform: uppercase;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.12em;
 }
 #intel-rhythm .ir-value {
