@@ -2194,11 +2194,43 @@ document.getElementById('si-intel').addEventListener('click', () => {
 });
 
 // --- Kill animations --------------------------------------------
+// Ring pulse is sized and timed per kill weight. Tiny stuff (pods, shuttles,
+// fighters) gets a smaller, quicker ring; structures get a bigger, longer
+// one. The multiplier scales both radius and stroke thickness so every ring
+// looks like a true scale copy of the baseline. RING_BUCKETS.medium.dur is
+// the baseline and equals RING_MS.
+const RING_BUCKETS = {
+  tiny:      { mult: 0.90, dur: 1700 },
+  small:     { mult: 0.95, dur: 1850 },
+  medium:    { mult: 1.00, dur: RING_MS },
+  large:     { mult: 1.07, dur: 2150 },
+  huge:      { mult: 1.15, dur: 2300 },
+  structure: { mult: 1.20, dur: 2500 },
+};
+const RING_TINY_SLUGS  = new Set(['capsule', 'shuttle', 'rookie']);
+const RING_SMALL_SLUGS = new Set(['frigate', 'miningfrigate', 'destroyer']);
+const RING_LARGE_SLUGS = new Set(['battleship', 'freighter']);
+const RING_HUGE_SLUGS  = new Set(['capital', 'supercarrier', 'titan']);
+function getRingBucket(kind, typeId) {
+  if (kind === 'structure')  return RING_BUCKETS.structure;
+  if (kind === 'tower')      return RING_BUCKETS.huge;
+  if (kind === 'fighter')    return RING_BUCKETS.tiny;
+  if (kind === 'deployable') return RING_BUCKETS.small;
+  const slug = (window.TYPE_ICONS && typeId != null) ? window.TYPE_ICONS[typeId] : null;
+  if (slug) {
+    if (RING_TINY_SLUGS.has(slug))  return RING_BUCKETS.tiny;
+    if (RING_SMALL_SLUGS.has(slug)) return RING_BUCKETS.small;
+    if (RING_LARGE_SLUGS.has(slug)) return RING_BUCKETS.large;
+    if (RING_HUGE_SLUGS.has(slug))  return RING_BUCKETS.huge;
+  }
+  return RING_BUCKETS.medium;
+}
 const activeAnims = [];
-function triggerKillAnim(star, delayed) {
+function triggerKillAnim(star, delayed, kind, typeId) {
   const now = performance.now();
   if (!delayed) star.flareUntil = now + FLARE_MS;
-  activeAnims.push({ star, t0: now, dur: RING_MS, delayed: !!delayed });
+  const b = getRingBucket(kind, typeId);
+  activeAnims.push({ star, t0: now, dur: b.dur, mult: b.mult, delayed: !!delayed });
 }
 
 // --- Thera connections (Eve-Scout) -------------------------------
@@ -2361,13 +2393,13 @@ function draw() {
     const p = worldToScreen(a.star.x, a.star.y);
     if (p.x < -200 || p.x > cw + 200 || p.y < -200 || p.y > ch + 200) continue;
     const zoomK = clamp(camera.scale, 0.5, 1.8);
-    const radius = (10 + t * 70) * zoomK;
+    const radius = (10 + t * 70) * zoomK * a.mult;
     const alpha = Math.pow(1 - t, 1.6);
     const color = a.delayed
       ? [160, 170, 180]
       : (currentPalette === 'ghost' ? [255, 140, 0] : starColor(a.star));
     ctx.strokeStyle = rgba(color, (a.delayed ? 0.45 : 0.70) * alpha);
-    ctx.lineWidth = (a.delayed ? 1.2 : 1.7) + alpha * (a.delayed ? 0.8 : 1.3);
+    ctx.lineWidth = ((a.delayed ? 1.2 : 1.7) + alpha * (a.delayed ? 0.8 : 1.3)) * a.mult;
     ctx.beginPath();
     ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
     ctx.stroke();
@@ -3627,7 +3659,7 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
 }
 
 function spawnLiveKill(params) {
-  if (params.animated) triggerKillAnim(params.star, !!params.isDelayed);
+  if (params.animated) triggerKillAnim(params.star, !!params.isDelayed, params.kind, params.typeId);
   const el = buildKillElement(params);
   killList.insertBefore(el, killList.firstChild);
   while (killList.children.length > MAX_KILLS) killList.removeChild(killList.lastChild);
@@ -4113,7 +4145,7 @@ function connectKillFeed() {
         if (killViewMode === 'live') {
           handleBackendKill(msg.kill, true);
         } else {
-          if (star) triggerKillAnim(star, !!msg.kill._isDelayed);
+          if (star) triggerKillAnim(star, !!msg.kill._isDelayed, msg.kill.kind, msg.kill.shipTypeId);
           unseenLiveKills++;
           updateHistoryBanner();
           flashRestoreRight();
