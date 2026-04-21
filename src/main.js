@@ -966,7 +966,10 @@ function renderHmShort(counts, rgb, mode) {
   const max = Math.max(...counts, 1);
   const n   = counts.length;
   const rebuilt = ensureGridCells(grid, n, 'intel-hm-cell');
-  if (rebuilt) labels.innerHTML = '';
+  // Labels are rebuilt whenever the grid is rebuilt OR when loadIntel
+  // (re-open) cleared the labels but the grid was preserved.
+  const needLabels = rebuilt || labels.childElementCount === 0;
+  if (needLabels) labels.innerHTML = '';
 
   const now = new Date();
   if (mode === '12d') {
@@ -977,9 +980,11 @@ function renderHmShort(counts, rgb, mode) {
       const dateLbl = `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
       const c = counts[i];
       const cell = grid.children[i];
-      cell.style.background = heatColor(c, max, rgb);
+      cell.style.background = c > 0
+        ? `rgba(232, 212, 77, ${(0.1 + (c / max) * 0.8).toFixed(3)})`
+        : 'rgba(15, 46, 46, 0.35)';
       cell.dataset.tip = `${dayLbl} ${dateLbl}\n${c} kill${c !== 1 ? 's' : ''}`;
-      if (rebuilt) {
+      if (needLabels) {
         const lbl = document.createElement('div');
         lbl.className = 'intel-hlabel';
         lbl.textContent = daysAgo === 0 ? 'Today' : dayLbl;
@@ -997,9 +1002,11 @@ function renderHmShort(counts, rgb, mode) {
     const locH = String(Math.floor(utcToLocalHour(h))).padStart(2, '0');
     const c    = counts[i];
     const cell = grid.children[i];
-    cell.style.background = heatColor(c, max, rgb);
+    cell.style.background = c > 0
+      ? `rgba(232, 212, 77, ${(0.1 + (c / max) * 0.8).toFixed(3)})`
+      : 'rgba(15, 46, 46, 0.35)';
     cell.dataset.tip = `EVE Time  ${hStr}:00\nLocal     ${locH}:00\n${c} kill${c !== 1 ? 's' : ''}`;
-    if (rebuilt) {
+    if (needLabels) {
       const lbl = document.createElement('div');
       lbl.className = 'intel-hlabel';
       const hoursAgo = 23 - i;
@@ -1865,11 +1872,23 @@ function computePrimeTime(matrix, totalKills) {
     if (sum < worst.sum) worst = { sum, start: s };
   }
   const fmt = (h) => String(h).padStart(2, '0') + ':00';
+  const fmtLocal = (h) => String(Math.floor(utcToLocalHour(h))).padStart(2, '0') + ':00';
   const peakHours = [];
   for (let i = 0; i < WIN; i++) peakHours.push((best.start + i) % 24);
+  const peakEnd  = (best.start + WIN) % 24;
+  const quietEnd = (worst.start + WIN) % 24;
   return {
-    peak:  { range: `${fmt(best.start)} – ${fmt((best.start + WIN) % 24)}`, pct: Math.round(best.sum / totalKills * 100), hours: peakHours },
-    quiet: { range: `${fmt(worst.start)} – ${fmt((worst.start + WIN) % 24)}`, pct: Math.round(worst.sum / totalKills * 100) },
+    peak: {
+      range: `${fmt(best.start)} – ${fmt(peakEnd)}`,
+      local: `Local  ${fmtLocal(best.start)} – ${fmtLocal(peakEnd)}`,
+      pct:   Math.round(best.sum / totalKills * 100),
+      hours: peakHours,
+    },
+    quiet: {
+      range: `${fmt(worst.start)} – ${fmt(quietEnd)}`,
+      local: `Local  ${fmtLocal(worst.start)} – ${fmtLocal(quietEnd)}`,
+      pct:   Math.round(worst.sum / totalKills * 100),
+    },
   };
 }
 
@@ -1883,12 +1902,12 @@ function renderPrimeTime(prime) {
   el.innerHTML = `
     <div class="ipt-row">
       <span class="ipt-label">Prime</span>
-      <span class="ipt-value">${prime.peak.range} EVE TIME</span>
+      <span class="ipt-value" data-tip="${prime.peak.local}">${prime.peak.range} EVE TIME</span>
       <span class="ipt-pct">· ${prime.peak.pct}% of kills</span>
     </div>
     <div class="ipt-row ipt-quiet">
       <span class="ipt-label">Dead</span>
-      <span class="ipt-value">${prime.quiet.range} EVE TIME</span>
+      <span class="ipt-value" data-tip="${prime.quiet.local}">${prime.quiet.range} EVE TIME</span>
       <span class="ipt-pct">· ${prime.quiet.pct}% of kills</span>
     </div>`;
 }

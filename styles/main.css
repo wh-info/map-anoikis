@@ -1782,6 +1782,20 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
 
 #intel-parties-section { margin-top: 18px; }
 
+/* Heatmap box wrapper — darker background so the gradient cells read cleanly */
+.intel-hm-box {
+  padding: 8px 10px 6px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+/* Top hour-label row for the 30/60D heatmap: margin flipped to sit above grid */
+.intel-hlabels--top {
+  margin-top: 0;
+  margin-bottom: 3px;
+}
+
 /* 24h heatmap */
 #intel-hm24 {
   display: flex;
@@ -1799,7 +1813,9 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding-top: 0;
+  /* Matches the top hour-label row height (9px font + 3px margin-bottom)
+     so day labels still line up with grid rows below the top hour labels. */
+  padding-top: 12px;
 }
 .intel-dlabel {
   height: 18px;
