@@ -2200,12 +2200,12 @@ document.getElementById('si-intel').addEventListener('click', () => {
 // looks like a true scale copy of the baseline. RING_BUCKETS.medium.dur is
 // the baseline and equals RING_MS.
 const RING_BUCKETS = {
-  tiny:      { mult: 0.75, dur: 1700 },
-  small:     { mult: 0.88, dur: 1850 },
+  tiny:      { mult: 0.80, dur: 1700 },
+  small:     { mult: 0.90, dur: 1850 },
   medium:    { mult: 1.00, dur: RING_MS },
-  large:     { mult: 1.07, dur: 2150 },
-  huge:      { mult: 1.15, dur: 2300 },
-  structure: { mult: 1.20, dur: 2500 },
+  large:     { mult: 1.08, dur: 2150 },
+  huge:      { mult: 1.17, dur: 2300 },
+  structure: { mult: 1.25, dur: 2500 },
 };
 const RING_TINY_SLUGS  = new Set(['capsule', 'shuttle', 'rookie']);
 const RING_SMALL_SLUGS = new Set(['frigate', 'miningfrigate', 'destroyer']);
