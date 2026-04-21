@@ -262,30 +262,61 @@ function theraSizeColor(size) {
   return THERA_COLORS[size] || THERA_DEFAULT_COLOR;
 }
 
-// Re-render the Thera connection list in the system-info panel. Only has any
-// effect when Thera is the selected system; otherwise the container is empty
-// but hidden by the parent `#si-thera-links` block. Called from selectStar
-// (on selection change) and from the WS handler (on poll update).
+// Re-render the Thera connection list in the system-info panel. Two modes:
+// - Thera selected: lists every active Eve-Scout connection.
+// - Non-Thera system selected: if that system is the far end of an active
+//   connection, renders a reciprocal row pointing back to Thera (same wh_type,
+//   flipped arrow). Otherwise the wrapper hides entirely.
+// Owns the visibility of `#si-thera-links` so it stays correct across both
+// selection changes and live WS pushes. Called from selectStar (on selection
+// change) and from the WS handler (on poll update).
 function renderTheraConnectionList() {
   const el = document.getElementById('si-thera-connections');
-  if (!el) return;
-  if (!selected || selected.whClass !== 'Thera') {
+  const wrap = document.getElementById('si-thera-links');
+  if (!el || !wrap) return;
+  if (!selected) {
+    wrap.style.display = 'none';
     el.innerHTML = '';
     return;
   }
-  if (!theraConnections.length) {
+  const isThera = selected.whClass === 'Thera';
+  const matching = isThera
+    ? theraConnections
+    : theraConnections.filter(c => c.in_system_id === selected.id);
+  if (!isThera && !matching.length) {
+    wrap.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  wrap.style.display = '';
+  if (!matching.length) {
     el.innerHTML = '<div class="si-thera-empty">No active connections</div>';
     return;
   }
-  const rows = theraConnections.slice().sort((a, b) => a.wh_type.localeCompare(b.wh_type));
+  const rows = matching.slice().sort((a, b) => a.wh_type.localeCompare(b.wh_type));
+  const theraStar = isThera ? null : starById.get(THERA_SYSTEM_ID);
   el.innerHTML = '';
   for (const c of rows) {
     const row = document.createElement('div');
     row.className = 'si-thera-row';
-    row.dataset.systemId = String(c.in_system_id);
     const color = theraSizeColor(c.max_ship_size);
-    const dest = starById.get(c.in_system_id);
-    const cls = dest ? displayClass(dest) : (c.in_system_class || '');
+    // Nav jumps to whichever end of the connection isn't currently selected.
+    const dest = isThera ? starById.get(c.in_system_id) : theraStar;
+    row.dataset.systemId = String(dest ? dest.id : '');
+
+    let otherName, otherClass;
+    if (isThera) {
+      const destStar = starById.get(c.in_system_id);
+      otherName = c.in_system_name || '';
+      otherClass = destStar ? displayClass(destStar) : (c.in_system_class || '');
+    } else {
+      otherName = 'Thera';
+      otherClass = theraStar ? displayClass(theraStar) : 'C12';
+    }
+    // Arrow always points away from the panel's system. The connection's
+    // `wh_exits_outward` is recorded from Thera's frame, so the non-Thera
+    // panel sees the inverse.
+    const arrowRight = isThera ? c.wh_exits_outward : !c.wh_exits_outward;
 
     const typeLink = document.createElement('a');
     typeLink.className = 'si-thera-type';
@@ -299,9 +330,9 @@ function renderTheraConnectionList() {
     navBtn.type = 'button';
     navBtn.className = 'si-thera-nav';
     navBtn.innerHTML =
-      `<span class="si-thera-dir">${c.wh_exits_outward ? '&gt;' : '&lt;'}</span>`
-      + `<span class="si-thera-jcode">${escapeHtml(c.in_system_name || '')}</span>`
-      + `<span class="si-thera-class">${escapeHtml(cls)}</span>`;
+      `<span class="si-thera-dir">${arrowRight ? '&gt;' : '&lt;'}</span>`
+      + `<span class="si-thera-jcode">${escapeHtml(otherName)}</span>`
+      + `<span class="si-thera-class">${escapeHtml(otherClass)}</span>`;
     // Clear hover state on commit — without this the cursor is still
     // physically over the row after click, so `theraHoverId` / `locateHover`
     // stay set and the arc + star glow linger until the user manually moves
@@ -2932,7 +2963,6 @@ function selectStar(s, focus) {
     stEl.appendChild(chip);
   }
   document.getElementById('si-ember-info').style.display = s.name === 'J101145' ? '' : 'none';
-  document.getElementById('si-thera-links').style.display = s.whClass === 'Thera' ? '' : 'none';
   renderTheraConnectionList();
   if (focus) {
     flyTo(s.x, s.y, 10, 520);
