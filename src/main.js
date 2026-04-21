@@ -1020,10 +1020,11 @@ function renderHmShort(counts, rgb, mode) {
 }
 
 function renderHm60(matrix60, rgb, peakHours) {
-  const grid     = document.getElementById('intel-hm60');
-  const labels   = document.getElementById('intel-hm60-labels');
-  const labelsBt = document.getElementById('intel-hm60-labels-bottom');
-  const dlbls    = document.getElementById('intel-dlabels');
+  const grid      = document.getElementById('intel-hm60');
+  const labels    = document.getElementById('intel-hm60-labels');
+  const labelsBt  = document.getElementById('intel-hm60-labels-bottom');
+  const dlbls     = document.getElementById('intel-dlabels');
+  const dlblsRt   = document.getElementById('intel-dlabels-right');
   const flatMax = Math.max(...matrix60.flat(), 1);
 
   // Build the 7 row containers + day labels + hour labels once; on subsequent
@@ -1033,11 +1034,18 @@ function renderHm60(matrix60, rgb, peakHours) {
   if (rebuilt) {
     grid.innerHTML = labels.innerHTML = dlbls.innerHTML = '';
     if (labelsBt) labelsBt.innerHTML = '';
+    if (dlblsRt)  dlblsRt.innerHTML = '';
     for (const dow of DAY_ORDER) {
       const dlbl = document.createElement('div');
       dlbl.className = 'intel-dlabel';
       dlbl.textContent = DAY_LABELS[dow];
       dlbls.appendChild(dlbl);
+      if (dlblsRt) {
+        const dlblR = document.createElement('div');
+        dlblR.className = 'intel-dlabel';
+        dlblR.textContent = DAY_LABELS[dow];
+        dlblsRt.appendChild(dlblR);
+      }
       const row = document.createElement('div');
       row.className = 'intel-hm60-row';
       for (let hr = 0; hr < 24; hr++) {
@@ -1050,11 +1058,13 @@ function renderHm60(matrix60, rgb, peakHours) {
     for (let hr = 0; hr < 24; hr++) {
       const lbl = document.createElement('div');
       lbl.className = 'intel-hlabel';
+      lbl.style.textAlign = 'center';
       lbl.textContent = (hr % 6 === 0) ? String(hr).padStart(2, '0') : '';
       labels.appendChild(lbl);
       if (labelsBt) {
         const lbl2 = document.createElement('div');
         lbl2.className = 'intel-hlabel';
+        lbl2.style.textAlign = 'center';
         lbl2.textContent = lbl.textContent;
         labelsBt.appendChild(lbl2);
       }

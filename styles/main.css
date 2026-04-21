@@ -1818,17 +1818,23 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   padding-top: 12px;
 }
 .intel-dlabel {
-  height: 18px;
-  line-height: 18px;
+  height: 22px;
   font-size: 9px;
   color: var(--dim);
   width: 26px;
-  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   padding-right: 3px;
+}
+.intel-dlabels--right .intel-dlabel {
+  justify-content: flex-start;
+  padding-right: 0;
+  padding-left: 3px;
 }
 .intel-hm60-right { flex: 1; min-width: 0; }
 #intel-hm60 { display: flex; flex-direction: column; gap: 2px; }
-.intel-hm60-row { display: flex; gap: 2px; height: 18px; }
+.intel-hm60-row { display: flex; gap: 2px; height: 22px; }
 
 /* Shared heatmap cell */
 .intel-hm-cell {
