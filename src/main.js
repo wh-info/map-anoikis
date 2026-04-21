@@ -1903,11 +1903,14 @@ function computePrimeTime(matrix, totalKills) {
   };
 }
 
-function renderPrimeTime(prime) {
+function renderPrimeTime(prime, longDays) {
   const el = document.getElementById('intel-prime-time');
   if (!el) return;
   if (!prime) {
-    el.innerHTML = '<span class="ipt-empty">Not enough activity in this window to infer prime time.</span>';
+    const tail = longDays === 60
+      ? 'No meaningful traffic in the last 60 days.'
+      : 'Try 60 days for a wider sample.';
+    el.innerHTML = `<span class="ipt-empty">Not enough activity for a reliable peak window. ${tail}</span>`;
     return;
   }
   el.innerHTML = `
@@ -1985,7 +1988,7 @@ function renderIntelAll() {
   const longDays = intelRangeLong === '60d' ? 60 : 30;
   const aLong = intelAggregateLong(kills, longDays);
   const prime = computePrimeTime(aLong.matrix, aLong.killCount);
-  renderPrimeTime(prime);
+  renderPrimeTime(prime, longDays);
   renderHm60(aLong.matrix, rgb, prime ? prime.peak.hours : null);
   renderRhythm(computeRhythm(kills, longDays));
   document.getElementById('intel-count-60d').textContent =
