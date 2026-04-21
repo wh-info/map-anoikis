@@ -3,11 +3,10 @@
 Interactive 2D map of EVE Online Anoikis (wormhole space) with a live zKillboard feed overlay.
 
 Live: [anoikis.info](https://anoikis.info)
-Status: [anoikis.info/status.html](https://anoikis.info/status.html)
 
 ## What it does
 
-- Pan/zoom map of every Anoikis system (~2,600 J-codes, Thera, Shattered, Drifters)
+- Pan/zoom map of every Anoikis system (2,604 wormhole systems)
 - Live kill feed streamed from zKillboard, with ring-pulse + flare animations on the matching star
 - System info panel: class, region, constellation, effect, statics
 - Intel panel: 24h / 12d / 30d / 60d heatmaps, prime-time window, activity rhythm, top corps & alliances
