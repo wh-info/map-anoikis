@@ -1009,6 +1009,7 @@ function renderHmShort(counts, rgb, mode) {
     if (needLabels) {
       const lbl = document.createElement('div');
       lbl.className = 'intel-hlabel';
+      lbl.style.textAlign = 'center';
       const hoursAgo = 23 - i;
       if (hoursAgo === 0) lbl.textContent = 'now';
       else if (hoursAgo % 6 === 0) lbl.textContent = `-${hoursAgo}h`;
