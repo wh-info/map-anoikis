@@ -1011,10 +1011,11 @@ function renderHmShort(counts, rgb, mode) {
   }
 }
 
-function renderHm60(matrix60, rgb) {
-  const grid   = document.getElementById('intel-hm60');
-  const labels = document.getElementById('intel-hm60-labels');
-  const dlbls  = document.getElementById('intel-dlabels');
+function renderHm60(matrix60, rgb, peakHours) {
+  const grid     = document.getElementById('intel-hm60');
+  const labels   = document.getElementById('intel-hm60-labels');
+  const labelsBt = document.getElementById('intel-hm60-labels-bottom');
+  const dlbls    = document.getElementById('intel-dlabels');
   const flatMax = Math.max(...matrix60.flat(), 1);
 
   // Build the 7 row containers + day labels + hour labels once; on subsequent
@@ -1023,6 +1024,7 @@ function renderHm60(matrix60, rgb) {
   const rebuilt = grid.childElementCount !== 7;
   if (rebuilt) {
     grid.innerHTML = labels.innerHTML = dlbls.innerHTML = '';
+    if (labelsBt) labelsBt.innerHTML = '';
     for (const dow of DAY_ORDER) {
       const dlbl = document.createElement('div');
       dlbl.className = 'intel-dlabel';
@@ -1042,8 +1044,16 @@ function renderHm60(matrix60, rgb) {
       lbl.className = 'intel-hlabel';
       lbl.textContent = (hr % 6 === 0) ? String(hr).padStart(2, '0') : '';
       labels.appendChild(lbl);
+      if (labelsBt) {
+        const lbl2 = document.createElement('div');
+        lbl2.className = 'intel-hlabel';
+        lbl2.textContent = lbl.textContent;
+        labelsBt.appendChild(lbl2);
+      }
     }
   }
+
+  const peakSet = peakHours && peakHours.length ? new Set(peakHours) : null;
 
   DAY_ORDER.forEach((dow, ri) => {
     const row = grid.children[ri];
@@ -1052,7 +1062,13 @@ function renderHm60(matrix60, rgb) {
       const hStr = String(hr).padStart(2, '0');
       const locH = String(Math.floor(utcToLocalHour(hr))).padStart(2, '0');
       const cell = row.children[hr];
-      cell.style.background = heatColor(c, flatMax, rgb);
+      if (c > 0) {
+        const a = 0.08 + (c / flatMax) * 0.82;
+        cell.style.background = `rgba(232, 212, 77, ${a.toFixed(3)})`;
+      } else {
+        cell.style.background = 'rgba(15, 46, 46, 0.35)';
+      }
+      cell.classList.toggle('peak-col', !!(peakSet && peakSet.has(hr)));
       cell.dataset.tip =
         `EVE Time  ${hStr}:00\nLocal     ${locH}:00\n${DAY_LABELS[dow]} — ${c} kill${c !== 1 ? 's' : ''}`;
     }
@@ -1831,6 +1847,104 @@ function renderLiveness() {
   textEl.innerHTML = `Last kill: <strong>${fmtLiveAge(latestTs)}</strong>`;
 }
 
+// 4h sliding-window peak/dead range derived from the 7×24 matrix. Returns
+// null when the sample is too small to be meaningful (matches the preview's
+// 12-kill threshold).
+function computePrimeTime(matrix, totalKills) {
+  if (totalKills < 12) return null;
+  const buckets = new Array(24).fill(0);
+  for (let d = 0; d < 7; d++)
+    for (let h = 0; h < 24; h++) buckets[h] += matrix[d][h];
+  const WIN = 4;
+  let best  = { sum: -1, start: 0 };
+  let worst = { sum: Infinity, start: 0 };
+  for (let s = 0; s < 24; s++) {
+    let sum = 0;
+    for (let i = 0; i < WIN; i++) sum += buckets[(s + i) % 24];
+    if (sum > best.sum)  best  = { sum, start: s };
+    if (sum < worst.sum) worst = { sum, start: s };
+  }
+  const fmt = (h) => String(h).padStart(2, '0') + ':00';
+  const peakHours = [];
+  for (let i = 0; i < WIN; i++) peakHours.push((best.start + i) % 24);
+  return {
+    peak:  { range: `${fmt(best.start)} – ${fmt((best.start + WIN) % 24)}`, pct: Math.round(best.sum / totalKills * 100), hours: peakHours },
+    quiet: { range: `${fmt(worst.start)} – ${fmt((worst.start + WIN) % 24)}`, pct: Math.round(worst.sum / totalKills * 100) },
+  };
+}
+
+function renderPrimeTime(prime) {
+  const el = document.getElementById('intel-prime-time');
+  if (!el) return;
+  if (!prime) {
+    el.innerHTML = '<span class="ipt-empty">Not enough activity in this window to infer prime time.</span>';
+    return;
+  }
+  el.innerHTML = `
+    <div class="ipt-row">
+      <span class="ipt-label">Prime</span>
+      <span class="ipt-value">${prime.peak.range} EVE TIME</span>
+      <span class="ipt-pct">· ${prime.peak.pct}% of kills</span>
+    </div>
+    <div class="ipt-row ipt-quiet">
+      <span class="ipt-label">Dead</span>
+      <span class="ipt-value">${prime.quiet.range} EVE TIME</span>
+      <span class="ipt-pct">· ${prime.quiet.pct}% of kills</span>
+    </div>`;
+}
+
+// Avg kills/day, longest calendar-day quiet streak, hottest weekday.
+// Walks the filtered kill set once to build a dayKey set + weekday histogram,
+// then scans the span day-by-day to find the longest gap.
+function computeRhythm(kills, days) {
+  const filtered = kills.filter(passesIntelFilter);
+  const nowMs  = Date.now();
+  const cutoff = nowMs - days * INTEL_DAY_MS;
+  const scoped = filtered.filter((k) => {
+    const ts = new Date(k.killmail_time).getTime();
+    return Number.isFinite(ts) && ts >= cutoff;
+  });
+  if (scoped.length < 5) return null;
+
+  const byDay = new Set();
+  const byDow = new Array(7).fill(0);
+  for (const k of scoped) {
+    const d = new Date(new Date(k.killmail_time).getTime());
+    byDay.add(`${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`);
+    byDow[d.getUTCDay()]++;
+  }
+  let longestQuiet = 0, run = 0;
+  const startTs = Math.floor(cutoff / 1000);
+  const endTs   = Math.floor(nowMs / 1000);
+  for (let t = startTs; t <= endTs; t += 86400) {
+    const d = new Date(t * 1000);
+    const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+    if (byDay.has(key)) run = 0;
+    else { run++; if (run > longestQuiet) longestQuiet = run; }
+  }
+  let hotDow = 0;
+  for (let i = 1; i < 7; i++) if (byDow[i] > byDow[hotDow]) hotDow = i;
+  return {
+    avgPerDay:   scoped.length / days,
+    longestQuiet,
+    hotDow:      DAY_LABELS[hotDow],
+    hotDowCount: byDow[hotDow],
+  };
+}
+
+function renderRhythm(rh) {
+  const el = document.getElementById('intel-rhythm');
+  if (!el) return;
+  if (!rh) {
+    el.innerHTML = '<span class="ir-empty">Not enough activity to show rhythm.</span>';
+    return;
+  }
+  el.innerHTML = `
+    <div class="ir-cell"><span class="ir-label">Avg</span><span class="ir-value">${rh.avgPerDay.toFixed(1)}/day</span></div>
+    <div class="ir-cell"><span class="ir-label">Longest quiet</span><span class="ir-value">${rh.longestQuiet}d</span></div>
+    <div class="ir-cell"><span class="ir-label">Hottest day</span><span class="ir-value">${rh.hotDow} · ${rh.hotDowCount} kill${rh.hotDowCount !== 1 ? 's' : ''}</span></div>`;
+}
+
 function renderIntelAll() {
   const kills = intelCurrentKills;
   const rgb   = intelCurrentRgb;
@@ -1840,7 +1954,10 @@ function renderIntelAll() {
   renderHmShort(short.counts, rgb, intelRangeShort);
   const longDays = intelRangeLong === '60d' ? 60 : 30;
   const aLong = intelAggregateLong(kills, longDays);
-  renderHm60(aLong.matrix, rgb);
+  const prime = computePrimeTime(aLong.matrix, aLong.killCount);
+  renderPrimeTime(prime);
+  renderHm60(aLong.matrix, rgb, prime ? prime.peak.hours : null);
+  renderRhythm(computeRhythm(kills, longDays));
   document.getElementById('intel-count-60d').textContent =
     `${aLong.killCount} kill${aLong.killCount !== 1 ? 's' : ''}`;
   // Parties window follows whichever view is active so the corp/alli list
@@ -1927,6 +2044,8 @@ async function loadIntel(star, token) {
   // will skip repopulating and leave the day column empty on every re-open.
   document.getElementById('intel-count-24h').textContent = '';
   document.getElementById('intel-count-60d').textContent = '';
+  document.getElementById('intel-prime-time').innerHTML = '';
+  document.getElementById('intel-rhythm').innerHTML = '';
   partiesEl.style.display = '';
   renderPartiesColumns();
 
