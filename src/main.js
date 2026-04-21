@@ -1965,11 +1965,14 @@ function computeRhythm(kills, days) {
   };
 }
 
-function renderRhythm(rh) {
+function renderRhythm(rh, longDays) {
   const el = document.getElementById('intel-rhythm');
   if (!el) return;
   if (!rh) {
-    el.innerHTML = '<span class="ir-empty">Not enough activity to show rhythm.</span>';
+    const tail = longDays === 60
+      ? 'No meaningful traffic in the last 60 days.'
+      : 'Try 60 days for a wider sample.';
+    el.innerHTML = `<span class="ir-empty">Not enough activity for a reliable rhythm read. ${tail}</span>`;
     return;
   }
   el.innerHTML = `
@@ -1990,7 +1993,7 @@ function renderIntelAll() {
   const prime = computePrimeTime(aLong.matrix, aLong.killCount);
   renderPrimeTime(prime, longDays);
   renderHm60(aLong.matrix, rgb, prime ? prime.peak.hours : null);
-  renderRhythm(computeRhythm(kills, longDays));
+  renderRhythm(computeRhythm(kills, longDays), longDays);
   document.getElementById('intel-count-60d').textContent =
     `${aLong.killCount} kill${aLong.killCount !== 1 ? 's' : ''}`;
   // Parties window follows whichever view is active so the corp/alli list
