@@ -2007,13 +2007,13 @@ function buildRecentCard({ k, ts }) {
         <div class="intel-recent-party-info">
           <div class="intel-recent-party-label">Victim</div>
           <div class="intel-recent-party-ship">
-            <span class="name" data-role="victim-ship">${escapeHtml(typeNameFor(victimShipId))}</span>
+            <span class="name" data-role="victim-ship" title="${escapeHtml(typeNameFor(victimShipId))}">${escapeHtml(typeNameFor(victimShipId))}</span>
             <span class="sep-dot">·</span>
             <span class="isk">${isk}</span>
             ${implant}
           </div>
-          <div class="intel-recent-party-pilot" data-role="victim-pilot">${k.isNpc ? 'NPC' : 'Loading…'}</div>
-          <div class="intel-recent-party-corp"  data-role="victim-corp">${k.isNpc ? '' : 'Loading…'}</div>
+          <div class="intel-recent-party-pilot" data-role="victim-pilot" title="${k.isNpc ? 'NPC' : ''}">${k.isNpc ? 'NPC' : 'Loading…'}</div>
+          <div class="intel-recent-party-corp"  data-role="victim-corp" title="">${k.isNpc ? '' : 'Loading…'}</div>
         </div>
       </div>
       <div class="intel-recent-arrow">
@@ -2024,10 +2024,10 @@ function buildRecentCard({ k, ts }) {
         <div class="intel-recent-party-info">
           <div class="intel-recent-party-label" data-role="fb-label">${fb && !fb.character_id ? 'NPC KILL' : 'Final blow'}</div>
           <div class="intel-recent-party-ship">
-            <span class="name" data-role="fb-ship">${escapeHtml(typeNameFor(fbShipId))}</span>
+            <span class="name" data-role="fb-ship" title="${escapeHtml(typeNameFor(fbShipId))}">${escapeHtml(typeNameFor(fbShipId))}</span>
           </div>
-          <div class="intel-recent-party-pilot" data-role="fb-pilot">${fb && !fb.character_id ? 'o7' : (fb?.character_id ? 'Loading…' : '—')}</div>
-          <div class="intel-recent-party-corp"  data-role="fb-corp">${fb?.corporation_id && fb?.character_id ? 'Loading…' : ''}</div>
+          <div class="intel-recent-party-pilot" data-role="fb-pilot" title="${fb && !fb.character_id ? 'o7' : ''}">${fb && !fb.character_id ? 'o7' : (fb?.character_id ? 'Loading…' : '—')}</div>
+          <div class="intel-recent-party-corp"  data-role="fb-corp" title="">${fb?.corporation_id && fb?.character_id ? 'Loading…' : ''}</div>
         </div>
       </div>
       <a class="intel-recent-zkb" href="${zkbHref}" target="_blank" rel="noopener" aria-label="Open on zKillboard">
@@ -2036,6 +2036,16 @@ function buildRecentCard({ k, ts }) {
     </div>
   `;
 
+  // Sync title→textContent after any async fill so hover on truncated rows
+  // reveals the full name. Ship-name resolves below don't expose a completion
+  // hook, so schedule a microtask + a delayed sweep covering cache hits and
+  // ESI fetches alike.
+  const syncTitles = () => {
+    card.querySelectorAll('[data-role]').forEach((el) => {
+      if (el.textContent) el.setAttribute('title', el.textContent);
+    });
+  };
+
   // Async: ship-name fill if SDE didn't have it (covers types added post-SDE).
   if (victimShipId != null && !(window.TYPE_NAMES && window.TYPE_NAMES[victimShipId])) {
     resolveType(victimShipId, card.querySelector('[data-role="victim-ship"]'), null);
@@ -2043,6 +2053,8 @@ function buildRecentCard({ k, ts }) {
   if (fbShipId != null && !(window.TYPE_NAMES && window.TYPE_NAMES[fbShipId])) {
     resolveType(fbShipId, card.querySelector('[data-role="fb-ship"]'), null);
   }
+  queueMicrotask(syncTitles);
+  setTimeout(syncTitles, 600);
 
   // Async: pilot + corp names.
   const token = intelCurrentToken;
@@ -2051,11 +2063,13 @@ function buildRecentCard({ k, ts }) {
     const el = card.querySelector(sel);
     if (!el) return;
     const cached = nameCache.get(kind + ':' + id);
-    if (cached != null) { el.textContent = cached; return; }
+    if (cached != null) { el.textContent = cached; el.title = cached; return; }
     resolveEntityName(kind, id).then((name) => {
       if (token !== intelCurrentToken) return;
       if (!el.isConnected) return;
-      el.textContent = name || (kind === 'char' ? 'Unknown pilot' : 'Unknown corp');
+      const text = name || (kind === 'char' ? 'Unknown pilot' : 'Unknown corp');
+      el.textContent = text;
+      el.title = text;
     });
   };
   fillName('char', k.victim?.character_id,    '[data-role="victim-pilot"]');
