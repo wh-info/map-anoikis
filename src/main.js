@@ -4083,7 +4083,11 @@ function pushToBuffer(kill, star) {
 function renderHistoryPage() {
   // History = kills older than what's currently in the live list.
   // Skip the newest MAX_KILLS items (those are in the live view).
-  const historyItems = killBuffer.slice(MAX_KILLS);
+  // Within history, sort by killmail timestamp descending — this undoes any
+  // out-of-order insertion caused by zKB catching up on delayed kills in bulk.
+  const historyItems = killBuffer
+    .slice(MAX_KILLS)
+    .sort((a, b) => (b.kill.ts || 0) - (a.kill.ts || 0));
   const totalPages = Math.max(1, Math.ceil(historyItems.length / HISTORY_PAGE_SIZE));
   if (historyPage >= totalPages) historyPage = totalPages - 1;
   if (historyPage < 0) historyPage = 0;
