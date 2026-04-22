@@ -12,7 +12,7 @@
 <meta name="description" content="Interactive map of Anoikis - Eve Online wormhole space.">
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
-<link rel="stylesheet" href="./styles/main.css?v=20260422b" />
+<link rel="stylesheet" href="./styles/main.css?v=20260422c" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="57ac0157-6021-4a9e-b0a0-73fddc9eb45d"></script>
 </head>
 <body>
@@ -150,13 +150,13 @@
   <div id="intel-body">
     <div class="intel-section-label intel-view-toggle-row">
       <div class="intel-view-toggle" data-view-toggle="1">
-        <button class="intel-view-btn" data-view="recent">Latest 24H</button>
-        <button class="intel-view-btn on" data-view="heatmap">Heatmap</button>
+        <button class="intel-view-btn on" data-view="recent">Latest 24H</button>
+        <button class="intel-view-btn" data-view="heatmap">Heatmap</button>
         <button class="intel-view-btn" data-view="scatter">Kill Scatter</button>
       </div>
     </div>
 
-    <div id="intel-view-recent" style="display:none;">
+    <div id="intel-view-recent">
       <div class="intel-recent-ribbon">
         <div class="intel-recent-ribbon-title">
           <span>timeline</span>
@@ -182,7 +182,7 @@
       </div>
     </div>
 
-    <div id="intel-view-heatmap">
+    <div id="intel-view-heatmap" style="display:none;">
       <div class="intel-section-label">
         <div class="intel-section-title-group">
           <span class="intel-section-title">Recent Activity</span>
@@ -455,6 +455,6 @@
   </button>
 </nav>
 
-<script src="./src/main.js?v=20260422g"></script>
+<script src="./src/main.js?v=20260422i"></script>
 </body>
 </html>

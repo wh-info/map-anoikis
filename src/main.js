@@ -1415,7 +1415,7 @@ function intelAggregateParties(kills, days) {
 // Kill scatter view. Each kill = one dot. X = time, Y = log10(ISK value),
 // color = victim ship class. Reveals system character at a glance — ratter
 // farm vs. brawl hub vs. capital killing field.
-let intelView         = 'heatmap'; // 'heatmap' | 'scatter'
+let intelView         = 'recent'; // 'recent' | 'heatmap' | 'scatter'
 let intelScatterRange = '30d';     // '30d' | '60d'
 let scatterHits       = [];        // {x, y, k, color, label} — rebuilt each draw
 let intelEntityFilter = null;      // { kind: 'corp'|'alli', id }
@@ -2031,7 +2031,7 @@ function buildRecentCard({ k, ts }) {
         </div>
       </div>
       <a class="intel-recent-zkb" href="${zkbHref}" target="_blank" rel="noopener" aria-label="Open on zKillboard">
-        <svg viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.4L10.4 15 9 13.6 17.6 5H14V3zM5 5h6v2H5v12h12v-6h2v8H3V5h2z"/></svg>
+        <img src="./img/graphic/zkb.svg" class="zkb-img" alt="" aria-hidden="true" />
       </a>
     </div>
   `;
@@ -2464,6 +2464,7 @@ function openIntel(star) {
   document.getElementById('intel-loading').style.display = '';
   document.getElementById('intel-body').style.display    = 'none';
   document.getElementById('si-intel').classList.add('active');
+  if (intelView === 'recent') startRecentAgeTick();
   const token = ++intelLoadToken;
   loadIntel(star, token);
 }
