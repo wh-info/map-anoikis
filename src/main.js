@@ -3736,8 +3736,12 @@ async function resolveType(typeId, nameEl, iconEl) {
 
   if (esiTypeCache.has(typeId)) {
     const c = esiTypeCache.get(typeId);
-    if (nameEl && !localName && nameEl.isConnected) nameEl.textContent = c.name;
-    if (iconEl && !localIcon && c.iconSlug && iconEl.isConnected) iconEl.src = iconSrc(c.iconSlug);
+    // Cache-hit is synchronous — caller often invokes us before appending the
+    // card to the DOM, so no isConnected guard here (unlike the async fetch
+    // path below). If the element is detached, it'll still get the right text
+    // when it's appended a moment later.
+    if (nameEl && !localName) nameEl.textContent = c.name;
+    if (iconEl && !localIcon && c.iconSlug) iconEl.src = iconSrc(c.iconSlug);
     return;
   }
   if (nameEl && !localName) nameEl.textContent = 'Type ' + typeId;
