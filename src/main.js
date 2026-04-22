@@ -2730,7 +2730,7 @@ function draw() {
     const color = a.delayed
       ? [160, 170, 180]
       : (currentPalette === 'ghost' ? [255, 140, 0] : starColor(a.star));
-    ctx.strokeStyle = rgba(color, (a.delayed ? 0.45 : 0.70) * alpha);
+    ctx.strokeStyle = rgba(color, (a.delayed ? 0.55 : 0.80) * alpha);
     ctx.lineWidth = ((a.delayed ? 1.2 : 1.7) + alpha * (a.delayed ? 0.8 : 1.3)) * a.mult;
     ctx.beginPath();
     ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
