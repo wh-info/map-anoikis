@@ -1759,6 +1759,7 @@ function setIntelView(view) {
   document.getElementById('intel-view-heatmap').style.display = view === 'heatmap' ? '' : 'none';
   document.getElementById('intel-view-scatter').style.display = view === 'scatter' ? '' : 'none';
   document.getElementById('intel-view-recent').style.display  = view === 'recent'  ? '' : 'none';
+  document.getElementById('intel-parties-section').style.display = view === 'recent' ? 'none' : '';
   document.getElementById('panel-intel').classList.toggle('intel-view-scatter', view === 'scatter');
   document.querySelectorAll('[data-view-toggle] button').forEach((b) =>
     b.classList.toggle('on', b.dataset.view === view));
@@ -2021,12 +2022,12 @@ function buildRecentCard({ k, ts }) {
       <div class="intel-recent-party">
         <div class="intel-recent-party-img" ${fbImg ? `style="background-image:url('${fbImg}')"` : ''}></div>
         <div class="intel-recent-party-info">
-          <div class="intel-recent-party-label">Final blow</div>
+          <div class="intel-recent-party-label" data-role="fb-label">${fb && !fb.character_id ? 'NPC KILL' : 'Final blow'}</div>
           <div class="intel-recent-party-ship">
             <span class="name" data-role="fb-ship">${escapeHtml(typeNameFor(fbShipId))}</span>
           </div>
-          <div class="intel-recent-party-pilot" data-role="fb-pilot">${fb?.character_id ? 'Loading…' : (fb ? 'NPC' : '—')}</div>
-          <div class="intel-recent-party-corp"  data-role="fb-corp">${fb?.corporation_id ? 'Loading…' : ''}</div>
+          <div class="intel-recent-party-pilot" data-role="fb-pilot">${fb && !fb.character_id ? 'o7' : (fb?.character_id ? 'Loading…' : '—')}</div>
+          <div class="intel-recent-party-corp"  data-role="fb-corp">${fb?.corporation_id && fb?.character_id ? 'Loading…' : ''}</div>
         </div>
       </div>
       <a class="intel-recent-zkb" href="${zkbHref}" target="_blank" rel="noopener" aria-label="Open on zKillboard">
@@ -2059,8 +2060,8 @@ function buildRecentCard({ k, ts }) {
   };
   fillName('char', k.victim?.character_id,    '[data-role="victim-pilot"]');
   fillName('corp', k.victim?.corporation_id,  '[data-role="victim-corp"]');
-  fillName('char', fb?.character_id,          '[data-role="fb-pilot"]');
-  fillName('corp', fb?.corporation_id,        '[data-role="fb-corp"]');
+  if (fb?.character_id) fillName('char', fb.character_id,         '[data-role="fb-pilot"]');
+  if (fb?.character_id) fillName('corp', fb.corporation_id,        '[data-role="fb-corp"]');
 
   return card;
 }
