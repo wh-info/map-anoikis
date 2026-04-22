@@ -867,7 +867,10 @@ html, body {
   left: 12px;
   right: 12px;
   margin: 0;
-  text-align: right;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   pointer-events: none;
 }
 .kp-label {
@@ -877,6 +880,14 @@ html, body {
   color: rgba(0, 220, 220, 0.85);
   font-weight: 700;
 }
+.kp-gang {
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--highlight);
+  font-weight: 600;
+}
+.kp-gang:empty { display: none; }
 .kp-body {
   display: flex;
   flex-direction: row-reverse;
@@ -2990,6 +3001,16 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     color: rgba(0, 220, 220, 0.85);
     font-weight: 700;
   }
+  .kill-fb-inline .kp-gang {
+    position: absolute;
+    top: 0; left: 0;
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--highlight);
+    font-weight: 600;
+  }
+  .kill-fb-inline .kp-gang:empty { display: none; }
   .kill-fb-inline .kp-img {
     width: 40px; height: 40px;
     background: #040c0c center / cover no-repeat;

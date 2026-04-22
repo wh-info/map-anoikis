@@ -4221,6 +4221,7 @@ const kpShip         = killPopup.querySelector('.kp-ship');
 const kpPilot        = killPopup.querySelector('.kp-pilot');
 const kpCorp         = killPopup.querySelector('.kp-corp');
 const kpLabel        = killPopup.querySelector('.kp-label');
+const kpGang         = killPopup.querySelector('.kp-gang');
 let kpOpenKillId     = null;
 let kpToken          = 0;
 
@@ -4245,6 +4246,7 @@ async function fetchFinalBlow(killId) {
       characterId:   fb.character_id ?? null,
       corporationId: fb.corporation_id ?? null,
       isNpc:         !fb.character_id,
+      attackerCount: Array.isArray(km.attackers) ? km.attackers.length : null,
     };
   })();
   finalBlowCache.set(killId, p);
@@ -4267,6 +4269,13 @@ function closeKillPopup() {
 }
 
 function renderKillPopupBody(fb, token) {
+  if (typeof fb.attackerCount === 'number' && fb.attackerCount > 0) {
+    kpGang.textContent = fb.attackerCount === 1
+      ? 'SOLO'
+      : `+${fb.attackerCount - 1} other${fb.attackerCount - 1 === 1 ? '' : 's'}`;
+  } else {
+    kpGang.textContent = '';
+  }
   if (fb.shipTypeId != null) {
     kpImg.style.backgroundImage = `url('https://images.evetech.net/types/${fb.shipTypeId}/render?size=64')`;
     const localName = window.TYPE_NAMES?.[fb.shipTypeId];
@@ -4315,6 +4324,7 @@ async function openKillPopup(rowEl, killId) {
   kpPilot.textContent = '';
   kpCorp.textContent  = '';
   kpLabel.textContent = 'Final blow';
+  kpGang.textContent  = '';
   killPopup.classList.toggle('compact', killList.classList.contains('kill-list--compact'));
   killPopup.classList.add('open');
   positionKillPopup(rowEl);
@@ -4328,6 +4338,7 @@ async function openKillPopup(rowEl, killId) {
       characterId:   raw.fbCharacterId,
       corporationId: raw.fbCorporationId,
       isNpc:         !raw.fbCharacterId,
+      attackerCount: typeof raw.attackerCount === 'number' ? raw.attackerCount : null,
     }, token);
     positionKillPopup(rowEl);
     return;
@@ -4354,7 +4365,16 @@ function closeInlineFinalBlow() {
   if (inlineFbEl) { inlineFbEl.remove(); inlineFbEl = null; }
 }
 
-function renderInlineFb(fb, imgEl, shipEl, pilotEl, corpEl, labelEl, guardEl) {
+function renderInlineFb(fb, imgEl, shipEl, pilotEl, corpEl, labelEl, guardEl, gangEl) {
+  if (gangEl) {
+    if (typeof fb.attackerCount === 'number' && fb.attackerCount > 0) {
+      gangEl.textContent = fb.attackerCount === 1
+        ? 'SOLO'
+        : `+${fb.attackerCount - 1} other${fb.attackerCount - 1 === 1 ? '' : 's'}`;
+    } else {
+      gangEl.textContent = '';
+    }
+  }
   if (fb.shipTypeId != null) {
     imgEl.style.backgroundImage = `url('https://images.evetech.net/types/${fb.shipTypeId}/render?size=64')`;
     const localName = window.TYPE_NAMES?.[fb.shipTypeId];
@@ -4390,7 +4410,7 @@ async function openInlineFinalBlow(rowEl, killId) {
   closeInlineFinalBlow();
   const fb = document.createElement('div');
   fb.className = 'kill-fb-inline';
-  fb.innerHTML = `<div class="kp-img"></div><div class="kp-info"><div class="kp-label">Final blow</div><div class="kp-ship">Loading…</div><div class="kp-pilot"></div><div class="kp-corp"></div></div>`;
+  fb.innerHTML = `<div class="kp-img"></div><div class="kp-info"><div class="kp-gang"></div><div class="kp-label">Final blow</div><div class="kp-ship">Loading…</div><div class="kp-pilot"></div><div class="kp-corp"></div></div>`;
   container.appendChild(fb);
   inlineFbEl = fb;
   fb.addEventListener('click', (ev) => ev.stopPropagation());
@@ -4400,17 +4420,24 @@ async function openInlineFinalBlow(rowEl, killId) {
   const pilotEl = fb.querySelector('.kp-pilot');
   const corpEl = fb.querySelector('.kp-corp');
   const labelEl = fb.querySelector('.kp-label');
+  const gangEl = fb.querySelector('.kp-gang');
 
   const entry = killBuffer.find((e) => e.kill.id === killId);
   const raw = entry?.kill;
   if (raw && raw.fbShipTypeId != null) {
-    renderInlineFb({ shipTypeId: raw.fbShipTypeId, characterId: raw.fbCharacterId, corporationId: raw.fbCorporationId, isNpc: !raw.fbCharacterId }, imgEl, shipEl, pilotEl, corpEl, labelEl, fb);
+    renderInlineFb({
+      shipTypeId:    raw.fbShipTypeId,
+      characterId:   raw.fbCharacterId,
+      corporationId: raw.fbCorporationId,
+      isNpc:         !raw.fbCharacterId,
+      attackerCount: typeof raw.attackerCount === 'number' ? raw.attackerCount : null,
+    }, imgEl, shipEl, pilotEl, corpEl, labelEl, fb, gangEl);
     return;
   }
   try {
     const data = await fetchFinalBlow(killId);
     if (inlineFbEl !== fb) return;
-    renderInlineFb(data, imgEl, shipEl, pilotEl, corpEl, labelEl, fb);
+    renderInlineFb(data, imgEl, shipEl, pilotEl, corpEl, labelEl, fb, gangEl);
   } catch {
     if (inlineFbEl !== fb) return;
     shipEl.textContent = 'Failed to load';
