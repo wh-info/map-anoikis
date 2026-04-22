@@ -12,7 +12,7 @@
 <meta name="description" content="Interactive map of Anoikis - Eve Online wormhole space.">
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
-<link rel="stylesheet" href="./styles/main.css?v=20260422a" />
+<link rel="stylesheet" href="./styles/main.css?v=20260422b" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="57ac0157-6021-4a9e-b0a0-73fddc9eb45d"></script>
 </head>
 <body>
@@ -150,8 +150,35 @@
   <div id="intel-body">
     <div class="intel-section-label intel-view-toggle-row">
       <div class="intel-view-toggle" data-view-toggle="1">
+        <button class="intel-view-btn" data-view="recent">Latest 24H</button>
         <button class="intel-view-btn on" data-view="heatmap">Heatmap</button>
         <button class="intel-view-btn" data-view="scatter">Kill Scatter</button>
+      </div>
+    </div>
+
+    <div id="intel-view-recent" style="display:none;">
+      <div class="intel-recent-ribbon">
+        <div class="intel-recent-ribbon-title">
+          <span>timeline</span>
+          <span id="intel-recent-count" class="intel-recent-ribbon-count">0 kills</span>
+        </div>
+        <div id="intel-recent-track" class="intel-recent-ribbon-track"></div>
+        <div class="intel-recent-ribbon-axis">
+          <span>24h ago</span>
+          <span class="mid">12h ago</span>
+          <span>now</span>
+        </div>
+        <div id="intel-recent-tip" class="intel-recent-tip"></div>
+      </div>
+
+      <div id="intel-recent-list-header" class="intel-section-label" style="display:none;">
+        <span class="intel-section-title">Latest engagements</span>
+        <span id="intel-recent-list-count" class="intel-section-count"></span>
+      </div>
+      <div id="intel-recent-list"></div>
+      <div id="intel-recent-empty" class="intel-recent-empty" style="display:none;">
+        <div class="intel-recent-empty-headline">No kills in last 24h</div>
+        <div class="intel-recent-empty-sub">System has been quiet</div>
       </div>
     </div>
 
@@ -428,6 +455,6 @@
   </button>
 </nav>
 
-<script src="./src/main.js?v=20260422c"></script>
+<script src="./src/main.js?v=20260422d"></script>
 </body>
 </html>

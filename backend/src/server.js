@@ -67,6 +67,7 @@ function compactKill(raw, classification) {
     fbShipTypeId:    fb.ship_type_id ?? null,
     fbCharacterId:   fb.character_id ?? null,
     fbCorporationId: fb.corporation_id ?? null,
+    attackerCount:   attackers.length,
     // When our backend first saw this kill. Compared against `ts` by the
     // frontend to decide the DELAYED badge — this is the "zKB published
     // it late" signal, independent of when any browser loaded the page.

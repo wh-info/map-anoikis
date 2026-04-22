@@ -1758,12 +1758,19 @@ function setIntelView(view) {
   intelView = view;
   document.getElementById('intel-view-heatmap').style.display = view === 'heatmap' ? '' : 'none';
   document.getElementById('intel-view-scatter').style.display = view === 'scatter' ? '' : 'none';
+  document.getElementById('intel-view-recent').style.display  = view === 'recent'  ? '' : 'none';
   document.getElementById('panel-intel').classList.toggle('intel-view-scatter', view === 'scatter');
   document.querySelectorAll('[data-view-toggle] button').forEach((b) =>
     b.classList.toggle('on', b.dataset.view === view));
   if (view === 'scatter') {
     buildScatterLegend();
     renderScatter();
+  }
+  if (view === 'recent') {
+    renderIntelRecent();
+    startRecentAgeTick();
+  } else {
+    stopRecentAgeTick();
   }
   renderIntelAll();
 }
@@ -1857,6 +1864,288 @@ document.querySelectorAll('[data-view-toggle] button[data-view]').forEach((btn) 
     });
   }
 })();
+
+// ---------- Latest 24H tab ----------
+//
+// Filters intelCurrentKills to the last 24h, renders a timeline ribbon (one
+// dot per kill, big if >=1B ISK, latest gets a yellow ring) and up to 3
+// engagement cards (victim ↔ final blow). Hovering a dot lights its paired
+// card; hovering a card lights its dot. A 60-second tick keeps dot positions
+// and "X min ago" text current while the panel sits open.
+
+const RECENT_WINDOW_S    = 24 * 3600;
+const RECENT_BIG_ISK     = 1e9;
+const RECENT_MAX_CARDS   = 3;
+let recentAgeTickTimer = null;
+
+function recentKills() {
+  if (!intelCurrentKills) return [];
+  const cutoff = Date.now() / 1000 - RECENT_WINDOW_S;
+  const out = [];
+  for (const k of intelCurrentKills) {
+    if (k.kind === 'fighter') continue;
+    const ts = k.killmail_time ? Date.parse(k.killmail_time) / 1000 : 0;
+    if (ts < cutoff) continue;
+    out.push({ k, ts });
+  }
+  out.sort((a, b) => b.ts - a.ts);
+  return out;
+}
+
+function recentFormatAge(ts) {
+  const s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+  if (s < 60)    return 'just now';
+  if (s < 3600)  return Math.floor(s / 60) + ' min ago';
+  if (s < 86400) {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const hLbl = h + ' hour' + (h === 1 ? '' : 's');
+    return m > 0 ? `${hLbl} ${m} min ago` : `${hLbl} ago`;
+  }
+  return Math.floor(s / 86400) + 'd ago';
+}
+
+function recentScatterColor(typeId) {
+  const cls = scatterClassFor(typeId);
+  if (cls && SCATTER_CLASS_COLOR[cls]) return { cls, color: SCATTER_CLASS_COLOR[cls] };
+  // Pods/shuttles fall through scatterClassFor — give them their legend colour.
+  return { cls: 'Pods/Shuttles', color: SCATTER_CLASS_COLOR['Pods/Shuttles'] || '#888888' };
+}
+
+function renderIntelRecent() {
+  const listEl   = document.getElementById('intel-recent-list');
+  const headerEl = document.getElementById('intel-recent-list-header');
+  const emptyEl  = document.getElementById('intel-recent-empty');
+  const trackEl  = document.getElementById('intel-recent-track');
+  const countEl  = document.getElementById('intel-recent-count');
+  const tipEl    = document.getElementById('intel-recent-tip');
+  if (!listEl || !trackEl) return;
+
+  // Hide tooltip across re-renders so a stale node doesn't linger.
+  if (tipEl) tipEl.style.display = 'none';
+
+  const entries = recentKills();
+  countEl.textContent = `${entries.length} kill${entries.length === 1 ? '' : 's'}`;
+
+  // ---------- Ribbon dots ----------
+  trackEl.innerHTML = '';
+  entries.forEach((e, idx) => {
+    const isLatest = idx === 0;
+    const isBig    = (e.k._zkbValue || 0) >= RECENT_BIG_ISK;
+    const ageS     = Math.max(0, Date.now() / 1000 - e.ts);
+    const rightPct = Math.min(100, Math.max(0, (ageS / RECENT_WINDOW_S) * 100));
+    const ship     = typeNameFor(e.k.victim?.ship_type_id);
+    const sc       = recentScatterColor(e.k.victim?.ship_type_id);
+    const dot = document.createElement('span');
+    dot.className = 'intel-recent-dot' + (isBig ? ' big' : '') + (isLatest ? ' latest' : '');
+    dot.style.right = rightPct.toFixed(2) + '%';
+    if (e.k.id != null) dot.dataset.kid = String(e.k.id);
+    dot.dataset.ship  = ship;
+    dot.dataset.cls   = sc.cls;
+    dot.dataset.color = sc.color;
+    dot.dataset.isk   = formatIskCompact(e.k._zkbValue || 0) + ' ISK';
+    dot.dataset.age   = recentFormatAge(e.ts);
+    trackEl.appendChild(dot);
+  });
+
+  // ---------- Engagement cards ----------
+  if (entries.length === 0) {
+    listEl.innerHTML = '';
+    headerEl.style.display = 'none';
+    emptyEl.style.display  = '';
+    wireRecentInteractions();
+    return;
+  }
+  emptyEl.style.display = 'none';
+  const cardEntries = entries.slice(0, RECENT_MAX_CARDS);
+  headerEl.style.display = '';
+  document.getElementById('intel-recent-list-count').textContent =
+    `Showing ${cardEntries.length}`;
+
+  listEl.innerHTML = '';
+  cardEntries.forEach((e) => {
+    const card = buildRecentCard(e);
+    listEl.appendChild(card);
+  });
+  wireRecentInteractions();
+}
+
+function buildRecentCard({ k, ts }) {
+  const card = document.createElement('div');
+  card.className = 'intel-recent-card';
+  if (k.id != null) card.dataset.kid = String(k.id);
+
+  const fb = (k.attackers || []).find((a) => a.final_blow) || (k.attackers || [])[0] || null;
+  const attackerCount = typeof k._attackerCount === 'number'
+    ? k._attackerCount
+    : (k.attackers || []).length;
+  let tag = '';
+  if (attackerCount === 1) tag = '<span class="solo-tag">SOLO</span> · ';
+  else if (attackerCount > 1) tag = `<span class="gang-tag">+${attackerCount - 1} other${attackerCount - 1 === 1 ? '' : 's'}</span> · `;
+  const ageLbl = recentFormatAge(ts);
+
+  const victimShipId = k.victim?.ship_type_id;
+  const victimImg    = victimShipId != null
+    ? `https://images.evetech.net/types/${victimShipId}/render?size=64` : '';
+  const isk = formatIsk(k._zkbValue || 0);
+  const implant = k.hasImplants
+    ? `<span class="intel-recent-implant" title="Pod had implants"><img src="./img/graphic/implant.png" alt="" /></span>`
+    : '';
+
+  const fbShipId = fb?.ship_type_id;
+  const fbImg    = fbShipId != null
+    ? `https://images.evetech.net/types/${fbShipId}/render?size=64` : '';
+
+  const zkbHref = k.id != null ? `https://zkillboard.com/kill/${k.id}/` : '#';
+
+  card.innerHTML = `
+    <div class="intel-recent-hdr"><span>${tag}<span class="age">${ageLbl}</span></span></div>
+    <div class="intel-recent-body">
+      <div class="intel-recent-party">
+        <div class="intel-recent-party-img" ${victimImg ? `style="background-image:url('${victimImg}')"` : ''}></div>
+        <div class="intel-recent-party-info">
+          <div class="intel-recent-party-label">Victim</div>
+          <div class="intel-recent-party-ship">
+            <span class="name" data-role="victim-ship">${escapeHtml(typeNameFor(victimShipId))}</span>
+            <span class="sep-dot">·</span>
+            <span class="isk">${isk}</span>
+            ${implant}
+          </div>
+          <div class="intel-recent-party-pilot" data-role="victim-pilot">${k.isNpc ? 'NPC' : 'Loading…'}</div>
+          <div class="intel-recent-party-corp"  data-role="victim-corp">${k.isNpc ? '' : 'Loading…'}</div>
+        </div>
+      </div>
+      <div class="intel-recent-arrow">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+      </div>
+      <div class="intel-recent-party">
+        <div class="intel-recent-party-img" ${fbImg ? `style="background-image:url('${fbImg}')"` : ''}></div>
+        <div class="intel-recent-party-info">
+          <div class="intel-recent-party-label">Final blow</div>
+          <div class="intel-recent-party-ship">
+            <span class="name" data-role="fb-ship">${escapeHtml(typeNameFor(fbShipId))}</span>
+          </div>
+          <div class="intel-recent-party-pilot" data-role="fb-pilot">${fb?.character_id ? 'Loading…' : (fb ? 'NPC' : '—')}</div>
+          <div class="intel-recent-party-corp"  data-role="fb-corp">${fb?.corporation_id ? 'Loading…' : ''}</div>
+        </div>
+      </div>
+      <a class="intel-recent-zkb" href="${zkbHref}" target="_blank" rel="noopener" aria-label="Open on zKillboard">
+        <svg viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.4L10.4 15 9 13.6 17.6 5H14V3zM5 5h6v2H5v12h12v-6h2v8H3V5h2z"/></svg>
+      </a>
+    </div>
+  `;
+
+  // Async: ship-name fill if SDE didn't have it (covers types added post-SDE).
+  if (victimShipId != null && !(window.TYPE_NAMES && window.TYPE_NAMES[victimShipId])) {
+    resolveType(victimShipId, card.querySelector('[data-role="victim-ship"]'), null);
+  }
+  if (fbShipId != null && !(window.TYPE_NAMES && window.TYPE_NAMES[fbShipId])) {
+    resolveType(fbShipId, card.querySelector('[data-role="fb-ship"]'), null);
+  }
+
+  // Async: pilot + corp names.
+  const token = intelCurrentToken;
+  const fillName = (kind, id, sel) => {
+    if (!id) return;
+    const el = card.querySelector(sel);
+    if (!el) return;
+    const cached = nameCache.get(kind + ':' + id);
+    if (cached != null) { el.textContent = cached; return; }
+    resolveEntityName(kind, id).then((name) => {
+      if (token !== intelCurrentToken) return;
+      if (!el.isConnected) return;
+      el.textContent = name || (kind === 'char' ? 'Unknown pilot' : 'Unknown corp');
+    });
+  };
+  fillName('char', k.victim?.character_id,    '[data-role="victim-pilot"]');
+  fillName('corp', k.victim?.corporation_id,  '[data-role="victim-corp"]');
+  fillName('char', fb?.character_id,          '[data-role="fb-pilot"]');
+  fillName('corp', fb?.corporation_id,        '[data-role="fb-corp"]');
+
+  return card;
+}
+
+function wireRecentInteractions() {
+  const ribbon = document.querySelector('.intel-recent-ribbon');
+  const tip    = document.getElementById('intel-recent-tip');
+  if (!ribbon || !tip) return;
+  const dots   = ribbon.querySelectorAll('.intel-recent-dot');
+  const cards  = document.querySelectorAll('#intel-recent-list .intel-recent-card');
+
+  // The "now" dot is whichever .latest is on the track.
+  const latestDot = ribbon.querySelector('.intel-recent-dot.latest');
+  const latestKid = latestDot ? latestDot.dataset.kid : null;
+  const setSuppress = (on) => ribbon.classList.toggle('suppress-latest', on);
+
+  const findCard = (kid) => {
+    if (!kid) return null;
+    for (const c of cards) if (c.dataset.kid === kid) return c;
+    return null;
+  };
+  const findDot = (kid) => {
+    if (!kid) return null;
+    for (const d of dots) if (d.dataset.kid === kid) return d;
+    return null;
+  };
+
+  const showTip = (dot) => {
+    tip.innerHTML =
+      `<div style="color:${dot.dataset.color};font-weight:600;">${escapeHtml(dot.dataset.ship)}</div>` +
+      `<div style="color:var(--muted);">${escapeHtml(dot.dataset.cls)}</div>` +
+      `<div>${dot.dataset.isk}</div>` +
+      `<div style="color:var(--dim);">${escapeHtml(dot.dataset.age)}</div>`;
+    tip.style.display = 'block';
+    const ribbonRect = ribbon.getBoundingClientRect();
+    const dotRect    = dot.getBoundingClientRect();
+    const cx = (dotRect.left + dotRect.right) / 2 - ribbonRect.left;
+    const ty = dotRect.top - ribbonRect.top - tip.offsetHeight - 8;
+    let tx = cx - tip.offsetWidth / 2;
+    if (tx < 4) tx = 4;
+    if (tx + tip.offsetWidth > ribbonRect.width - 4) tx = ribbonRect.width - tip.offsetWidth - 4;
+    tip.style.left = tx + 'px';
+    tip.style.top  = ty + 'px';
+  };
+  const hideTip = () => { tip.style.display = 'none'; };
+
+  dots.forEach((dot) => {
+    dot.addEventListener('mouseenter', () => {
+      showTip(dot);
+      const card = findCard(dot.dataset.kid);
+      if (card) card.classList.add('linked');
+      setSuppress(dot.dataset.kid !== latestKid);
+    });
+    dot.addEventListener('mouseleave', () => {
+      hideTip();
+      const card = findCard(dot.dataset.kid);
+      if (card) card.classList.remove('linked');
+      setSuppress(false);
+    });
+  });
+  cards.forEach((card) => {
+    card.addEventListener('mouseenter', () => {
+      const dot = findDot(card.dataset.kid);
+      if (dot) dot.classList.add('linked');
+      setSuppress(card.dataset.kid !== latestKid);
+    });
+    card.addEventListener('mouseleave', () => {
+      const dot = findDot(card.dataset.kid);
+      if (dot) dot.classList.remove('linked');
+      setSuppress(false);
+    });
+  });
+}
+
+function startRecentAgeTick() {
+  if (recentAgeTickTimer) return;
+  recentAgeTickTimer = setInterval(() => {
+    if (!intelOpen || intelView !== 'recent') { stopRecentAgeTick(); return; }
+    renderIntelRecent();
+  }, 60 * 1000);
+}
+function stopRecentAgeTick() {
+  if (recentAgeTickTimer) clearInterval(recentAgeTickTimer);
+  recentAgeTickTimer = null;
+}
 
 // Re-render every intel section from the current cached kill set + toggle
 // state. Called on every batch during loading, and by the range-toggle
@@ -2036,6 +2325,7 @@ function renderIntelAll() {
   renderParty('intel-corps',     topCorps, 'corporation', 'corp', (id) => `Corp ${id}`);
   renderParty('intel-alliances', topAllis, 'alliance',    'alli', (id) => `Alliance ${id}`);
   if (intelView === 'scatter') renderScatter();
+  if (intelView === 'recent')  renderIntelRecent();
 
   // Show how many kills are hidden by the current filter.
   const el = document.getElementById('intel-filtered-count');
@@ -2183,6 +2473,7 @@ function closeIntel() {
   intelPanel.classList.remove('open');
   document.getElementById('si-intel').classList.remove('active');
   if (isTouchDevice && wasOpen) document.getElementById('panel-left').classList.remove('panel--hidden');
+  stopRecentAgeTick();
 }
 
 document.getElementById('close-intel').addEventListener('click', closeIntel);
@@ -4156,22 +4447,34 @@ function connectKillFeed() {
         if (intelOpen && intelCurrentKills && intelCurrentStar
             && msg.kill.systemId === intelCurrentStar.id) {
           const k = msg.kill;
+          // Synthesize the final-blow attacker so the Latest 24H tab can render
+          // the FB side of an engagement card without waiting for an /intel reload.
+          const synthAttackers = k.fbShipTypeId != null ? [{
+            final_blow: true,
+            ship_type_id: k.fbShipTypeId,
+            character_id: k.fbCharacterId,
+            corporation_id: k.fbCorporationId,
+          }] : [];
           intelCurrentKills.push({
+            id: k.id,
             killmail_time: new Date(k.ts * 1000).toISOString(),
             kind: k.kind,
             isNpc: k.isNpc,
+            hasImplants: !!k.hasImplants,
             _zkbValue: k.value,
+            _attackerCount: typeof k.attackerCount === 'number' ? k.attackerCount : null,
             victim: {
               character_id: k.characterId,
               corporation_id: k.corporationId,
               alliance_id: null,
               ship_type_id: k.shipTypeId,
             },
-            attackers: [],
+            attackers: synthAttackers,
           });
           const short = intelAggregateShort(intelCurrentKills, intelRangeShort);
           renderHmShort(short.counts, intelCurrentRgb, intelRangeShort);
           renderLiveness();
+          if (intelView === 'recent') renderIntelRecent();
         }
       } else if (
         (msg.type === 'thera-snapshot' || msg.type === 'thera')
