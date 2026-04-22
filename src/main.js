@@ -2018,7 +2018,7 @@ function buildRecentCard({ k, ts }) {
         </div>
       </div>
       <div class="intel-recent-arrow">
-        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M11 6l-6 6 6 6" /></svg>
       </div>
       <div class="intel-recent-party">
         <div class="intel-recent-party-img" ${fbImg ? `style="background-image:url('${fbImg}')"` : ''}></div>
