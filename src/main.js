@@ -2165,6 +2165,19 @@ function stopRecentAgeTick() {
   recentAgeTickTimer = null;
 }
 
+let livenessTickTimer = null;
+function startLivenessTick() {
+  if (livenessTickTimer) return;
+  livenessTickTimer = setInterval(() => {
+    if (!intelOpen) { stopLivenessTick(); return; }
+    renderLiveness();
+  }, 60 * 1000);
+}
+function stopLivenessTick() {
+  if (livenessTickTimer) clearInterval(livenessTickTimer);
+  livenessTickTimer = null;
+}
+
 // Re-render every intel section from the current cached kill set + toggle
 // state. Called on every batch during loading, and by the range-toggle
 // handlers when the user flips 24h↔7d or 30d↔60d.
@@ -2488,6 +2501,7 @@ function openIntel(star) {
   document.getElementById('intel-body').style.display    = 'none';
   document.getElementById('si-intel').classList.add('active');
   if (intelView === 'recent') startRecentAgeTick();
+  startLivenessTick();
   const token = ++intelLoadToken;
   loadIntel(star, token);
 }
@@ -2499,6 +2513,7 @@ function closeIntel() {
   document.getElementById('si-intel').classList.remove('active');
   if (isTouchDevice && wasOpen) document.getElementById('panel-left').classList.remove('panel--hidden');
   stopRecentAgeTick();
+  stopLivenessTick();
 }
 
 document.getElementById('close-intel').addEventListener('click', closeIntel);
