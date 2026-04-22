@@ -2148,7 +2148,7 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   margin-bottom: 2px;
 }
 .intel-recent-party-ship {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text);
   display: flex;
   align-items: center;
@@ -2169,11 +2169,11 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
 .intel-recent-party-ship .sep-dot { color: var(--dim); flex-shrink: 0; }
 .intel-recent-party-ship .intel-recent-implant { flex-shrink: 0; }
 .intel-recent-party-pilot {
-  font-size: 13px; color: var(--muted);
+  font-size: 12px; color: var(--muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .intel-recent-party-corp  {
-  font-size: 12px; color: var(--dim);
+  font-size: 11px; color: var(--dim);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   min-height: 1.2em;
 }
