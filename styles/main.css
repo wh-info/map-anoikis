@@ -2110,9 +2110,8 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   color: var(--dim);
   letter-spacing: 0.5px;
 }
-.intel-recent-hdr .solo-tag,
-.intel-recent-hdr .gang-tag { color: var(--highlight); font-weight: 600; }
-.intel-recent-fb-tag { display: none; }
+.intel-recent-hdr-tag { display: none; }
+.intel-recent-fb-tag { margin-left: 6px; }
 .intel-recent-fb-tag .solo-tag,
 .intel-recent-fb-tag .gang-tag { color: var(--highlight); font-weight: 600; }
 .intel-recent-body {
@@ -3078,7 +3077,4 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     padding-top: 6px;
   }
   .intel-recent-arrow svg { transform: rotate(90deg); }
-  /* SOLO / +N moves from card header to next to the Final blow label. */
-  .intel-recent-hdr-tag { display: none; }
-  .intel-recent-fb-tag { display: inline; margin-left: 6px; }
 }
