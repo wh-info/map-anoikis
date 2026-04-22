@@ -93,6 +93,7 @@ export function connectZkill({ onKill, onStatus, onJump } = {}) {
   let nextSeq          = null;
   let headSeq          = null;
   let lastKillAt       = null;
+  let lastPollAt       = null;  // ticks on any successful R2Z2 round-trip (200 or 404)
   let lastJump         = null;
   let lastHeadCheckAt  = 0;
   let jumpsTotal       = 0;
@@ -103,6 +104,7 @@ export function connectZkill({ onKill, onStatus, onJump } = {}) {
     lastHeadCheckAt = Date.now();
     try {
       const seq = await fetchJson(SEQ_URL);
+      lastPollAt = Date.now();
       if (!seq || typeof seq.sequence !== 'number') return;
       headSeq = seq.sequence;
       const lag = headSeq - nextSeq;
@@ -173,6 +175,7 @@ export function connectZkill({ onKill, onStatus, onJump } = {}) {
         return 0;
       }
       const seq = await fetchJson(SEQ_URL);
+      lastPollAt = Date.now();
       if (!seq || typeof seq.sequence !== 'number') {
         throw new Error('bad sequence payload');
       }
@@ -188,6 +191,7 @@ export function connectZkill({ onKill, onStatus, onJump } = {}) {
     await maybeCheckHead();
 
     const kill = await fetchJson(KILL_URL(nextSeq));
+    lastPollAt = Date.now();
     if (kill === null) {
       return EMPTY_BACKOFF_MS;
     }
@@ -224,6 +228,7 @@ export function connectZkill({ onKill, onStatus, onJump } = {}) {
         headSeq,
         lag: (headSeq != null && nextSeq != null) ? headSeq - nextSeq : null,
         lastKillAt,
+        lastPollAt,
         jumpsTotal,
         lastJump,
       };

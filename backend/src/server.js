@@ -126,21 +126,25 @@ fastify.options('/*', async (_req, reply) => {
 
 let reconcileStats = { lastRunAt: null, totalRuns: 0, lastAdded: 0 };
 
-fastify.get('/health', async () => ({
-  ok: true,
-  uptime: Math.round(process.uptime()),
-  clients: clients.size,
-  ringSize: ring.size,
-  seenTotal,
-  seenAnoikis,
-  lastAnoikisKillAt,
-  zkill: zkillStatus,
-  poller: zkillClient?.getState?.() ?? null,
-  killstore: killstore.getState(),
-  reconcile: reconcileStats,
-  evescout: evescoutStatus,
-  evescoutState: evescoutClient?.getState?.() ?? null,
-}));
+fastify.get('/health', async () => {
+  const pollerState = zkillClient?.getState?.() ?? null;
+  return {
+    ok: true,
+    uptime: Math.round(process.uptime()),
+    clients: clients.size,
+    ringSize: ring.size,
+    seenTotal,
+    seenAnoikis,
+    lastAnoikisKillAt,
+    lastPollAt: pollerState?.lastPollAt ?? null,
+    zkill: zkillStatus,
+    poller: pollerState,
+    killstore: killstore.getState(),
+    reconcile: reconcileStats,
+    evescout: evescoutStatus,
+    evescoutState: evescoutClient?.getState?.() ?? null,
+  };
+});
 
 // 24h stats — computed every 60s, served from cache.
 computeStats(killstore);

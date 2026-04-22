@@ -4236,12 +4236,25 @@ connectKillFeed();
 
   const statusDot = document.querySelector('.info-status-dot');
 
+  // Mirrors status.html's computeBadge — three states sharing one source of
+  // truth. Green = nominal, yellow = degraded (poller or partial), red =
+  // backend unreachable or poller down. Dot only refreshes on modal open.
   function checkBackendStatus() {
     if (!statusDot) return;
     statusDot.className = 'info-status-dot';
     fetch(intelApiBase() + '/health', { signal: AbortSignal.timeout(5000) })
       .then(r => r.json())
-      .then(d => { statusDot.classList.add(d.ok ? 'green' : 'yellow'); })
+      .then(h => {
+        if (!h.ok) { statusDot.classList.add('yellow'); return; }
+        const pollAge = h.lastPollAt ? Date.now() - h.lastPollAt : Infinity;
+        if (pollAge > 60_000) { statusDot.classList.add('red');    return; }
+        if (pollAge > 30_000) { statusDot.classList.add('yellow'); return; }
+        const zk = h.zkill || '';
+        if (zk.startsWith('error:'))       { statusDot.classList.add('yellow'); return; }
+        const es = h.evescout || '';
+        if (es.startsWith('error:'))       { statusDot.classList.add('yellow'); return; }
+        statusDot.classList.add('green');
+      })
       .catch(() => { statusDot.classList.add('red'); });
   }
 

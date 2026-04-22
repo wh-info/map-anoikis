@@ -495,14 +495,11 @@ function formatDuration(sec) {
 
 function computeMood(h) {
   if (!h || !h.ok) return { text: '💀 Dead inside', cls: 'down' };
-  const zk = h.zkill || '';
-  // Status string is a last-event log, not live state — a stale 'error:...'
-  // can sit for hours while the poller is fine. Only flag Dead inside when
-  // the error is corroborated by no kills having landed in the last 10 min.
-  const lastKillAgo = h.lastAnoikisKillAt ? Date.now() - h.lastAnoikisKillAt : Infinity;
-  if (zk.startsWith('error:') && lastKillAgo > 10 * 60 * 1000) {
-    return { text: '💀 Dead inside', cls: 'down' };
-  }
+  // lastPollAt ticks on every successful R2Z2 round-trip (~6s cadence).
+  // Stale lastPollAt is the live liveness signal — covers both hard errors
+  // and silent stalls with one check.
+  const pollAge = h.lastPollAt ? Date.now() - h.lastPollAt : Infinity;
+  if (pollAge > 60_000) return { text: '💀 Dead inside', cls: 'down' };
   if (h.uptime < 60) return { text: ':o Just woke up', cls: '' };
   const rate = h.seenAnoikis / (h.uptime / 3600);
   if (rate < 5)  return { text: 'zZz Napping',  cls: '' };
@@ -536,6 +533,9 @@ function computeKillfeed(h) {
 function computeBadge(h, esiStatus) {
   if (!h)        return { text: 'BACKEND UNREACHABLE', cls: 'down' };
   if (!h.ok)     return { text: 'DEGRADED',            cls: 'warn' };
+  const pollAge = h.lastPollAt ? Date.now() - h.lastPollAt : Infinity;
+  if (pollAge > 60_000) return { text: 'POLLER DOWN',     cls: 'down' };
+  if (pollAge > 30_000) return { text: 'POLLER DEGRADED', cls: 'warn' };
   const zk = h.zkill || '';
   if (zk.startsWith('error:')) return { text: 'POLLER DEGRADED', cls: 'warn' };
   if (esiStatus === 'down')    return { text: 'PARTIALLY DEGRADED', cls: 'warn' };
