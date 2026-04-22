@@ -1884,7 +1884,7 @@ function recentKills() {
   const cutoff = Date.now() / 1000 - RECENT_WINDOW_S;
   const out = [];
   for (const k of intelCurrentKills) {
-    if (k.kind === 'fighter') continue;
+    if (!passesIntelFilter(k)) continue;
     const ts = k.killmail_time ? Date.parse(k.killmail_time) / 1000 : 0;
     if (ts < cutoff) continue;
     out.push({ k, ts });
@@ -2404,7 +2404,7 @@ async function loadIntel(star, token) {
   document.getElementById('intel-count-60d').textContent = '';
   document.getElementById('intel-prime-time').innerHTML = '';
   document.getElementById('intel-rhythm').innerHTML = '';
-  partiesEl.style.display = '';
+  partiesEl.style.display = intelView === 'recent' ? 'none' : '';
   renderPartiesColumns();
 
   intelCurrentRgb   = starColor(star);
