@@ -1069,8 +1069,6 @@ button.ctrl.on    { border-color: rgba(0, 200, 200, 0.4); color: var(--muted); }
 #tooltip.visible { opacity: 1; }
 .tt-name  { font-weight: 700; color: var(--highlight); }
 .tt-class { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
-.tt-effect { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
-.tt-effect:empty { display: none; }
 
 /* ================================================================ */
 /* SCROLLBAR                                                        */

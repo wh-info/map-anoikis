@@ -3150,7 +3150,6 @@ function pickStar(sx, sy) {
 const tooltip = document.getElementById('tooltip');
 const ttName = tooltip.querySelector('.tt-name');
 const ttClass = tooltip.querySelector('.tt-class');
-const ttEffect = tooltip.querySelector('.tt-effect');
 function hitsLabel(sx, sy) {
   for (const lh of labelHits) {
     if (sx >= lh.x1 && sx <= lh.x2 && sy >= lh.y1 && sy <= lh.y2) return true;
@@ -3164,7 +3163,6 @@ function handleHover(sx, sy) {
   if (s) {
     ttName.textContent = displayName(s) + '  ' + displayClass(s);
     ttClass.textContent = shortLabel(s.regionName) + ' · ' + shortLabel(s.constellation);
-    ttEffect.textContent = s.effect || '';
     tooltip.style.left = (sx + 14) + 'px';
     tooltip.style.top = (sy + 14) + 'px';
     tooltip.classList.add('visible');
@@ -3344,7 +3342,6 @@ function selectStar(s, focus) {
   if (isTouchDevice) {
     ttName.textContent = displayName(s) + '  ' + displayClass(s);
     ttClass.textContent = shortLabel(s.regionName) + ' · ' + shortLabel(s.constellation);
-    ttEffect.textContent = s.effect || '';
     tooltip.classList.add('visible');
   }
 }
