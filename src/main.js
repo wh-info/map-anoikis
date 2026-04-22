@@ -3743,15 +3743,17 @@ async function resolveType(typeId, nameEl, iconEl) {
   if (nameEl && !localName) nameEl.textContent = 'Type ' + typeId;
   try {
     const res = await fetch(`https://esi.evetech.net/latest/universe/types/${typeId}/`);
-    const data = res.ok ? await res.json() : null;
-    const name = data?.name || ('Type ' + typeId);
+    if (!res.ok) return; // don't poison the cache on rate-limit / transient errors
+    const data = await res.json();
+    const name = data?.name;
+    if (!name) return;
     const groupId = data?.group_id;
     const slug = (groupId != null && window.GROUP_ICONS && window.GROUP_ICONS[groupId]) || null;
     esiTypeCache.set(typeId, { name, iconSlug: slug });
     if (nameEl && !localName && nameEl.isConnected) nameEl.textContent = name;
     if (iconEl && !localIcon && slug && iconEl.isConnected) iconEl.src = iconSrc(slug);
   } catch {
-    esiTypeCache.set(typeId, { name: 'Type ' + typeId, iconSlug: null });
+    // network error — let the next call retry instead of caching "Type X" forever
   }
 }
 
