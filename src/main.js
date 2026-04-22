@@ -2109,6 +2109,7 @@ function wireRecentInteractions() {
   };
   const hideTip = () => { tip.style.display = 'none'; };
 
+  const isCoarse = matchMedia('(pointer: coarse)').matches;
   dots.forEach((dot) => {
     dot.addEventListener('mouseenter', () => {
       showTip(dot);
@@ -2122,7 +2123,22 @@ function wireRecentInteractions() {
       if (card) card.classList.remove('linked');
       setSuppress(false);
     });
+    if (isCoarse) {
+      dot.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showTip(dot);
+      });
+    }
   });
+  if (isCoarse && !window.__recentTipDismissBound) {
+    window.__recentTipDismissBound = true;
+    document.addEventListener('click', (e) => {
+      const tipEl = document.getElementById('intel-recent-tip');
+      if (!tipEl || tipEl.style.display === 'none') return;
+      if (e.target.classList && e.target.classList.contains('intel-recent-dot')) return;
+      tipEl.style.display = 'none';
+    });
+  }
   cards.forEach((card) => {
     card.addEventListener('mouseenter', () => {
       const dot = findDot(card.dataset.kid);
