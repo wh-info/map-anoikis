@@ -1076,6 +1076,11 @@ button.ctrl.on    { border-color: rgba(0, 200, 200, 0.4); color: var(--muted); }
   color: var(--accent);
   animation: blink 1s step-end infinite;
 }
+/* Hidden-panel restore button: stretch blink to 1.5s so it locks in phase
+   with the three-bar live-lines animation on the opposite restore button. */
+.cursor-blink.restore-cursor {
+  animation-duration: 1.5s;
+}
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
