@@ -2740,8 +2740,13 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   }
   .mobile-nav-btn svg { width: 22px; height: 22px; display: block; }
 
-  /* Cinema mode hides nav at low opacity — tap to restore */
-  body.cinema .mobile-nav { opacity: 0.15; }
+  /* Cinema mode dims nav — kept visible enough so the eye icon is findable */
+  body.cinema .mobile-nav { opacity: 0.4; }
+
+  /* Eye swap on the cinema nav button */
+  #mnav-cinema .eye-off { display: none; }
+  #mnav-cinema.active .eye-open { display: none; }
+  #mnav-cinema.active .eye-off  { display: block; }
 
   /* --- Kill tap-highlight flash ----------------------------------- */
   * { -webkit-tap-highlight-color: transparent; }
@@ -2986,15 +2991,20 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   /* --- Inline final blow (mobile only) --------------------------- */
   .kill-fb-inline {
     display: flex;
+    flex-direction: row-reverse;
     gap: 8px;
     align-items: center;
     padding: 8px 0 0;
     margin-top: 8px;
     border-top: 1px dashed var(--border);
   }
+  .kill-fb-inline .kp-hdr {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+  }
   .kill-fb-inline .kp-label {
-    position: absolute;
-    top: 0; right: 0;
     font-size: 9px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -3002,8 +3012,6 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     font-weight: 700;
   }
   .kill-fb-inline .kp-gang {
-    position: absolute;
-    top: 0; left: 0;
     font-size: 9px;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -3024,7 +3032,7 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     display: flex;
     flex-direction: column;
     gap: 1px;
-    padding-top: 14px;
+    text-align: right;
   }
   .kill-fb-inline .kp-ship {
     font-size: 11px;

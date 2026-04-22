@@ -4396,7 +4396,7 @@ async function openInlineFinalBlow(rowEl, killId) {
   closeInlineFinalBlow();
   const fb = document.createElement('div');
   fb.className = 'kill-fb-inline';
-  fb.innerHTML = `<div class="kp-img"></div><div class="kp-info"><div class="kp-gang"></div><div class="kp-label">Final blow</div><div class="kp-ship">Loading…</div><div class="kp-pilot"></div><div class="kp-corp"></div></div>`;
+  fb.innerHTML = `<div class="kp-img"></div><div class="kp-info"><div class="kp-hdr"><div class="kp-gang"></div><div class="kp-label">Final blow</div></div><div class="kp-ship">Loading…</div><div class="kp-pilot"></div><div class="kp-corp"></div></div>`;
   container.appendChild(fb);
   inlineFbEl = fb;
   fb.addEventListener('click', (ev) => ev.stopPropagation());
