@@ -2200,8 +2200,8 @@ document.getElementById('si-intel').addEventListener('click', () => {
 // looks like a true scale copy of the baseline. RING_BUCKETS.medium.dur is
 // the baseline and equals RING_MS.
 const RING_BUCKETS = {
-  tiny:      { mult: 0.80, dur: RING_MS },
-  small:     { mult: 0.90, dur: RING_MS },
+  tiny:      { mult: 0.90, dur: RING_MS },
+  small:     { mult: 1.00, dur: RING_MS },
   medium:    { mult: 1.00, dur: RING_MS },
   large:     { mult: 1.08, dur: 2150 },
   huge:      { mult: 1.17, dur: 2300 },
