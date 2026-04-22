@@ -2328,14 +2328,20 @@ function renderIntelAll() {
   if (intelView === 'scatter') renderScatter();
   if (intelView === 'recent')  renderIntelRecent();
 
-  // Show how many kills are hidden by the current filter.
+  // Show how many kills are hidden by the current filter, scoped to the
+  // active tab's time window (24h for recent, 30/60d for heatmap + scatter).
   const el = document.getElementById('intel-filtered-count');
   if (el) {
-    let total = 0;
+    let windowDays;
+    if (intelView === 'recent')      windowDays = 1;
+    else if (intelView === 'scatter') windowDays = intelScatterRange === '60d' ? 60 : 30;
+    else                              windowDays = intelRangeLong === '60d' ? 60 : 30;
+    const cutoff = Date.now() - windowDays * INTEL_DAY_MS;
     let filtered = 0;
     for (const k of kills) {
       if (k.kind === 'fighter') continue;
-      total++;
+      const ts = k.killmail_time ? Date.parse(k.killmail_time) : 0;
+      if (ts < cutoff) continue;
       if (!passesIntelFilter(k)) filtered++;
     }
     el.textContent = filtered > 0 ? `${filtered} hidden` : '';
