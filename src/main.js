@@ -2273,13 +2273,14 @@ function drawTheraConnections(now) {
     const cx = (tp.x + dp.x) / 2 + nx * bulge;
     const cy = (tp.y + dp.y) / 2 + ny * bulge;
 
-    // Two-state brightness: full above 4h remaining, 50% at/under 4h.
-    // When the user hovers a sidebar row, isolate that arc: hovered = full,
-    // everything else dims to 0.15 regardless of lifetime.
+    // Two-state brightness: full above 4h remaining, 0.50 effective opacity
+    // at/under 4h. When the user hovers a sidebar row, isolate that arc:
+    // hovered = full, everything else dims to 0.15 regardless of lifetime.
     // Then scale the whole thing by THERA_ALPHA_SCALE to take ~10% off —
-    // user wanted arcs a touch dimmer than raw brightness.
+    // user wanted arcs a touch dimmer than raw brightness. The dim-arc factor
+    // is pre-divided so the final on-canvas opacity lands at exactly 0.50.
     const hours = c.remaining_hours ?? 12;
-    let alpha = hours > 4 ? 1 : 0.5;
+    let alpha = hours > 4 ? 1 : (0.5 / THERA_ALPHA_SCALE);
     if (theraHoverId !== null) {
       alpha = c.id === theraHoverId ? 1 : 0.15;
     }
