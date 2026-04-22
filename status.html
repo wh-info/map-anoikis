@@ -496,7 +496,13 @@ function formatDuration(sec) {
 function computeMood(h) {
   if (!h || !h.ok) return { text: '💀 Dead inside', cls: 'down' };
   const zk = h.zkill || '';
-  if (zk.startsWith('error:')) return { text: '💀 Dead inside', cls: 'down' };
+  // Status string is a last-event log, not live state — a stale 'error:...'
+  // can sit for hours while the poller is fine. Only flag Dead inside when
+  // the error is corroborated by no kills having landed in the last 10 min.
+  const lastKillAgo = h.lastAnoikisKillAt ? Date.now() - h.lastAnoikisKillAt : Infinity;
+  if (zk.startsWith('error:') && lastKillAgo > 10 * 60 * 1000) {
+    return { text: '💀 Dead inside', cls: 'down' };
+  }
   if (h.uptime < 60) return { text: ':o Just woke up', cls: '' };
   const rate = h.seenAnoikis / (h.uptime / 3600);
   if (rate < 5)  return { text: 'zZz Napping',  cls: '' };
