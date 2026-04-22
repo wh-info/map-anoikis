@@ -1980,9 +1980,10 @@ function buildRecentCard({ k, ts }) {
   const attackerCount = typeof k._attackerCount === 'number'
     ? k._attackerCount
     : (k.attackers || []).length;
-  let tag = '';
-  if (attackerCount === 1) tag = '<span class="solo-tag">SOLO</span> · ';
-  else if (attackerCount > 1) tag = `<span class="gang-tag">+${attackerCount - 1} other${attackerCount - 1 === 1 ? '' : 's'}</span> · `;
+  let tagInner = '';
+  if (attackerCount === 1) tagInner = '<span class="solo-tag">SOLO</span>';
+  else if (attackerCount > 1) tagInner = `<span class="gang-tag">+${attackerCount - 1} other${attackerCount - 1 === 1 ? '' : 's'}</span>`;
+  const tag = tagInner ? `<span class="intel-recent-hdr-tag">${tagInner} · </span>` : '';
   const ageLbl = recentFormatAge(ts);
 
   const victimShipId = k.victim?.ship_type_id;
@@ -2022,7 +2023,7 @@ function buildRecentCard({ k, ts }) {
       <div class="intel-recent-party">
         <div class="intel-recent-party-img" ${fbImg ? `style="background-image:url('${fbImg}')"` : ''}></div>
         <div class="intel-recent-party-info">
-          <div class="intel-recent-party-label" data-role="fb-label">${fb && !fb.character_id ? 'NPC KILL' : 'Final blow'}</div>
+          <div class="intel-recent-party-label"><span data-role="fb-label">${fb && !fb.character_id ? 'NPC KILL' : 'Final blow'}</span>${tagInner ? `<span class="intel-recent-fb-tag">${tagInner}</span>` : ''}</div>
           <div class="intel-recent-party-ship">
             <span class="name" data-role="fb-ship">${escapeHtml(typeNameFor(fbShipId))}</span>
           </div>
