@@ -3641,6 +3641,7 @@ if (isTouchDevice) {
   // Start both panels hidden on mobile
   leftPanel.classList.add('panel--hidden');
   rightPanel.classList.add('panel--hidden');
+  document.body.classList.remove('no-flash');
   syncMobileNav();
 
   mnavSearch.addEventListener('click', () => {

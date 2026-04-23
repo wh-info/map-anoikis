@@ -2821,6 +2821,11 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   }
   #panel-right.panel--hidden { transform: translateY(10px); }
 
+  /* Prevent pre-init flash: hide both panels during first paint on mobile
+     until main.js has applied panel--hidden and removed no-flash. */
+  body.no-flash #panel-left,
+  body.no-flash #panel-right { opacity: 0; pointer-events: none; }
+
   /* Show X button in kill header on mobile */
   .mobile-kill-close { display: flex; }
 
