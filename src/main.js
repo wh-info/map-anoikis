@@ -4248,7 +4248,26 @@ const kpCorp         = killPopup.querySelector('.kp-corp');
 const kpLabel        = killPopup.querySelector('.kp-label');
 const kpGang         = killPopup.querySelector('.kp-gang');
 let kpOpenKillId     = null;
+let kpOpenRow        = null;
+let kpScrollHandler  = null;
 let kpToken          = 0;
+
+function attachKpScroll() {
+  if (kpScrollHandler) return;
+  kpScrollHandler = () => { if (kpOpenRow) positionKillPopup(kpOpenRow); };
+  const live = document.getElementById('kill-list');
+  const hist = document.getElementById('kill-history-list');
+  if (live) live.addEventListener('scroll', kpScrollHandler, { passive: true });
+  if (hist) hist.addEventListener('scroll', kpScrollHandler, { passive: true });
+}
+function detachKpScroll() {
+  if (!kpScrollHandler) return;
+  const live = document.getElementById('kill-list');
+  const hist = document.getElementById('kill-history-list');
+  if (live) live.removeEventListener('scroll', kpScrollHandler);
+  if (hist) hist.removeEventListener('scroll', kpScrollHandler);
+  kpScrollHandler = null;
+}
 
 // killId → Promise<{ shipTypeId, characterId, corporationId, isNpc }>
 const finalBlowCache = new Map();
@@ -4291,6 +4310,8 @@ function positionKillPopup(rowEl) {
 function closeKillPopup() {
   killPopup.classList.remove('open');
   kpOpenKillId = null;
+  kpOpenRow = null;
+  detachKpScroll();
 }
 
 function renderKillPopupBody(fb, token) {
@@ -4352,7 +4373,9 @@ async function openKillPopup(rowEl, killId) {
   kpGang.textContent  = '';
   killPopup.classList.toggle('compact', killList.classList.contains('kill-list--compact'));
   killPopup.classList.add('open');
+  kpOpenRow = rowEl;
   positionKillPopup(rowEl);
+  attachKpScroll();
 
   // Fast path — backend now includes final-blow fields in the WS payload.
   const entry = killBuffer.find((e) => e.kill.id === killId);
