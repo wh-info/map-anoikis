@@ -1018,7 +1018,8 @@ function renderHmShort(counts, rgb, mode) {
       if (needLabels) {
         const lbl = document.createElement('div');
         lbl.className = 'intel-hlabel';
-        lbl.textContent = daysAgo === 0 ? 'Today' : dayLbl;
+        if (daysAgo === 0) { lbl.textContent = 'NOW'; lbl.style.fontWeight = '700'; }
+        else lbl.textContent = dayLbl;
         lbl.style.textAlign = 'center';
         labels.appendChild(lbl);
       }
@@ -1042,7 +1043,7 @@ function renderHmShort(counts, rgb, mode) {
       lbl.className = 'intel-hlabel';
       lbl.style.textAlign = 'center';
       const hoursAgo = 23 - i;
-      if (hoursAgo === 0) lbl.textContent = 'now';
+      if (hoursAgo === 0) { lbl.textContent = 'NOW'; lbl.style.fontWeight = '700'; }
       else if (hoursAgo % 6 === 0) lbl.textContent = `-${hoursAgo}h`;
       else lbl.textContent = '';
       labels.appendChild(lbl);
@@ -1666,8 +1667,11 @@ function renderScatter() {
   const xTicks = days === 60 ? [60, 45, 30, 15, 0] : [30, 20, 10, 0];
   for (const d of xTicks) {
     const x = padL + ((days - d) / days) * plotW;
-    const lbl = d === 0 ? 'now' : `-${d}d`;
+    const isNow = d === 0;
+    const lbl = isNow ? 'NOW' : `-${d}d`;
+    if (isNow) ctx.font = 'bold 9px monospace';
     ctx.fillText(lbl, x - ctx.measureText(lbl).width / 2, cssH - 3);
+    if (isNow) ctx.font = '9px monospace';
   }
 
   scatterHits = [];
@@ -1876,7 +1880,7 @@ document.querySelectorAll('[data-view-toggle] button[data-view]').forEach((btn) 
 
 const RECENT_WINDOW_S    = 24 * 3600;
 const RECENT_BIG_ISK     = 1e9;
-const RECENT_MAX_CARDS   = 3;
+const RECENT_MAX_CARDS   = 5;
 let recentAgeTickTimer = null;
 
 function recentKills() {
