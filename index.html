@@ -12,7 +12,7 @@
 <meta name="description" content="Interactive map of Anoikis - Eve Online wormhole space.">
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
-<link rel="stylesheet" href="./styles/main.css?v=20260422o" />
+<link rel="stylesheet" href="./styles/main.css?v=20260423a" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="57ac0157-6021-4a9e-b0a0-73fddc9eb45d"></script>
 </head>
 <body>
@@ -150,7 +150,7 @@
   <div id="intel-body">
     <div class="intel-section-label intel-view-toggle-row">
       <div class="intel-view-toggle" data-view-toggle="1">
-        <button class="intel-view-btn on" data-view="recent">Latest 24H</button>
+        <button class="intel-view-btn on" data-view="recent">Recent</button>
         <button class="intel-view-btn" data-view="heatmap">Heatmap</button>
         <button class="intel-view-btn" data-view="scatter">Kill Scatter</button>
       </div>
@@ -172,7 +172,7 @@
       </div>
 
       <div id="intel-recent-list-header" class="intel-section-label" style="display:none;">
-        <span class="intel-section-title">Latest engagements</span>
+        <span class="intel-section-title">Latest engagements <span class="intel-section-hint">(up to 3)</span></span>
         <span id="intel-recent-list-count" class="intel-section-count"></span>
       </div>
       <div id="intel-recent-list"></div>
@@ -457,6 +457,6 @@
   </button>
 </nav>
 
-<script src="./src/main.js?v=20260422x"></script>
+<script src="./src/main.js?v=20260423a"></script>
 </body>
 </html>

@@ -1960,8 +1960,7 @@ function renderIntelRecent() {
   emptyEl.style.display = 'none';
   const cardEntries = entries.slice(0, RECENT_MAX_CARDS);
   headerEl.style.display = '';
-  document.getElementById('intel-recent-list-count').textContent =
-    `Showing ${cardEntries.length}`;
+  document.getElementById('intel-recent-list-count').textContent = '';
 
   listEl.innerHTML = '';
   cardEntries.forEach((e) => {
@@ -2023,12 +2022,12 @@ function buildRecentCard({ k, ts }) {
       <div class="intel-recent-party">
         <div class="intel-recent-party-img" ${fbImg ? `style="background-image:url('${fbImg}')"` : ''}></div>
         <div class="intel-recent-party-info">
-          <div class="intel-recent-party-label"><span data-role="fb-label">${fb && !fb.character_id ? 'NPC KILL' : 'Final blow'}</span>${tagInner ? `<span class="intel-recent-fb-tag">${tagInner}</span>` : ''}</div>
+          <div class="intel-recent-party-label"><span data-role="fb-label">${k.isNpc ? 'NPC KILL' : 'Final blow'}</span>${tagInner ? `<span class="intel-recent-fb-tag">${tagInner}</span>` : ''}</div>
           <div class="intel-recent-party-ship">
             <span class="name" data-role="fb-ship">${escapeHtml(typeNameFor(fbShipId))}</span>
           </div>
           <div class="intel-recent-party-pilot" data-role="fb-pilot">${fb && !fb.character_id ? 'o7' : (fb?.character_id ? 'Loading…' : '—')}</div>
-          <div class="intel-recent-party-corp"  data-role="fb-corp">${fb?.corporation_id && fb?.character_id ? 'Loading…' : ''}</div>
+          <div class="intel-recent-party-corp"  data-role="fb-corp">${!k.isNpc && fb?.corporation_id ? 'Loading…' : ''}</div>
         </div>
       </div>
       <a class="intel-recent-zkb" href="${zkbHref}" target="_blank" rel="noopener" aria-label="Open on zKillboard">
@@ -2062,7 +2061,7 @@ function buildRecentCard({ k, ts }) {
   fillName('char', k.victim?.character_id,    '[data-role="victim-pilot"]');
   fillName('corp', k.victim?.corporation_id,  '[data-role="victim-corp"]');
   if (fb?.character_id) fillName('char', fb.character_id,         '[data-role="fb-pilot"]');
-  if (fb?.character_id) fillName('corp', fb.corporation_id,        '[data-role="fb-corp"]');
+  if (!k.isNpc && fb?.corporation_id) fillName('corp', fb.corporation_id, '[data-role="fb-corp"]');
 
   return card;
 }
@@ -4039,13 +4038,13 @@ function updateKillCount() {
   const container = killViewMode === 'history'
     ? document.getElementById('kill-history-list')
     : killList;
-  let visible = 0;
+  let hidden = 0;
   if (container) {
     for (const el of container.children) {
-      if (el.style.display !== 'none') visible++;
+      if (el.style.display === 'none') hidden++;
     }
   }
-  killCountEl.textContent = visible + ' shown';
+  killCountEl.textContent = hidden > 0 ? hidden + ' hidden' : '';
 }
 
 function handleBackendKill(kill, animated) {
