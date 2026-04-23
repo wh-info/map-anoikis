@@ -4300,11 +4300,7 @@ async function fetchFinalBlow(killId) {
 
 function positionKillPopup(rowEl) {
   const rowRect = rowEl.getBoundingClientRect();
-  let top = rowRect.top;
-  const popupH = killPopup.offsetHeight || 100;
-  if (top + popupH > window.innerHeight - 10) top = window.innerHeight - popupH - 10;
-  if (top < 10) top = 10;
-  killPopup.style.top = top + 'px';
+  killPopup.style.top = rowRect.top + 'px';
 }
 
 function closeKillPopup() {
