@@ -4524,38 +4524,54 @@ function connectKillFeed() {
           flashRestoreRight();
         }
         // (Thera connection handlers are in the else-if chain below.)
-        // Live-inject into the open intel panel's 24h/12d heatmap.
-        if (intelOpen && intelCurrentKills && intelCurrentStar
-            && msg.kill.systemId === intelCurrentStar.id) {
+        // Live-inject into the intel cache so re-opening a recently-viewed
+        // system shows kills that arrived after its last fetch — closes the
+        // race where a kill broadcasts on the live feed a moment after the
+        // panel cached its /intel response and the 15-min TTL would otherwise
+        // serve a stale list. While the panel is OPEN for this same system,
+        // intelCurrentKills is the same array reference as the cache entry's
+        // kills, so we push once and re-render; while closed, we just push.
+        {
           const k = msg.kill;
-          // Synthesize the final-blow attacker so the Latest 24H tab can render
-          // the FB side of an engagement card without waiting for an /intel reload.
-          const synthAttackers = k.fbShipTypeId != null ? [{
-            final_blow: true,
-            ship_type_id: k.fbShipTypeId,
-            character_id: k.fbCharacterId,
-            corporation_id: k.fbCorporationId,
-          }] : [];
-          intelCurrentKills.push({
-            id: k.id,
-            killmail_time: new Date(k.ts * 1000).toISOString(),
-            kind: k.kind,
-            isNpc: k.isNpc,
-            hasImplants: !!k.hasImplants,
-            _zkbValue: k.value,
-            _attackerCount: typeof k.attackerCount === 'number' ? k.attackerCount : null,
-            victim: {
-              character_id: k.characterId,
-              corporation_id: k.corporationId,
-              alliance_id: null,
-              ship_type_id: k.shipTypeId,
-            },
-            attackers: synthAttackers,
-          });
-          const short = intelAggregateShort(intelCurrentKills, intelRangeShort);
-          renderHmShort(short.counts, intelCurrentRgb, intelRangeShort);
-          renderLiveness();
-          if (intelView === 'recent') renderIntelRecent();
+          const isOpenForThisSystem = intelOpen && intelCurrentKills && intelCurrentStar
+            && k.systemId === intelCurrentStar.id;
+          const cached = intelKillCache.get(k.systemId);
+          const cacheArr = (cached && !cached.pending) ? cached.kills : null;
+          // Same array when intel is open for this system (loadIntel assigns
+          // intelCurrentKills = cached.kills by reference). Pick one target.
+          const target = isOpenForThisSystem ? intelCurrentKills : cacheArr;
+          if (target) {
+            // Synthesize the final-blow attacker so the Recent tab can render
+            // the FB side of an engagement card without waiting for a reload.
+            const synthAttackers = k.fbShipTypeId != null ? [{
+              final_blow: true,
+              ship_type_id: k.fbShipTypeId,
+              character_id: k.fbCharacterId,
+              corporation_id: k.fbCorporationId,
+            }] : [];
+            target.push({
+              id: k.id,
+              killmail_time: new Date(k.ts * 1000).toISOString(),
+              kind: k.kind,
+              isNpc: k.isNpc,
+              hasImplants: !!k.hasImplants,
+              _zkbValue: k.value,
+              _attackerCount: typeof k.attackerCount === 'number' ? k.attackerCount : null,
+              victim: {
+                character_id: k.characterId,
+                corporation_id: k.corporationId,
+                alliance_id: null,
+                ship_type_id: k.shipTypeId,
+              },
+              attackers: synthAttackers,
+            });
+          }
+          if (isOpenForThisSystem) {
+            const short = intelAggregateShort(intelCurrentKills, intelRangeShort);
+            renderHmShort(short.counts, intelCurrentRgb, intelRangeShort);
+            renderLiveness();
+            if (intelView === 'recent') renderIntelRecent();
+          }
         }
       } else if (
         (msg.type === 'thera-snapshot' || msg.type === 'thera')
