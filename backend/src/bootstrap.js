@@ -83,7 +83,7 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-export function createBootstrap({ killstore, log }) {
+export function createBootstrap({ killstore, log, onIngest }) {
   let esiRemaining  = 100;
   let esiPauseUntil = 0;
 
@@ -166,7 +166,14 @@ export function createBootstrap({ killstore, log }) {
       return Math.floor(new Date(esiKill.killmail_time).getTime() / 1000);
     }
     const kill = buildIntelKill(raw, classification);
-    await killstore.add(kill);
+    const added = await killstore.add(kill);
+    // Notify the caller about brand-new additions so it can rebroadcast over
+    // WS for forward-stall recoveries (caller decides whether to broadcast
+    // based on which path triggered this ingest — daily reconcile pulls 60
+    // days back and shouldn't fire animations).
+    if (added && onIngest) {
+      try { onIngest(kill); } catch { /* never let a callback break ingest */ }
+    }
     return kill.ts;
   }
 

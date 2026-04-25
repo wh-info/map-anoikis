@@ -125,7 +125,15 @@ fastify.options('/*', async (_req, reply) => {
   return reply.code(204).send();
 });
 
-let reconcileStats = { lastRunAt: null, totalRuns: 0, lastAdded: 0 };
+let reconcileStats = { lastRunAt: null, totalRuns: 0, lastAdded: 0, broadcastedTotal: 0 };
+
+// Set inside the onJump callback while a watchdog-triggered reconcile is
+// running, cleared after. The bootstrap onIngest hook reads this to decide
+// whether to broadcast a freshly-added kill over WS — only forward-stall
+// reconciles (which cover a ≤5 min window) should rebroadcast. Daily cron
+// reconciles pull up to 24h back; replaying those as live would flood the
+// map with hours-old animations.
+let activeWatchdogReconcile = null;
 
 fastify.get('/health', async () => {
   const pollerState = zkillClient?.getState?.() ?? null;
@@ -248,13 +256,52 @@ setInterval(() => {
   }
 }, WS_PING_MS).unref?.();
 
+// Convert a killstore-shaped intel kill back to the compact WS payload the
+// frontend expects. The intel kill carries both projections, so this is just
+// a field selection — no recomputation. Used by the rebroadcast path so a
+// reconciled kill animates the map identically to a live one.
+function intelKillToCompact(kill) {
+  return {
+    id: kill.id,
+    systemId: kill.systemId,
+    shipTypeId: kill.shipTypeId,
+    kind: kill.kind,
+    characterId: kill.characterId ?? null,
+    corporationId: kill.corporationId ?? null,
+    value: kill.value ?? 0,
+    hasImplants: !!kill.hasImplants,
+    isNpc: !!kill.isNpc,
+    ts: kill.ts,
+    fbShipTypeId: kill.fbShipTypeId ?? null,
+    fbCharacterId: kill.fbCharacterId ?? null,
+    fbCorporationId: kill.fbCorporationId ?? null,
+    attackerCount: Array.isArray(kill.attackers) ? kill.attackers.length : null,
+    receivedAt: kill.receivedAt ?? Math.floor(Date.now() / 1000),
+  };
+}
+
 const bootstrap = createBootstrap({
   killstore,
-  log: fastify.log
+  log: fastify.log,
+  // Fires for every brand-new kill ingested into the killstore from the
+  // bootstrap walker or reconcile. We only want to rebroadcast over WS for
+  // forward-stall reconciles (≤5 min window) — daily reconciles cover up to
+  // 24h back and replaying those would flood the map with stale animations.
+  // The activeWatchdogReconcile flag, set inside the onJump callback below,
+  // is how we scope this.
+  onIngest: (kill) => {
+    if (activeWatchdogReconcile !== 'forward-stall') return;
+    const compact = intelKillToCompact(kill);
+    ring.push(compact);
+    broadcast({ type: 'kill', kill: compact });
+    reconcileStats.broadcastedTotal = (reconcileStats.broadcastedTotal ?? 0) + 1;
+  },
 });
 
 // Lightweight wrapper around reconcileWindow that also updates the /health
 // counters and swallows errors so a bad cron run can't crash the worker.
+// Returns the stats object (or null on failure) so callers like onJump can
+// branch on the recovered/ghost outcome.
 async function runReconcile(fromTs, toTs, reason) {
   try {
     fastify.log.info({ fromTs, toTs, reason }, 'reconcile trigger');
@@ -262,10 +309,13 @@ async function runReconcile(fromTs, toTs, reason) {
     reconcileStats = {
       lastRunAt: Date.now(),
       totalRuns: reconcileStats.totalRuns + 1,
-      lastAdded: stats.added
+      lastAdded: stats.added,
+      broadcastedTotal: reconcileStats.broadcastedTotal,
     };
+    return stats;
   } catch (err) {
     fastify.log.warn({ err: err.message, reason }, 'reconcile failed');
+    return null;
   }
 }
 
@@ -290,11 +340,26 @@ zkillClient = connectZkill({
   // from the live stream. Reconcile the time window those sequences cover —
   // ~6.7s per sequence is R2Z2's natural cadence, so lag * 7 is a safe upper
   // bound. Fire-and-forget so it can't stall the poller loop.
-  onJump: ({ lag }) => {
+  //
+  // For forward-stall jumps we also: (a) tag activeWatchdogReconcile so the
+  // bootstrap onIngest hook rebroadcasts each newly-added kill over WS, and
+  // (b) call recordRecoveryOutcome after the reconcile completes to split
+  // recovered (CF-cached 404) from ghost (true empty seq) and update the
+  // time-to-recover stats.
+  onJump: async ({ lag, stuckFor, kind }) => {
     const nowSec = Math.floor(Date.now() / 1000);
     const windowSec = Math.max(300, lag * 7);
-    runReconcile(nowSec - windowSec, nowSec, 'watchdog-jump');
-  }
+    const isForwardStall = kind === 'forward-stall';
+    if (isForwardStall) activeWatchdogReconcile = 'forward-stall';
+    try {
+      const stats = await runReconcile(nowSec - windowSec, nowSec, 'watchdog-jump');
+      if (isForwardStall && typeof stuckFor === 'number') {
+        zkillClient?.recordRecoveryOutcome?.(stuckFor, stats?.added ?? 0);
+      }
+    } finally {
+      if (isForwardStall) activeWatchdogReconcile = null;
+    }
+  },
 });
 
 // Eve-Scout Thera connections. Polls the public API on a 3-min cadence and
