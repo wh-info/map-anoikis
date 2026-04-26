@@ -11,6 +11,10 @@ const RING_MS  = 2000;
 // treated as "delayed" — the backend feed sometimes emits hours/days-old kills
 // in bulk when zKillboard catches up after falling behind CCP's killmail delay.
 const DELAYED_KILL_MS = 60 * 60 * 1000;
+// Kills delayed by more than this are routed to history-only — no live feed
+// row, no map animation. They still go to the history buffer and the intel
+// cache, just don't pretend to be "live activity." Set to Infinity to disable.
+const HISTORY_ONLY_DELAY_MS = 16 * 60 * 60 * 1000;
 
 // WH class palettes
 const PALETTES = {
@@ -4001,6 +4005,10 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
 }
 
 function spawnLiveKill(params) {
+  // History-only kills (>16h delayed by zKB) skip the live feed entirely:
+  // no map animation, no DOM row, no kill counter bump. They still ride the
+  // history buffer + intel cache via the WS handler upstream.
+  if (params.isHistoryOnly) return;
   if (params.animated) triggerKillAnim(params.star, !!params.isDelayed, params.kind, params.typeId);
   const el = buildKillElement(params);
   killList.insertBefore(el, killList.firstChild);
@@ -4013,6 +4021,7 @@ function stampKill(kill) {
   kill._delayedStamped = true;
   if (!kill.ts) {
     kill._isDelayed = false;
+    kill._isHistoryOnly = false;
     return;
   }
   // Prefer the backend's receivedAt (the true "zKB published it late" signal,
@@ -4020,7 +4029,9 @@ function stampKill(kill) {
   // backend hasn't been updated yet — during the rollout window, the old
   // behavior is still better than nothing.
   const ref = kill.receivedAt ? kill.receivedAt * 1000 : Date.now();
-  kill._isDelayed = (ref - kill.ts * 1000) > DELAYED_KILL_MS;
+  const ageMs = ref - kill.ts * 1000;
+  kill._isDelayed     = ageMs > DELAYED_KILL_MS;
+  kill._isHistoryOnly = ageMs > HISTORY_ONLY_DELAY_MS;
 }
 
 function killToParams(kill, star) {
@@ -4036,6 +4047,7 @@ function killToParams(kill, star) {
     hasImplants: !!kill.hasImplants,
     isNpc: !!kill.isNpc,
     isDelayed: kill._isDelayed,
+    isHistoryOnly: !!kill._isHistoryOnly,
   };
 }
 
@@ -4085,13 +4097,26 @@ function pushToBuffer(kill, star) {
 }
 
 function renderHistoryPage() {
-  // History = kills older than what's currently in the live list.
-  // Skip the newest MAX_KILLS items (those are in the live view).
+  // History = every kill in the buffer that's not currently shown in the live
+  // list. The live list holds the newest MAX_KILLS items that are NOT
+  // history-only (>16h delayed kills are routed straight here regardless of
+  // position in the buffer).
   // Within history, sort by killmail timestamp descending — this undoes any
   // out-of-order insertion caused by zKB catching up on delayed kills in bulk.
-  const historyItems = killBuffer
-    .slice(MAX_KILLS)
-    .sort((a, b) => (b.kill.ts || 0) - (a.kill.ts || 0));
+  let liveCount = 0;
+  const historyItems = [];
+  for (const item of killBuffer) {
+    if (item.kill._isHistoryOnly) {
+      historyItems.push(item);
+      continue;
+    }
+    if (liveCount < MAX_KILLS) {
+      liveCount++;
+      continue;
+    }
+    historyItems.push(item);
+  }
+  historyItems.sort((a, b) => (b.kill.ts || 0) - (a.kill.ts || 0));
   const totalPages = Math.max(1, Math.ceil(historyItems.length / HISTORY_PAGE_SIZE));
   if (historyPage >= totalPages) historyPage = totalPages - 1;
   if (historyPage < 0) historyPage = 0;
@@ -4506,9 +4531,12 @@ function connectKillFeed() {
           const star = starById.get(k.systemId);
           if (star) killBuffer.push({ kill: k, star });
         }
-        // Render the most recent MAX_KILLS to the live list.
+        // Render the most recent MAX_KILLS non-history-only kills to the live
+        // list. Filter first so history-only kills don't take live slots only
+        // to be dropped by spawnLiveKill — that would leave the live list
+        // shorter than MAX_KILLS even when there's plenty of fresh activity.
         killList.innerHTML = '';
-        const recent = msg.kills.slice(-MAX_KILLS);
+        const recent = msg.kills.filter(k => !k._isHistoryOnly).slice(-MAX_KILLS);
         for (const k of recent) handleBackendKill(k, false);
         if (killViewMode === 'history') renderHistoryPage();
       } else if (msg.type === 'kill' && msg.kill) {
@@ -4516,12 +4544,25 @@ function connectKillFeed() {
         const star = starById.get(msg.kill.systemId);
         if (star) pushToBuffer(msg.kill, star);
         if (killViewMode === 'live') {
+          // handleBackendKill -> spawnLiveKill self-gates on isHistoryOnly,
+          // so this is a no-op for >16h kills.
           handleBackendKill(msg.kill, true);
+          // History-only kill arriving while user is in live mode: re-render
+          // history if they happen to scroll to it later. No-op now since
+          // we're not in history view, but if they switch they'll see it.
         } else {
-          if (star) triggerKillAnim(star, !!msg.kill._isDelayed, msg.kill.kind, msg.kill.shipTypeId);
-          unseenLiveKills++;
-          updateHistoryBanner();
-          flashRestoreRight();
+          // History view. Animate + flash + banner only for kills that would
+          // actually be visible in live view (i.e. not history-only). For
+          // history-only kills we just re-render the page so they appear at
+          // their chronological position.
+          if (!msg.kill._isHistoryOnly) {
+            if (star) triggerKillAnim(star, !!msg.kill._isDelayed, msg.kill.kind, msg.kill.shipTypeId);
+            unseenLiveKills++;
+            updateHistoryBanner();
+            flashRestoreRight();
+          } else {
+            renderHistoryPage();
+          }
         }
         // (Thera connection handlers are in the else-if chain below.)
         // Live-inject into the intel cache so re-opening a recently-viewed
