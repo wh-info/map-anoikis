@@ -33,9 +33,153 @@
   }
 
   .wrap {
-    max-width: 980px;
-    margin: 32px auto;
+    max-width: 1480px;
+    margin: 24px auto;
     padding: 0 16px 60px;
+  }
+
+  /* Two-column split: analysis on the left, system killfeed on the right.
+     The killfeed mirrors the live killfeed UX (newest-first list, render
+     image + ship/pilot/corp). On narrow viewports the columns collapse to
+     a single column and a tabs control switches between them. */
+  .br-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 16px;
+    align-items: start;
+  }
+  .br-left  { min-width: 0; }
+  .br-right {
+    position: sticky;
+    top: 24px;
+    max-height: calc(100vh - 48px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    border: 1px solid var(--border-hi);
+  }
+
+  /* Mobile/tablet tabs (hidden on wide screens) */
+  .br-tabs {
+    display: none;
+    margin-bottom: 14px;
+    gap: 8px;
+  }
+  .br-tab {
+    flex: 1;
+    background: var(--panel-dark);
+    border: 1px solid var(--border-hi);
+    color: var(--muted);
+    padding: 8px 12px;
+    font: inherit;
+    cursor: pointer;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-size: 11px;
+  }
+  .br-tab.active {
+    background: rgba(0, 200, 200, 0.12);
+    color: var(--text);
+    border-color: var(--accent);
+  }
+
+  /* Right column — system killfeed (style mirrors live killfeed) */
+  .br-feed-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--dim);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .br-feed-header b {
+    color: var(--muted);
+    font-weight: 700;
+  }
+  .br-feed-list {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+  }
+  .br-feed-list::-webkit-scrollbar { width: 6px; }
+  .br-feed-list::-webkit-scrollbar-track { background: transparent; }
+  .br-feed-list::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
+
+  .br-feed-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    align-items: center;
+  }
+  .br-feed-row:last-child { border-bottom: none; }
+  .br-feed-row:hover { background: rgba(0, 200, 200, 0.04); }
+
+  /* Side-color stripe on the left edge of each row */
+  .br-feed-row::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--dim);
+  }
+  .br-feed-row.side-a::before { background: var(--side-a); }
+  .br-feed-row.side-b::before { background: var(--side-b); }
+
+  .br-feed-img {
+    width: 56px;
+    height: 56px;
+    background-color: rgba(0, 0, 0, 0.4);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  .br-feed-info {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .br-feed-info-ship {
+    color: var(--text);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .br-feed-info-pilot {
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .br-feed-info-corp {
+    color: var(--dim);
+    font-size: 10px;
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .br-feed-meta {
+    text-align: right;
+    white-space: nowrap;
+  }
+  .br-feed-isk {
+    color: var(--highlight);
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .br-feed-time {
+    color: var(--dim);
+    font-size: 10px;
+    margin-top: 4px;
   }
 
   /* Toolbar */
@@ -427,8 +571,25 @@
   }
   .br-empty b { color: var(--muted); }
 
-  /* Mobile */
-  @media (max-width: 720px) {
+  /* Tablet — narrower right column but still side by side */
+  @media (max-width: 1120px) {
+    .br-split { grid-template-columns: minmax(0, 1fr) 320px; }
+  }
+
+  /* Mobile — collapse to single column, swap between Analysis/Killfeed via tabs */
+  @media (max-width: 820px) {
+    .wrap { padding: 0 12px 60px; margin-top: 16px; }
+    .br-tabs { display: flex; }
+    .br-split { grid-template-columns: 1fr; }
+    .br-right {
+      position: static;
+      max-height: 70vh;
+      top: auto;
+    }
+    /* Tab visibility — only one column visible at a time */
+    body[data-mobile-view="analysis"] .br-right { display: none; }
+    body[data-mobile-view="killfeed"] .br-left  { display: none; }
+
     .br-sides { grid-template-columns: 1fr; }
     .br-kill { grid-template-columns: 60px 1fr auto; gap: 8px; }
     .br-meta { gap: 10px; }
@@ -453,8 +614,18 @@
     <button id="t-pickbest" title="Find busiest cluster in last 24h">FIND ACTIVE</button>
   </div>
 
-  <!-- Battle report mounts here -->
-  <div id="report"></div>
+  <!-- Mobile-only tabs to switch between Analysis and Killfeed columns -->
+  <div class="br-tabs" id="mobile-tabs">
+    <button class="br-tab active" data-view="analysis">ANALYSIS</button>
+    <button class="br-tab"        data-view="killfeed">KILLFEED</button>
+  </div>
+
+  <!-- Two-column split. On mobile only one is visible at a time, controlled
+       by the tabs above (via body[data-mobile-view="..."] CSS rule). -->
+  <div class="br-split">
+    <div class="br-left"  id="report-left"></div>
+    <aside class="br-right" id="report-right"></aside>
+  </div>
 
 </div>
 
@@ -1177,18 +1348,22 @@ async function loadAndRender() {
   const minKills = Number(document.getElementById('t-min').value) || 3;
 
   const systemId = SYS_BY_NAME[sysName];
-  const mount = document.getElementById('report');
+  const left  = document.getElementById('report-left');
+  const right = document.getElementById('report-right');
   if (!systemId) {
-    mount.innerHTML = `<div class="br-empty"><b>Unknown system.</b><br>Try J151817, J155620, J111935, J173638, J150853, J160941.</div>`;
+    left.innerHTML = `<div class="br-empty"><b>Unknown system.</b><br>Try J151817, J155620, J111935, J173638, J150853, J160941.</div>`;
+    right.innerHTML = '';
     return;
   }
-  mount.innerHTML = `<div class="br-loading">Loading kills for ${sysName}…</div>`;
+  left.innerHTML = `<div class="br-loading">Loading kills for ${sysName}…</div>`;
+  right.innerHTML = `<div class="br-feed-header">Loading…</div>`;
 
   let allKills;
   try {
     allKills = await fetchSystemKills(systemId);
   } catch (e) {
-    mount.innerHTML = `<div class="br-empty"><b>Failed to load:</b> ${escapeHtml(e.message)}</div>`;
+    left.innerHTML  = `<div class="br-empty"><b>Failed to load:</b> ${escapeHtml(e.message)}</div>`;
+    right.innerHTML = '';
     return;
   }
 
@@ -1197,7 +1372,8 @@ async function loadAndRender() {
   const kills = allKills.filter(k => !k.isNpc && k.ts >= cutoff);
 
   if (kills.length < minKills) {
-    mount.innerHTML = `<div class="br-empty">No engagements in last <b>${hours}h</b> in <b>${sysName}</b><br>Found ${kills.length} PvP kill${kills.length===1?'':'s'}, need ≥${minKills} for an engagement.</div>`;
+    left.innerHTML  = `<div class="br-empty">No engagements in last <b>${hours}h</b> in <b>${sysName}</b><br>Found ${kills.length} PvP kill${kills.length===1?'':'s'}, need ≥${minKills} for an engagement.</div>`;
+    right.innerHTML = '';
     return;
   }
 
@@ -1205,7 +1381,8 @@ async function loadAndRender() {
   const clusters = clusterKills(kills, gapMin * 60);
   const interesting = clusters.filter(c => c.kills.length >= minKills);
   if (interesting.length === 0) {
-    mount.innerHTML = `<div class="br-empty">No clusters of ≥${minKills} kills in last <b>${hours}h</b> in <b>${sysName}</b><br>Found ${clusters.length} smaller cluster${clusters.length===1?'':'s'}.</div>`;
+    left.innerHTML  = `<div class="br-empty">No clusters of ≥${minKills} kills in last <b>${hours}h</b> in <b>${sysName}</b><br>Found ${clusters.length} smaller cluster${clusters.length===1?'':'s'}.</div>`;
+    right.innerHTML = '';
     return;
   }
   const cluster = interesting.sort((a,b) => b.kills.length - a.kills.length)[0];
@@ -1221,8 +1398,12 @@ async function loadAndRender() {
     s.label = await resolveSideLabel(s);
   }
 
-  // Render
-  mount.innerHTML = '';
+  // Side-root → side index lookup, used by both columns.
+  const root2idx = new Map();
+  for (const s of sides) root2idx.set(s.root, s.sideIdx);
+
+  // ── LEFT COLUMN — analysis ─────────────────────────────────────────
+  left.innerHTML = '';
 
   // Header
   const totalIsk = cluster.kills.reduce((s, k) => s + (k._zkbValue || k.value || 0), 0);
@@ -1239,54 +1420,83 @@ async function loadAndRender() {
       <span><b>${sides.length}</b> side${sides.length===1?'':'s'}</span>
     </div>
   </div>`);
-  mount.appendChild(header);
+  left.appendChild(header);
 
-  // Fleet strength over time (top chart — who's in system, growing over time)
-  mount.appendChild(renderFleetStrength(cluster.kills, sideOfKey, sides));
+  // Fleet strength over time
+  left.appendChild(renderFleetStrength(cluster.kills, sideOfKey, sides));
 
-  // Cumulative ISK destroyed over time (second chart — losses accumulating)
-  mount.appendChild(renderTimeline(cluster.kills, sideOfKey, sides));
+  // Cumulative ISK destroyed over time
+  left.appendChild(renderTimeline(cluster.kills, sideOfKey, sides));
 
-  // ISK efficiency meter (single bar showing who dealt more damage)
+  // ISK efficiency meter
   const eff = renderEfficiency(sides);
-  if (eff) mount.appendChild(eff);
+  if (eff) left.appendChild(eff);
 
-  // Sides
+  // Side cards
   const sidesEl = el(`<div class="br-sides"></div>`);
   for (const s of sides.slice(0, 2)) {
     sidesEl.appendChild(await renderSide(s, s.sideIdx));
   }
-  mount.appendChild(sidesEl);
+  left.appendChild(sidesEl);
 
-  // If 3+ sides, surface that as an info row
   if (sides.length > 2) {
     const extraSides = sides.slice(2);
     const extraKills = extraSides.reduce((s,x) => s + x.killsScored + x.killsLost, 0);
     const extra = el(`<div class="br-empty" style="padding:14px; font-size:12px; text-align:left; background:var(--panel-dark); border:1px solid var(--border);">
       + ${extraSides.length} other side${extraSides.length===1?'':'s'} · ${extraKills} kill${extraKills===1?'':'s'} · grouped as "Other"
     </div>`);
-    mount.appendChild(extra);
+    left.appendChild(extra);
   }
 
-  // Kill list (newest last so timeline order matches)
-  const killsEl = el(`<div class="br-kills">
-    <div class="br-kills-header">KILL LIST · ${cluster.kills.length} TOTAL</div>
+  // ── RIGHT COLUMN — system killfeed (this engagement only, newest first) ─
+  await renderKillfeed(right, cluster, sideOfKey, root2idx);
+}
+
+// Right-column killfeed mirroring the live killfeed UX. Renders each kill
+// as a row with ship render image, ship name, victim pilot, victim corp,
+// ISK value, and time. A 3px stripe on the row's left edge indicates which
+// side the victim belongs to (matches chart colors).
+async function renderKillfeed(mount, cluster, sideOfKey, root2idx) {
+  mount.innerHTML = '';
+  const headerEl = el(`<div class="br-feed-header">
+    SYSTEM KILLFEED · <b>${cluster.kills.length}</b> KILLS · NEWEST FIRST
   </div>`);
-  for (const k of cluster.kills) {
-    killsEl.appendChild(await renderKill(k, sideOfKey));
-  }
+  mount.appendChild(headerEl);
 
-  // After all kills rendered, color the side-dot indicators
-  const root2idx = new Map();
-  for (const s of sides) root2idx.set(s.root, s.sideIdx);
-  for (const dot of killsEl.querySelectorAll('.br-kill-victim-side')) {
-    const r = dot.dataset.root;
-    const idx = r ? root2idx.get(r) : null;
-    if (idx === 'a') dot.classList.add('side-a');
-    else if (idx === 'b') dot.classList.add('side-b');
-    else dot.style.background = 'var(--dim)';
+  const listEl = el(`<div class="br-feed-list"></div>`);
+  mount.appendChild(listEl);
+
+  // Newest first to match live killfeed UX.
+  const sorted = cluster.kills.slice().sort((a, b) => b.ts - a.ts);
+  for (const k of sorted) {
+    const victimKey = k.victim?.alliance_id ? k.victim.alliance_id
+                    : (k.victim?.corporation_id ? 'corp:' + k.victim.corporation_id : null);
+    const root = victimKey ? sideOfKey.get(victimKey) : null;
+    const sideIdx = root ? root2idx.get(root) : null;
+    const sideClass = sideIdx === 'a' ? 'side-a' : (sideIdx === 'b' ? 'side-b' : '');
+
+    const tid = k.victim?.ship_type_id || k.shipTypeId;
+    const shipName = (await resolveType(tid)) || 'Unknown';
+    const corpName = (await resolveName('corp', k.victim?.corporation_id)) || '—';
+    const pilotName = k.victim?.character_id
+      ? ((await resolveName('char', k.victim.character_id)) || `Pilot ${k.victim.character_id}`)
+      : '—';
+    const renderUrl = tid ? `https://images.evetech.net/types/${tid}/render?size=128` : '';
+
+    const row = el(`<div class="br-feed-row ${sideClass}">
+      <div class="br-feed-img" ${renderUrl ? `style="background-image:url('${renderUrl}')"` : ''}></div>
+      <div class="br-feed-info">
+        <div class="br-feed-info-ship">${escapeHtml(shipName)}</div>
+        <div class="br-feed-info-pilot">${escapeHtml(pilotName)}</div>
+        <div class="br-feed-info-corp">${escapeHtml(corpName)}</div>
+      </div>
+      <div class="br-feed-meta">
+        <div class="br-feed-isk">${formatIsk(k._zkbValue || k.value || 0)}</div>
+        <div class="br-feed-time">${formatTime(k.ts)}</div>
+      </div>
+    </div>`);
+    listEl.appendChild(row);
   }
-  mount.appendChild(killsEl);
 }
 
 async function findActive() {
@@ -1316,6 +1526,19 @@ document.getElementById('t-pickbest').addEventListener('click', findActive);
 document.getElementById('t-system').addEventListener('keydown', e => {
   if (e.key === 'Enter') loadAndRender();
 });
+
+// Mobile tabs (only visible <820px). Set body data-attr to control which
+// column is shown via the CSS rule.
+document.body.dataset.mobileView = 'analysis';
+for (const tab of document.querySelectorAll('.br-tab')) {
+  tab.addEventListener('click', () => {
+    const view = tab.dataset.view;
+    document.body.dataset.mobileView = view;
+    for (const t of document.querySelectorAll('.br-tab')) {
+      t.classList.toggle('active', t.dataset.view === view);
+    }
+  });
+}
 
 // Auto-load on first paint
 loadAndRender();
