@@ -179,6 +179,15 @@ header {
 .stat-val.ok   { color: var(--ok); }
 .stat-val.warn { color: var(--warn); }
 .stat-val.down { color: var(--danger); }
+/* Biggest loss is "shipName — value" and ship names can run long
+   (e.g. "Revelation Navy Issue"). Use a smaller font + nowrap so it
+   stays on one line in the half-width grid cell. */
+#s-biggest {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 #stats-24h {
   margin-top: 12px;
