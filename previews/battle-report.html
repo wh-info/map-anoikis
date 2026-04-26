@@ -160,6 +160,113 @@
     font-size: 10px;
   }
 
+  /* ISK efficiency meter */
+  .br-eff {
+    background: var(--panel-dark);
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .br-eff-label {
+    color: var(--dim);
+    font-size: 10px;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .br-eff-bar {
+    height: 22px;
+    display: flex;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .br-eff-fill-a {
+    background: var(--side-a);
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    font-weight: 700;
+    color: var(--bg);
+    font-size: 11px;
+    min-width: 0;
+  }
+  .br-eff-fill-b {
+    background: var(--side-b);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 8px;
+    font-weight: 700;
+    color: var(--bg);
+    font-size: 11px;
+    min-width: 0;
+  }
+  .br-eff-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .br-eff-meta .a { color: var(--side-a); }
+  .br-eff-meta .b { color: var(--side-b); }
+
+  /* Ship class breakdown bars (inside side cards) */
+  .br-class-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 10px;
+  }
+  .br-class-row {
+    display: grid;
+    grid-template-columns: 60px 36px 1fr;
+    gap: 8px;
+    align-items: center;
+    font-size: 11px;
+  }
+  .br-class-row-label {
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 10px;
+  }
+  .br-class-row-count {
+    color: var(--text);
+    font-weight: 700;
+    font-size: 12px;
+    text-align: right;
+  }
+  .br-class-row-bar-wrap {
+    height: 12px;
+    background: rgba(0, 0, 0, 0.35);
+    position: relative;
+    overflow: hidden;
+  }
+  .br-class-row-bar-bg {
+    height: 100%;
+    opacity: 0.45;
+  }
+  .br-class-row-bar-lost {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: var(--danger);
+    opacity: 0.85;
+  }
+  .br-side.side-a .br-class-row-bar-bg { background: var(--side-a); }
+  .br-side.side-b .br-class-row-bar-bg { background: var(--side-b); }
+
+  /* Fleet strength chart specifics (reuses .br-timeline-svg color scheme) */
+  .br-fleet-svg .line-a { stroke: var(--side-a); stroke-width: 2; fill: none; }
+  .br-fleet-svg .line-b { stroke: var(--side-b); stroke-width: 2; fill: none; }
+  .br-fleet-svg .area-a { fill: var(--side-a); opacity: 0.18; }
+  .br-fleet-svg .area-b { fill: var(--side-b); opacity: 0.18; }
+  .br-fleet-svg .grid-line { stroke: var(--border); stroke-width: 1; }
+  .br-fleet-svg .axis-text { fill: var(--dim); font-size: 10px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+
   /* ISK comparison mirror bar */
   .br-compare {
     background: var(--panel-dark);
@@ -479,19 +586,25 @@ function detectSides(kills) {
   }
 
   // Aggregate sides: pick the "main" identity (alliance > corp) and total weight.
-  const sideStats = new Map(); // sideRoot -> { allianceIds: Set, corpIds: Set, kills: [], iskKilled: 0, iskLost: 0 }
+  const sideStats = new Map();
   function side(root) {
     if (!sideStats.has(root)) {
       sideStats.set(root, {
         root,
         allianceIds: new Set(),
         corpIds: new Set(),
+        pilotIds: new Set(),       // unique character_ids on this side (attackers + victims)
         attackerCount: 0,
         killsScored: 0,
         killsLost: 0,
         iskKilled: 0,
         iskLost: 0,
-        shipBreakdown: new Map(), // typeId -> count (ships THIS side lost)
+        shipBreakdown: new Map(),  // typeId -> count (ships THIS side lost)
+        // Ship class buckets: total fielded (estimated from attacker ship_type_id)
+        // and lost. We won't have full fleet rosters — only ships that appear as
+        // either attackers or victims.
+        classBrought: new Map(),   // class -> Set<character_id_or_typeId> (unique fields)
+        classLost:    new Map(),   // class -> count of victims in this class
       });
     }
     return sideStats.get(root);
@@ -509,17 +622,24 @@ function detectSides(kills) {
       if (s) {
         if (a.alliance_id)    s.allianceIds.add(a.alliance_id);
         if (a.corporation_id) s.corpIds.add(a.corporation_id);
+        if (a.character_id)   s.pilotIds.add(a.character_id);
         s.attackerCount++;
+        // Track this attacker's ship as "brought" — keyed by character to dedupe
+        // when the same pilot appears on multiple kills.
+        if (a.character_id && a.ship_type_id) {
+          const cls = shipClass(a.ship_type_id);
+          if (!s.classBrought.has(cls)) s.classBrought.set(cls, new Set());
+          s.classBrought.get(cls).add(a.character_id);
+        }
       }
     }
 
-    // Victim side: try to find the victim's alliance/corp in any side
+    // Victim side: try to find the victim's alliance/corp in any side.
     const victimKey = k.victim?.alliance_id ? k.victim.alliance_id
                     : (k.victim?.corporation_id ? 'corp:' + k.victim.corporation_id : null);
     let victimRoot = null;
     if (victimKey && sideOfKey.has(victimKey)) victimRoot = sideOfKey.get(victimKey);
     else if (victimKey) {
-      // Make a single-member side for the victim if isolated (e.g., neutral)
       ensure(victimKey);
       victimRoot = victimKey;
       sideOfKey.set(victimKey, victimKey);
@@ -530,14 +650,24 @@ function detectSides(kills) {
       vs.killsLost++;
       vs.iskLost += k._zkbValue || k.value || 0;
       const tid = k.victim?.ship_type_id || k.shipTypeId;
-      if (tid) vs.shipBreakdown.set(tid, (vs.shipBreakdown.get(tid) || 0) + 1);
+      if (tid) {
+        vs.shipBreakdown.set(tid, (vs.shipBreakdown.get(tid) || 0) + 1);
+        const cls = shipClass(tid);
+        vs.classLost.set(cls, (vs.classLost.get(cls) || 0) + 1);
+        // The victim's ship counts toward "brought" for the side's fleet roster.
+        if (k.victim?.character_id) {
+          if (!vs.classBrought.has(cls)) vs.classBrought.set(cls, new Set());
+          vs.classBrought.get(cls).add(k.victim.character_id);
+        }
+      }
       if (k.victim?.alliance_id)    vs.allianceIds.add(k.victim.alliance_id);
       if (k.victim?.corporation_id) vs.corpIds.add(k.victim.corporation_id);
+      if (k.victim?.character_id)   vs.pilotIds.add(k.victim.character_id);
     }
 
     // Each attacker side gets credit for the kill (against THIS victim).
     for (const r of attRoots) {
-      if (r === victimRoot) continue; // don't credit blue-on-blue (rare)
+      if (r === victimRoot) continue;
       const s = side(r);
       s.killsScored++;
       s.iskKilled += k._zkbValue || k.value || 0;
@@ -549,11 +679,103 @@ function detectSides(kills) {
     .filter(s => s.killsScored + s.killsLost >= 1)
     .sort((a, b) => (b.killsScored + b.killsLost) - (a.killsScored + a.killsLost));
 
-  // Tag side index for the top 2 (if any) — others get 'other'.
   for (let i = 0; i < sides.length; i++) {
     sides[i].sideIdx = i === 0 ? 'a' : (i === 1 ? 'b' : 'other');
   }
   return { sides, sideOfKey };
+}
+
+// Ship class bucketing — group typeId into a coarse class label for the
+// composition bars. Heuristic based on common ship typeIDs in EVE; this
+// is approximate but covers the vast majority of fights. A production
+// version would use the SDE's groupID/categoryID lookup we already have.
+const SHIP_CLASS_BUCKETS = [
+  // Order matters — first match wins.
+  { label: 'CAPITAL', test: (id) => CAPITAL_TYPE_IDS.has(id) },
+  { label: 'BS',      test: (id) => BS_TYPE_IDS.has(id) },
+  { label: 'BC',      test: (id) => BC_TYPE_IDS.has(id) },
+  { label: 'CRUISER', test: (id) => CRUISER_TYPE_IDS.has(id) },
+  { label: 'DESSIE',  test: (id) => DESTROYER_TYPE_IDS.has(id) },
+  { label: 'FRIG',    test: (id) => FRIGATE_TYPE_IDS.has(id) },
+  { label: 'INDY',    test: (id) => INDUSTRIAL_TYPE_IDS.has(id) },
+];
+
+// Class type-ID sets — a curated subset of common EVE ships. Production
+// version uses backend-provided type-kinds.json; mockup keeps it inline.
+const CAPITAL_TYPE_IDS = new Set([
+  19720, 19724, 19726, 19722, // Dreadnoughts (Revelation, Naglfar, Moros, Phoenix)
+  23919, 23917, 23913, 23915, // Carriers (Archon, Chimera, Thanatos, Nidhoggur)
+  37604, 37605, 37606, 37607, // FAX (Apostle, Minokawa, Ninazu, Lif)
+  3514, 11567, 671, 23773, 42124, // Supers/Titans (Avatar, Erebus, Leviathan, Ragnarok, Vendetta)
+  28352, 28850, 28848, 28846, // Rorquals etc.
+  19744, 28844, 19722,
+]);
+const BS_TYPE_IDS = new Set([
+  // T1 BS
+  642, 643, 644, 645, 24692, 24690, 24694, 24688,
+  // Marauders
+  28710, 28711, 28659, 28665, 28661,
+  // Black Ops
+  22436, 22440, 22428, 22430,
+  // Faction
+  17636, 17738, 17732, 13202, 17920, 17726, 17918, 17728,
+  // Pirate
+  17738, 17740, 17920, 17918,
+]);
+const BC_TYPE_IDS = new Set([
+  // T1 BC
+  16227, 16229, 16231, 16233, 24698, 24696, 24700, 24702,
+  // Command Ships
+  22444, 22448, 22452, 22456, 22442, 22446, 22450, 22474,
+]);
+const CRUISER_TYPE_IDS = new Set([
+  // T1 cruisers
+  620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634,
+  // T2 (HACs, Logi, Recons)
+  11993, 12003, 12005, 11999, 11978, 11985, 11987, 11989, 12011, 12015, 12019, 12023,
+  11963, 11961, 11959, 11957, 11969, 11971, 11965, 11967,
+  // Strategic Cruisers (T3)
+  29984, 29986, 29988, 29990,
+  // Faction & pirate
+  17703, 17713, 17715, 17709, 17634, 17732, 17812,
+]);
+const DESTROYER_TYPE_IDS = new Set([
+  // T1 destroyers
+  16236, 16238, 16240, 16242, 32874, 32876, 32878, 32872,
+  // Interdictors
+  22452, 22456, 22460, 22464, 22468, 22452, 22466, 22464,
+  // Command Destroyers
+  37480, 37481, 37482, 37483,
+  // Faction
+  47269, 47270, 47271, 47272,
+]);
+const FRIGATE_TYPE_IDS = new Set([
+  // T1 frigates
+  582, 583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, 596, 597,
+  // Interceptors / Stealth Bombers / Logi / Covert Ops
+  11176, 11178, 11186, 11196, 11198, 11200, 11202,
+  11377, 11379, 11381, 11393, 11400, 12044, 12042, 12034, 12038,
+  // Assault Frigates / EAFs
+  11365, 11371, 11369, 11367, 11963, 11961, 11959, 11957,
+  // Pirate / faction
+  17812, 17841, 17924, 17928, 17926, 17930, 17932, 17841,
+  17703, 17717, 17713,
+  // Capsule
+  670, 33328,
+]);
+const INDUSTRIAL_TYPE_IDS = new Set([
+  648, 649, 650, 651, 652, 653, 654, 655, 656, 657,
+  // Deep Space Transports / Blockade Runners
+  12729, 12731, 12733, 12735, 12743, 12745, 12747, 12753,
+  // Freighters etc.
+  19720, 20183, 20185, 20187, 20189,
+]);
+
+function shipClass(typeId) {
+  for (const b of SHIP_CLASS_BUCKETS) {
+    if (b.test(typeId)) return b.label;
+  }
+  return 'OTHER';
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -751,25 +973,170 @@ async function resolveSideLabel(side) {
 
 async function renderSide(side, sideIdx) {
   const label = side.label || (await resolveSideLabel(side));
-  const ships = [];
-  for (const [tid, count] of side.shipBreakdown) {
-    const name = (await resolveType(tid)) || `type ${tid}`;
-    ships.push({ name, count });
-  }
-  ships.sort((a, b) => b.count - a.count);
-
   const cls = sideIdx === 'a' ? 'side-a' : (sideIdx === 'b' ? 'side-b' : '');
+
+  // Build ship-class breakdown rows: BS / BC / Cruiser / Dessie / Frig / Cap / Indy.
+  // Each row shows: brought count, "lost / brought" and a bar with red overlay for lost.
+  const ORDER = ['CAPITAL', 'BS', 'BC', 'CRUISER', 'DESSIE', 'FRIG', 'INDY', 'OTHER'];
+  const rows = [];
+  let maxBrought = 1;
+  for (const cls of ORDER) {
+    const brought = side.classBrought.get(cls)?.size || 0;
+    const lost    = side.classLost.get(cls) || 0;
+    if (brought === 0 && lost === 0) continue;
+    rows.push({ cls, brought, lost });
+    if (brought > maxBrought) maxBrought = brought;
+  }
+
+  const pilots = side.pilotIds.size;
+  const ships  = rows.reduce((s, r) => s + r.brought, 0);
+  const lost   = rows.reduce((s, r) => s + r.lost, 0);
+
   const div = el(`<div class="br-side ${cls}">
     <div class="br-side-name ${cls}">${escapeHtml(label)}</div>
     <div class="br-side-stats">
-      <b>${side.killsScored}</b> kills · <b>${side.killsLost}</b> lost ·
+      <b>${pilots}</b> pilot${pilots===1?'':'s'} · <b>${ships}</b> ship${ships===1?'':'s'} · <b>${lost}</b> lost ·
       ISK destroyed <b>${formatIsk(side.iskKilled)}</b> · lost <b>${formatIsk(side.iskLost)}</b>
     </div>
-    <div class="br-ship-list">
-      ${ships.map(s => `<div class="br-ship-chip">${escapeHtml(s.name)}<b>×${s.count}</b></div>`).join('')}
+    <div class="br-class-rows">
+      ${rows.map(r => {
+        const broughtPct = (r.brought / maxBrought * 100).toFixed(1);
+        const lostPct    = r.brought > 0 ? (r.lost / r.brought * 100).toFixed(1) : 0;
+        // The red "lost" overlay is positioned within the brought-bar's footprint.
+        // Width of the lost overlay = (lost / brought) * (broughtPct of total bar).
+        const lostOverlayPct = r.brought > 0 ? (r.lost / maxBrought * 100).toFixed(1) : 0;
+        return `<div class="br-class-row">
+          <span class="br-class-row-label">${r.cls}</span>
+          <span class="br-class-row-count">${r.brought}${r.lost ? ` <span style="color:var(--danger)">-${r.lost}</span>` : ''}</span>
+          <div class="br-class-row-bar-wrap">
+            <div class="br-class-row-bar-bg" style="width: ${broughtPct}%"></div>
+            ${r.lost > 0 ? `<div class="br-class-row-bar-lost" style="width: ${lostOverlayPct}%"></div>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
     </div>
   </div>`);
   return div;
+}
+
+// ISK efficiency meter — single horizontal bar split by destroyed ISK.
+// 73% / 27% means side A destroyed 73% of all ISK destroyed in this fight.
+function renderEfficiency(sides) {
+  const a = sides.find(s => s.sideIdx === 'a');
+  const b = sides.find(s => s.sideIdx === 'b');
+  if (!a || !b) return null;
+  const total = a.iskKilled + b.iskKilled;
+  if (total === 0) return null;
+  const aPct = a.iskKilled / total * 100;
+  const bPct = 100 - aPct;
+  return el(`<div class="br-eff">
+    <div class="br-eff-label">ISK EFFICIENCY · WHO DEALT MORE DAMAGE</div>
+    <div class="br-eff-bar">
+      <div class="br-eff-fill-a" style="width: ${aPct.toFixed(1)}%">${aPct >= 12 ? aPct.toFixed(0) + '%' : ''}</div>
+      <div class="br-eff-fill-b" style="width: ${bPct.toFixed(1)}%">${bPct >= 12 ? bPct.toFixed(0) + '%' : ''}</div>
+    </div>
+    <div class="br-eff-meta">
+      <span class="a">${escapeHtml(a.label || '')} · destroyed ${formatIsk(a.iskKilled)}</span>
+      <span class="b">${escapeHtml(b.label || '')} · destroyed ${formatIsk(b.iskKilled)}</span>
+    </div>
+  </div>`);
+}
+
+// Fleet strength over time — count of unique pilots per side that have appeared
+// in any kill (attacker or victim) up to each kill's timestamp. Once a pilot is
+// "seen" they remain counted (we don't have logoff info from killmails alone,
+// so this represents "cumulative known fleet size" which is the best proxy).
+function renderFleetStrength(kills, sideOfKey, sides) {
+  const startTs = kills[0].ts, endTs = kills[kills.length-1].ts;
+  const span = Math.max(1, endTs - startTs);
+
+  const root2idx = new Map();
+  for (const s of sides) root2idx.set(s.root, s.sideIdx);
+  function key(att) { return att.alliance_id || ('corp:' + att.corporation_id); }
+
+  // Build timeseries: at each kill timestamp, what's the cumulative unique
+  // pilot count for each side?
+  const seenA = new Set(), seenB = new Set();
+  const seriesA = [{ t: 0, n: 0 }];
+  const seriesB = [{ t: 0, n: 0 }];
+
+  for (const k of kills) {
+    const tFrac = (k.ts - startTs) / span;
+    // Process all attackers
+    for (const a of (k.attackers || [])) {
+      if (!a.character_id) continue;
+      if (!a.alliance_id && !a.corporation_id) continue;
+      const root = sideOfKey.get(key(a));
+      const idx = root ? root2idx.get(root) : null;
+      if (idx === 'a') seenA.add(a.character_id);
+      else if (idx === 'b') seenB.add(a.character_id);
+    }
+    // And the victim
+    const v = k.victim;
+    if (v?.character_id) {
+      const vKey = v.alliance_id || (v.corporation_id ? 'corp:' + v.corporation_id : null);
+      const root = vKey ? sideOfKey.get(vKey) : null;
+      const idx = root ? root2idx.get(root) : null;
+      if (idx === 'a') seenA.add(v.character_id);
+      else if (idx === 'b') seenB.add(v.character_id);
+    }
+    seriesA.push({ t: tFrac, n: seenA.size });
+    seriesB.push({ t: tFrac, n: seenB.size });
+  }
+
+  const maxN = Math.max(seenA.size, seenB.size, 1);
+
+  const W = 1000, H = 120;
+  const padL = 56, padR = 12, padT = 12, padB = 22;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+
+  function x(tFrac) { return padL + tFrac * plotW; }
+  function y(n)     { return padT + (1 - n / maxN) * plotH; }
+
+  function pathFor(series) {
+    return series.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.t).toFixed(1)},${y(p.n).toFixed(1)}`).join(' ');
+  }
+  function areaFor(series) {
+    const p = pathFor(series);
+    const last = series[series.length - 1];
+    return `${p} L${x(last.t).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`;
+  }
+
+  const yTicks = [0, 0.5, 1.0];
+  const sideAName = sides.find(s => s.sideIdx === 'a')?.label || 'Side A';
+  const sideBName = sides.find(s => s.sideIdx === 'b')?.label || 'Side B';
+
+  return el(`<div class="br-timeline">
+    <div class="br-timeline-label">
+      <span>FLEET STRENGTH OVER TIME · ${seenA.size} vs ${seenB.size} PILOTS</span>
+      <span class="br-timeline-legend">
+        <span class="br-timeline-legend-item">
+          <span class="br-timeline-legend-swatch" style="background: var(--side-a)"></span>
+          <span style="color: var(--side-a)">${escapeHtml(sideAName)}</span>
+        </span>
+        <span class="br-timeline-legend-item">
+          <span class="br-timeline-legend-swatch" style="background: var(--side-b)"></span>
+          <span style="color: var(--side-b)">${escapeHtml(sideBName)}</span>
+        </span>
+      </span>
+    </div>
+    <svg class="br-timeline-svg br-fleet-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      ${yTicks.map(t => `
+        <line class="grid-line" x1="${padL}" x2="${W - padR}" y1="${(padT + (1-t)*plotH).toFixed(1)}" y2="${(padT + (1-t)*plotH).toFixed(1)}" />
+        <text class="axis-text" x="${padL - 6}" y="${(padT + (1-t)*plotH + 3).toFixed(1)}" text-anchor="end">${Math.round(maxN * t)}</text>
+      `).join('')}
+      <path class="area-a" d="${areaFor(seriesA)}" />
+      <path class="area-b" d="${areaFor(seriesB)}" />
+      <path class="line-a" d="${pathFor(seriesA)}" />
+      <path class="line-b" d="${pathFor(seriesB)}" />
+    </svg>
+    <div class="br-timeline-axis">
+      <span>${formatTime(startTs)}</span>
+      <span>${formatTime(Math.floor((startTs + endTs) / 2))}</span>
+      <span>${formatTime(endTs)}</span>
+    </div>
+  </div>`);
 }
 
 async function renderKill(kill, sideOfKey) {
@@ -874,12 +1241,15 @@ async function loadAndRender() {
   </div>`);
   mount.appendChild(header);
 
-  // Cumulative ISK line chart
+  // Fleet strength over time (top chart — who's in system, growing over time)
+  mount.appendChild(renderFleetStrength(cluster.kills, sideOfKey, sides));
+
+  // Cumulative ISK destroyed over time (second chart — losses accumulating)
   mount.appendChild(renderTimeline(cluster.kills, sideOfKey, sides));
 
-  // Mirror ISK comparison bar
-  const compare = renderCompareBar(sides);
-  if (compare) mount.appendChild(compare);
+  // ISK efficiency meter (single bar showing who dealt more damage)
+  const eff = renderEfficiency(sides);
+  if (eff) mount.appendChild(eff);
 
   // Sides
   const sidesEl = el(`<div class="br-sides"></div>`);
