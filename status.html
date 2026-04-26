@@ -216,6 +216,7 @@ header {
   font-size: 11px;
   letter-spacing: 2px;
   font-weight: 700;
+  text-align: center;
 }
 #classified dl {
   margin: 0;
@@ -614,7 +615,6 @@ function renderClassified(h) {
     ['next sequence',       p.nextSeq ?? '—'],
     ['head sequence',       p.headSeq ?? '—'],
     ['sequence lag',        fmtLag(p.lag)],
-    ['zkill status',        h.zkill ?? '—'],
     ['uptime',              h.uptime != null ? formatDuration(h.uptime) : '—'],
     ['slow-seqs (30-66s)',  fmt(p.slowSeqsTotal)],
 
@@ -624,7 +624,7 @@ function renderClassified(h) {
     ['forward-stalls',           fmt(p.forwardStallsTotal)],
     ['↳ recovered',              recoveredDetail, true],
     ['↳ empty seqs',             fmt(p.forwardStallsGhost), true],
-    ['last head-skip',           p.lastJump ?? '—'],
+    ['last watchdog event',      p.lastJump ?? '—'],
 
     '// RECONCILE //',
     ['runs',                fmt(r.totalRuns)],
