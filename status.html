@@ -232,6 +232,19 @@ header {
   color: var(--muted);
   word-break: break-all;
 }
+#classified .cls-section {
+  grid-column: 1 / -1;
+  margin: 12px 0 2px;
+  color: var(--highlight);
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--border-hi);
+  padding-bottom: 3px;
+}
+#classified .cls-section:first-child {
+  margin-top: 0;
+}
 
 footer {
   text-align: center;
@@ -564,6 +577,11 @@ function fmtLag(lag) {
   return fmt(lag) + ' behind';
 }
 
+function fmtMs(ms) {
+  if (!ms || ms <= 0) return '—';
+  return Math.round(ms / 1000) + 's';
+}
+
 function renderClassified(h) {
   const section = document.getElementById('classified');
   if (section.hidden) return;
@@ -576,30 +594,68 @@ function renderClassified(h) {
   const p = h.poller || {};
   const k = h.killstore || {};
   const r = h.reconcile || {};
-  const rows = [
+
+  // Mixed structure: strings are section headers, [label, value] are rows,
+  // [label, value, sub] with sub === true are indented sub-rows under the
+  // preceding row (used for forward-stalls outcome split).
+  const recoveredDetail = (p.forwardStallsRecovered > 0)
+    ? `${fmt(p.forwardStallsRecovered)}  (avg ${fmtMs(p.forwardStallsRecoveredAvgMs)}, max ${fmtMs(p.forwardStallsRecoveredMaxMs)})`
+    : fmt(p.forwardStallsRecovered);
+
+  const items = [
+    '// LIVE STREAM //',
     ['ws clients',          fmt(h.clients)],
     ['ring buffer',         fmt(h.ringSize)],
     ['seen (total)',        fmt(h.seenTotal)],
     ['seen (anoikis)',      fmt(h.seenAnoikis)],
+    ['last upstream kill',  fmtDate(p.lastKillAt)],
+
+    '// POLLER //',
     ['next sequence',       p.nextSeq ?? '—'],
     ['head sequence',       p.headSeq ?? '—'],
     ['sequence lag',        fmtLag(p.lag)],
-    ['head-skips',          fmt(p.jumpsTotal)],
-    ['last head-skip',      p.lastJump ?? '—'],
-    ['last upstream kill',  fmtDate(p.lastKillAt)],
-    ['killstore kills',     fmt(k.size)],
-    ['killstore systems',   fmt(k.systems)],
+    ['zkill status',        h.zkill ?? '—'],
+    ['uptime',              h.uptime != null ? formatDuration(h.uptime) : '—'],
+    ['slow-seqs (30-66s)',  fmt(p.slowSeqsTotal)],
+
+    '// WATCHDOG //',
+    ['head-skips (backlog)',     fmt(p.headSkipsTotal)],
+    ['rollbacks (stuck ahead)',  fmt(p.rollbacksTotal)],
+    ['forward-stalls',           fmt(p.forwardStallsTotal)],
+    ['↳ recovered',              recoveredDetail, true],
+    ['↳ empty seqs',             fmt(p.forwardStallsGhost), true],
+    ['last head-skip',           p.lastJump ?? '—'],
+
+    '// RECONCILE //',
+    ['runs',                fmt(r.totalRuns)],
+    ['broadcast',           fmt(r.broadcastedTotal)],
+    ['last run',            fmtDate(r.lastRunAt)],
+
+    '// KILLSTORE //',
+    ['kills',               fmt(k.size)],
+    ['systems',             fmt(k.systems)],
     ['coverage from',       k.coverageFrom ? fmtDate(k.coverageFrom * 1000) : '—'],
     ['last compaction',     fmtDate(k.compactedAt)],
-    ['reconcile runs',      fmt(r.totalRuns)],
-    ['last reconcile',      fmtDate(r.lastRunAt)],
-    ['zkill status',        h.zkill ?? '—'],
   ];
-  for (const [label, value] of rows) {
+
+  for (const item of items) {
+    if (typeof item === 'string') {
+      const hdr = document.createElement('div');
+      hdr.className = 'cls-section';
+      hdr.textContent = item;
+      dl.appendChild(hdr);
+      continue;
+    }
+    const [label, value, isSub] = item;
     const dt = document.createElement('dt');
     dt.textContent = label;
     const dd = document.createElement('dd');
     dd.textContent = value;
+    if (isSub) {
+      dt.style.paddingLeft = '14px';
+      dt.style.color = 'var(--muted)';
+      dd.style.color = 'var(--muted)';
+    }
     dl.appendChild(dt);
     dl.appendChild(dd);
   }
