@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Battle Report — mockup</title>
+<style>
+  :root {
+    --bg:          #000;
+    --panel:       rgba(2, 6, 6, 0.76);
+    --panel-dark:  rgba(1, 3, 3, 0.88);
+    --border:      #0f2e2e;
+    --border-hi:   rgba(0, 200, 200, 0.38);
+    --text:        #8de0e0;
+    --muted:       #4fc8c8;
+    --dim:         #3d8888;
+    --accent:      #00c8c8;
+    --highlight:   #e8d44d;
+    --danger:      #fe3743;
+    --warn:        #e8d44d;
+    --side-a:      #6ad0c7;
+    --side-b:      #e89a4d;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    background: radial-gradient(ellipse at 50% 30%, #011616 0%, #000 70%);
+    color: var(--text);
+    font: 13px/1.45 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    min-height: 100vh;
+  }
+
+  .wrap {
+    max-width: 980px;
+    margin: 32px auto;
+    padding: 0 16px 60px;
+  }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .toolbar input,
+  .toolbar select,
+  .toolbar button {
+    background: var(--panel-dark);
+    border: 1px solid var(--border-hi);
+    color: var(--text);
+    padding: 6px 10px;
+    font: inherit;
+    border-radius: 2px;
+  }
+  .toolbar button { cursor: pointer; }
+  .toolbar button:hover { background: rgba(0, 200, 200, 0.12); }
+  .toolbar .lbl { color: var(--dim); align-self: center; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+
+  /* Header card */
+  .br-header {
+    background: var(--panel);
+    border: 1px solid var(--border-hi);
+    padding: 18px 22px;
+    margin-bottom: 14px;
+    backdrop-filter: blur(6px);
+  }
+  .br-title {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .br-sys {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 1px;
+  }
+  .br-class {
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .br-type {
+    margin-left: auto;
+    color: var(--highlight);
+    font-size: 11px;
+    letter-spacing: 2px;
+    font-weight: 700;
+    border: 1px solid var(--highlight);
+    padding: 3px 8px;
+    border-radius: 2px;
+  }
+  .br-type.eviction { color: var(--danger); border-color: var(--danger); }
+  .br-type.gank     { color: var(--dim);    border-color: var(--dim); }
+  .br-meta {
+    display: flex;
+    gap: 18px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .br-meta b { color: var(--text); font-weight: 600; }
+
+  /* Timeline */
+  .br-timeline {
+    background: var(--panel-dark);
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .br-timeline-label {
+    color: var(--dim);
+    font-size: 10px;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .br-timeline-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 1px;
+    height: 60px;
+    padding: 0 4px;
+  }
+  .br-timeline-bar {
+    flex: 1;
+    background: var(--accent);
+    min-height: 2px;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+  }
+  .br-timeline-bar.side-a { background: var(--side-a); }
+  .br-timeline-bar.side-b { background: var(--side-b); }
+  .br-timeline-bar:hover  { opacity: 1; }
+  .br-timeline-axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    color: var(--dim);
+    font-size: 10px;
+  }
+
+  /* Sides */
+  .br-sides {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .br-side {
+    background: var(--panel);
+    border: 1px solid var(--border-hi);
+    padding: 16px 18px;
+  }
+  .br-side.side-a { border-left: 3px solid var(--side-a); }
+  .br-side.side-b { border-left: 3px solid var(--side-b); }
+  .br-side-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .br-side-name.side-a { color: var(--side-a); }
+  .br-side-name.side-b { color: var(--side-b); }
+  .br-side-stats {
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+  .br-side-stats b { color: var(--text); }
+  .br-ship-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .br-ship-chip {
+    background: var(--panel-dark);
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .br-ship-chip b { color: var(--text); margin-left: 4px; }
+
+  /* Kill list */
+  .br-kills {
+    background: var(--panel-dark);
+    border: 1px solid var(--border);
+    padding: 0;
+    margin-bottom: 14px;
+  }
+  .br-kills-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--dim);
+    font-size: 10px;
+    letter-spacing: 2px;
+  }
+  .br-kill {
+    display: grid;
+    grid-template-columns: 80px 1fr auto;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    align-items: center;
+  }
+  .br-kill:last-child { border-bottom: none; }
+  .br-kill:hover { background: rgba(0, 200, 200, 0.04); }
+  .br-kill-time {
+    color: var(--dim);
+    font-size: 11px;
+  }
+  .br-kill-info { color: var(--muted); }
+  .br-kill-info b { color: var(--text); }
+  .br-kill-info .br-kill-victim-side {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 6px;
+    border-radius: 50%;
+    vertical-align: middle;
+  }
+  .br-kill-info .br-kill-victim-side.side-a { background: var(--side-a); }
+  .br-kill-info .br-kill-victim-side.side-b { background: var(--side-b); }
+  .br-kill-isk {
+    color: var(--highlight);
+    font-weight: 600;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  /* Loading + empty states */
+  .br-loading,
+  .br-empty {
+    text-align: center;
+    color: var(--dim);
+    padding: 60px 20px;
+    font-size: 13px;
+  }
+  .br-empty b { color: var(--muted); }
+
+  /* Mobile */
+  @media (max-width: 720px) {
+    .br-sides { grid-template-columns: 1fr; }
+    .br-kill { grid-template-columns: 60px 1fr auto; gap: 8px; }
+    .br-meta { gap: 10px; }
+    .br-sys { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Toolbar (lets us point the mockup at any system + time window quickly) -->
+  <div class="toolbar">
+    <span class="lbl">SYSTEM</span>
+    <input id="t-system"   value="J151817" placeholder="J155620" size="10" />
+    <span class="lbl">WINDOW HOURS</span>
+    <input id="t-hours"    value="24"      type="number" min="1" max="168" size="3" />
+    <span class="lbl">MIN GAP MIN</span>
+    <input id="t-gap"      value="5"       type="number" min="1" max="60"  size="3" title="Max gap between consecutive kills to count as same engagement" />
+    <span class="lbl">MIN KILLS</span>
+    <input id="t-min"      value="3"       type="number" min="1" max="50"  size="3" />
+    <button id="t-load">LOAD</button>
+    <button id="t-pickbest" title="Find busiest cluster in last 24h">FIND ACTIVE</button>
+  </div>
+
+  <!-- Battle report mounts here -->
+  <div id="report"></div>
+
+</div>
+
+<script>
+const BACKEND  = 'https://ws.anoikis.info';
+const TYPE_NAMES = {}; // populated lazily via ESI
+const NAME_CACHE = {}; // characterId/corporationId/allianceId -> name
+
+// ────────────────────────────────────────────────────────────────────────
+// HARDCODED WORMHOLE NAME → SYSTEM ID (small subset, just enough to demo)
+// In production this would come from window.ANOIKIS_SYSTEMS.
+// ────────────────────────────────────────────────────────────────────────
+const SYS_BY_NAME = {
+  'J151817': 31002230,
+  'J155620': 31002476,
+  'J111935': 31002075,
+  'J173638': 31002543,
+  'J150853': 31002386,
+  'J160941': 31002329,
+};
+const SYS_META = {
+  31002230: { name: 'J151817', class: 'C6' },
+  31002476: { name: 'J155620', class: 'C2' },
+  31002075: { name: 'J111935', class: 'C5' },
+  31002543: { name: 'J173638', class: 'C4' },
+  31002386: { name: 'J150853', class: 'C5' },
+  31002329: { name: 'J160941', class: 'C5' },
+};
+
+// ────────────────────────────────────────────────────────────────────────
+// FETCH
+// ────────────────────────────────────────────────────────────────────────
+async function fetchSystemKills(systemId) {
+  const r = await fetch(`${BACKEND}/intel/${systemId}`);
+  if (!r.ok) throw new Error(`intel ${r.status}`);
+  const body = await r.json();
+  return Array.isArray(body?.kills) ? body.kills : [];
+}
+
+async function resolveName(kind, id) {
+  if (!id) return '';
+  const key = kind + ':' + id;
+  if (NAME_CACHE[key]) return NAME_CACHE[key];
+  let url;
+  if (kind === 'char') url = `https://esi.evetech.net/latest/characters/${id}/`;
+  else if (kind === 'corp') url = `https://esi.evetech.net/latest/corporations/${id}/`;
+  else if (kind === 'alliance') url = `https://esi.evetech.net/latest/alliances/${id}/`;
+  else return '';
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return '';
+    const j = await r.json();
+    NAME_CACHE[key] = j.name || '';
+    return NAME_CACHE[key];
+  } catch { return ''; }
+}
+
+async function resolveType(typeId) {
+  if (!typeId) return '';
+  if (TYPE_NAMES[typeId]) return TYPE_NAMES[typeId];
+  try {
+    const r = await fetch(`https://esi.evetech.net/latest/universe/types/${typeId}/`);
+    if (!r.ok) return '';
+    const j = await r.json();
+    TYPE_NAMES[typeId] = j.name || '';
+    return TYPE_NAMES[typeId];
+  } catch { return ''; }
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// CLUSTERING — the heart of the prototype.
+// Group consecutive kills into engagements where gaps < maxGapSec.
+// Pick the largest engagement in the window as "the fight" to display.
+// ────────────────────────────────────────────────────────────────────────
+function clusterKills(kills, maxGapSec) {
+  // kills assumed sorted by ts ascending
+  const sorted = kills.slice().sort((a, b) => a.ts - b.ts);
+  const clusters = [];
+  let cur = null;
+  for (const k of sorted) {
+    if (!cur || (k.ts - cur.lastTs) > maxGapSec) {
+      cur = { kills: [k], firstTs: k.ts, lastTs: k.ts };
+      clusters.push(cur);
+    } else {
+      cur.kills.push(k);
+      cur.lastTs = k.ts;
+    }
+  }
+  return clusters;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// SIDE DETECTION — naive v0.
+// Build a co-attacker graph: pilots that appear together as attackers in
+// the same kill are linked. Connected components = sides.
+// Then attribute each kill's victim to the OTHER side (if not in a side,
+// assign to a synthetic "Unaffiliated" bucket).
+// ────────────────────────────────────────────────────────────────────────
+function detectSides(kills) {
+  // Union-find over alliance IDs (fall back to corp ID if no alliance).
+  const parent = new Map();
+  function key(att) { return att.alliance_id || ('corp:' + att.corporation_id); }
+  function find(x) {
+    while (parent.get(x) !== x) {
+      parent.set(x, parent.get(parent.get(x)));
+      x = parent.get(x);
+    }
+    return x;
+  }
+  function union(a, b) {
+    const ra = find(a), rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  }
+  function ensure(x) { if (!parent.has(x)) parent.set(x, x); }
+
+  // Link co-attackers within each kill.
+  for (const k of kills) {
+    const atts = (k.attackers || []).filter(a => a.alliance_id || a.corporation_id);
+    if (atts.length === 0) continue;
+    const keys = atts.map(key);
+    keys.forEach(ensure);
+    for (let i = 1; i < keys.length; i++) union(keys[0], keys[i]);
+  }
+
+  // Group everyone into components.
+  const sideOfKey = new Map();
+  for (const k of parent.keys()) {
+    sideOfKey.set(k, find(k));
+  }
+
+  // Aggregate sides: pick the "main" identity (alliance > corp) and total weight.
+  const sideStats = new Map(); // sideRoot -> { allianceIds: Set, corpIds: Set, kills: [], iskKilled: 0, iskLost: 0 }
+  function side(root) {
+    if (!sideStats.has(root)) {
+      sideStats.set(root, {
+        root,
+        allianceIds: new Set(),
+        corpIds: new Set(),
+        attackerCount: 0,
+        killsScored: 0,
+        killsLost: 0,
+        iskKilled: 0,
+        iskLost: 0,
+        shipBreakdown: new Map(), // typeId -> count (ships THIS side lost)
+      });
+    }
+    return sideStats.get(root);
+  }
+
+  // Tag attacker side per kill, then victim side too.
+  for (const k of kills) {
+    const atts = (k.attackers || []);
+    const attRoots = new Set();
+    for (const a of atts) {
+      if (!a.alliance_id && !a.corporation_id) continue;
+      const root = sideOfKey.get(key(a));
+      if (root) attRoots.add(root);
+      const s = root ? side(root) : null;
+      if (s) {
+        if (a.alliance_id)    s.allianceIds.add(a.alliance_id);
+        if (a.corporation_id) s.corpIds.add(a.corporation_id);
+        s.attackerCount++;
+      }
+    }
+
+    // Victim side: try to find the victim's alliance/corp in any side
+    const victimKey = k.victim?.alliance_id ? k.victim.alliance_id
+                    : (k.victim?.corporation_id ? 'corp:' + k.victim.corporation_id : null);
+    let victimRoot = null;
+    if (victimKey && sideOfKey.has(victimKey)) victimRoot = sideOfKey.get(victimKey);
+    else if (victimKey) {
+      // Make a single-member side for the victim if isolated (e.g., neutral)
+      ensure(victimKey);
+      victimRoot = victimKey;
+      sideOfKey.set(victimKey, victimKey);
+    }
+
+    if (victimRoot) {
+      const vs = side(victimRoot);
+      vs.killsLost++;
+      vs.iskLost += k._zkbValue || k.value || 0;
+      const tid = k.victim?.ship_type_id || k.shipTypeId;
+      if (tid) vs.shipBreakdown.set(tid, (vs.shipBreakdown.get(tid) || 0) + 1);
+      if (k.victim?.alliance_id)    vs.allianceIds.add(k.victim.alliance_id);
+      if (k.victim?.corporation_id) vs.corpIds.add(k.victim.corporation_id);
+    }
+
+    // Each attacker side gets credit for the kill (against THIS victim).
+    for (const r of attRoots) {
+      if (r === victimRoot) continue; // don't credit blue-on-blue (rare)
+      const s = side(r);
+      s.killsScored++;
+      s.iskKilled += k._zkbValue || k.value || 0;
+    }
+  }
+
+  // Convert to array, keep only sides that participated meaningfully.
+  const sides = Array.from(sideStats.values())
+    .filter(s => s.killsScored + s.killsLost >= 1)
+    .sort((a, b) => (b.killsScored + b.killsLost) - (a.killsScored + a.killsLost));
+
+  // Tag side index for the top 2 (if any) — others get 'other'.
+  for (let i = 0; i < sides.length; i++) {
+    sides[i].sideIdx = i === 0 ? 'a' : (i === 1 ? 'b' : 'other');
+  }
+  return { sides, sideOfKey };
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// EVENT TYPE classification
+// ────────────────────────────────────────────────────────────────────────
+function classifyEvent(kills, sides) {
+  const hasStructure = kills.some(k => k.kind === 'structure');
+  const hasTower     = kills.some(k => k.kind === 'tower');
+  const durationSec  = (kills[kills.length-1].ts - kills[0].ts) || 1;
+  const killCount    = kills.length;
+
+  if (hasStructure || hasTower) return { type: 'eviction', label: 'EVICTION' };
+
+  // Side imbalance check
+  if (sides.length >= 2) {
+    const a = sides[0], b = sides[1];
+    const totalKills = a.killsLost + b.killsLost;
+    if (totalKills > 0) {
+      const ratio = Math.min(a.killsLost, b.killsLost) / totalKills;
+      if (ratio < 0.15) return { type: 'gank',  label: 'GANK' };
+      if (killCount >= 10 && durationSec < 1800) return { type: 'good_fight', label: 'GOOD FIGHT' };
+    }
+  }
+  return { type: 'brawl', label: 'BRAWL' };
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// FORMATTERS
+// ────────────────────────────────────────────────────────────────────────
+function formatIsk(v) {
+  if (!v) return '0';
+  if (v >= 1e12) return (v/1e12).toFixed(1) + 'T';
+  if (v >= 1e9)  return (v/1e9).toFixed(1)  + 'B';
+  if (v >= 1e6)  return (v/1e6).toFixed(0)  + 'M';
+  if (v >= 1e3)  return (v/1e3).toFixed(0)  + 'K';
+  return v.toFixed(0);
+}
+function formatTime(ts) {
+  const d = new Date(ts * 1000);
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+}
+function formatDateRange(startTs, endTs) {
+  const d1 = new Date(startTs * 1000);
+  const d2 = new Date(endTs * 1000);
+  const pad = n => String(n).padStart(2, '0');
+  const date = `${d1.getUTCFullYear()}-${pad(d1.getUTCMonth()+1)}-${pad(d1.getUTCDate())}`;
+  const t1 = `${pad(d1.getUTCHours())}:${pad(d1.getUTCMinutes())}`;
+  const t2 = `${pad(d2.getUTCHours())}:${pad(d2.getUTCMinutes())}`;
+  const durSec = endTs - startTs;
+  const durStr = durSec < 60 ? `${durSec}s` : durSec < 3600 ? `${Math.floor(durSec/60)}m` : `${Math.floor(durSec/3600)}h ${Math.floor((durSec%3600)/60)}m`;
+  return `${date} ${t1} → ${t2} UTC (${durStr})`;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// RENDER
+// ────────────────────────────────────────────────────────────────────────
+function el(html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstChild;
+}
+
+function renderTimeline(kills, sideOfKey) {
+  const startTs = kills[0].ts, endTs = kills[kills.length-1].ts;
+  const span = Math.max(1, endTs - startTs);
+  const BARS = 60;
+  const buckets = new Array(BARS).fill(0).map(() => ({ a:0, b:0, other:0, isk:0 }));
+  for (const k of kills) {
+    const i = Math.min(BARS-1, Math.floor((k.ts - startTs) / span * BARS));
+    const victimKey = k.victim?.alliance_id ? k.victim.alliance_id
+                    : (k.victim?.corporation_id ? 'corp:' + k.victim.corporation_id : null);
+    let side = 'other';
+    if (victimKey && sideOfKey.has(victimKey)) {
+      // We don't know sideIdx here without re-passing; mark by root, frontend can color top-2
+      side = sideOfKey.get(victimKey);
+    }
+    buckets[i].isk += k._zkbValue || k.value || 0;
+    if (side === 'other') buckets[i].other++;
+    else { buckets[i][side] = (buckets[i][side] || 0) + 1; }
+  }
+  const maxIsk = Math.max(...buckets.map(b => b.isk), 1);
+  const div = el(`<div class="br-timeline">
+    <div class="br-timeline-label">TIMELINE · ${kills.length} KILLS</div>
+    <div class="br-timeline-bars" id="tl-bars"></div>
+    <div class="br-timeline-axis">
+      <span>${formatTime(startTs)}</span>
+      <span>${formatTime(Math.floor((startTs + endTs) / 2))}</span>
+      <span>${formatTime(endTs)}</span>
+    </div>
+  </div>`);
+  const bars = div.querySelector('#tl-bars');
+  for (const b of buckets) {
+    const h = b.isk > 0 ? Math.max(2, (b.isk / maxIsk) * 60) : 0;
+    const bar = document.createElement('div');
+    bar.className = 'br-timeline-bar';
+    bar.style.height = h + 'px';
+    bar.title = `ISK ${formatIsk(b.isk)}`;
+    bars.appendChild(bar);
+  }
+  return div;
+}
+
+async function renderSide(side, sideIdx) {
+  // Pick a label: top alliance name if any, else top corp name
+  let label = '—';
+  if (side.allianceIds.size > 0) {
+    const id = Array.from(side.allianceIds)[0];
+    label = (await resolveName('alliance', id)) || `Alliance ${id}`;
+  } else if (side.corpIds.size > 0) {
+    const id = Array.from(side.corpIds)[0];
+    label = (await resolveName('corp', id)) || `Corp ${id}`;
+  }
+  const ships = [];
+  for (const [tid, count] of side.shipBreakdown) {
+    const name = (await resolveType(tid)) || `type ${tid}`;
+    ships.push({ name, count });
+  }
+  ships.sort((a, b) => b.count - a.count);
+
+  const cls = sideIdx === 'a' ? 'side-a' : (sideIdx === 'b' ? 'side-b' : '');
+  const div = el(`<div class="br-side ${cls}">
+    <div class="br-side-name ${cls}">${escapeHtml(label)}</div>
+    <div class="br-side-stats">
+      <b>${side.killsScored}</b> kills · <b>${side.killsLost}</b> lost ·
+      ISK destroyed <b>${formatIsk(side.iskKilled)}</b> · lost <b>${formatIsk(side.iskLost)}</b>
+    </div>
+    <div class="br-ship-list">
+      ${ships.map(s => `<div class="br-ship-chip">${escapeHtml(s.name)}<b>×${s.count}</b></div>`).join('')}
+    </div>
+  </div>`);
+  return div;
+}
+
+async function renderKill(kill, sideOfKey) {
+  const victimKey = kill.victim?.alliance_id ? kill.victim.alliance_id
+                  : (kill.victim?.corporation_id ? 'corp:' + kill.victim.corporation_id : null);
+  const sideRoot = victimKey ? sideOfKey.get(victimKey) : null;
+  // Map sideRoot back to sideIdx — we need a lookup table; passed in via outer scope.
+  const shipName = (await resolveType(kill.victim?.ship_type_id || kill.shipTypeId)) || 'Unknown';
+  const corpName = (await resolveName('corp', kill.victim?.corporation_id)) || '—';
+  const fb       = (kill.attackers || []).find(a => a.final_blow);
+  const fbCorp   = fb ? (await resolveName('corp', fb.corporation_id)) || '—' : '—';
+  const attCount = (kill.attackers || []).length;
+  const div = el(`<div class="br-kill">
+    <div class="br-kill-time">${formatTime(kill.ts)}</div>
+    <div class="br-kill-info">
+      <span class="br-kill-victim-side" data-root="${sideRoot || ''}"></span>
+      <b>${escapeHtml(shipName)}</b> · ${escapeHtml(corpName)}
+      <div style="color:var(--dim); font-size:11px; margin-top:2px;">
+        FB ${escapeHtml(fbCorp)} · ${attCount} attacker${attCount===1?'':'s'}
+      </div>
+    </div>
+    <div class="br-kill-isk">${formatIsk(kill._zkbValue || kill.value || 0)}</div>
+  </div>`);
+  return div;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// MAIN
+// ────────────────────────────────────────────────────────────────────────
+async function loadAndRender() {
+  const sysName  = document.getElementById('t-system').value.trim().toUpperCase();
+  const hours    = Number(document.getElementById('t-hours').value) || 24;
+  const gapMin   = Number(document.getElementById('t-gap').value) || 5;
+  const minKills = Number(document.getElementById('t-min').value) || 3;
+
+  const systemId = SYS_BY_NAME[sysName];
+  const mount = document.getElementById('report');
+  if (!systemId) {
+    mount.innerHTML = `<div class="br-empty"><b>Unknown system.</b><br>Try J151817, J155620, J111935, J173638, J150853, J160941.</div>`;
+    return;
+  }
+  mount.innerHTML = `<div class="br-loading">Loading kills for ${sysName}…</div>`;
+
+  let allKills;
+  try {
+    allKills = await fetchSystemKills(systemId);
+  } catch (e) {
+    mount.innerHTML = `<div class="br-empty"><b>Failed to load:</b> ${escapeHtml(e.message)}</div>`;
+    return;
+  }
+
+  // Filter: PvP only (no NPCs), within window
+  const cutoff = Math.floor(Date.now() / 1000) - hours * 3600;
+  const kills = allKills.filter(k => !k.isNpc && k.ts >= cutoff);
+
+  if (kills.length < minKills) {
+    mount.innerHTML = `<div class="br-empty">No engagements in last <b>${hours}h</b> in <b>${sysName}</b><br>Found ${kills.length} PvP kill${kills.length===1?'':'s'}, need ≥${minKills} for an engagement.</div>`;
+    return;
+  }
+
+  // Cluster kills into engagements, pick the largest
+  const clusters = clusterKills(kills, gapMin * 60);
+  const interesting = clusters.filter(c => c.kills.length >= minKills);
+  if (interesting.length === 0) {
+    mount.innerHTML = `<div class="br-empty">No clusters of ≥${minKills} kills in last <b>${hours}h</b> in <b>${sysName}</b><br>Found ${clusters.length} smaller cluster${clusters.length===1?'':'s'}.</div>`;
+    return;
+  }
+  const cluster = interesting.sort((a,b) => b.kills.length - a.kills.length)[0];
+
+  // Side detection
+  const { sides, sideOfKey } = detectSides(cluster.kills);
+  const event = classifyEvent(cluster.kills, sides);
+  const meta  = SYS_META[systemId];
+
+  // Render
+  mount.innerHTML = '';
+
+  // Header
+  const totalIsk = cluster.kills.reduce((s, k) => s + (k._zkbValue || k.value || 0), 0);
+  const header = el(`<div class="br-header">
+    <div class="br-title">
+      <span class="br-sys">${escapeHtml(meta.name)}</span>
+      <span class="br-class">· ${escapeHtml(meta.class)}</span>
+      <span class="br-type ${event.type}">${event.label}</span>
+    </div>
+    <div class="br-meta">
+      <span>${formatDateRange(cluster.firstTs, cluster.lastTs)}</span>
+      <span><b>${cluster.kills.length}</b> kills</span>
+      <span><b>${formatIsk(totalIsk)}</b> ISK destroyed</span>
+      <span><b>${sides.length}</b> side${sides.length===1?'':'s'}</span>
+    </div>
+  </div>`);
+  mount.appendChild(header);
+
+  // Timeline
+  mount.appendChild(renderTimeline(cluster.kills, sideOfKey));
+
+  // Sides
+  const sidesEl = el(`<div class="br-sides"></div>`);
+  for (const s of sides.slice(0, 2)) {
+    sidesEl.appendChild(await renderSide(s, s.sideIdx));
+  }
+  mount.appendChild(sidesEl);
+
+  // If 3+ sides, surface that as an info row
+  if (sides.length > 2) {
+    const extraSides = sides.slice(2);
+    const extraKills = extraSides.reduce((s,x) => s + x.killsScored + x.killsLost, 0);
+    const extra = el(`<div class="br-empty" style="padding:14px; font-size:12px; text-align:left; background:var(--panel-dark); border:1px solid var(--border);">
+      + ${extraSides.length} other side${extraSides.length===1?'':'s'} · ${extraKills} kill${extraKills===1?'':'s'} · grouped as "Other"
+    </div>`);
+    mount.appendChild(extra);
+  }
+
+  // Kill list (newest last so timeline order matches)
+  const killsEl = el(`<div class="br-kills">
+    <div class="br-kills-header">KILL LIST · ${cluster.kills.length} TOTAL</div>
+  </div>`);
+  for (const k of cluster.kills) {
+    killsEl.appendChild(await renderKill(k, sideOfKey));
+  }
+
+  // After all kills rendered, color the side-dot indicators
+  const root2idx = new Map();
+  for (const s of sides) root2idx.set(s.root, s.sideIdx);
+  for (const dot of killsEl.querySelectorAll('.br-kill-victim-side')) {
+    const r = dot.dataset.root;
+    const idx = r ? root2idx.get(r) : null;
+    if (idx === 'a') dot.classList.add('side-a');
+    else if (idx === 'b') dot.classList.add('side-b');
+    else dot.style.background = 'var(--dim)';
+  }
+  mount.appendChild(killsEl);
+}
+
+async function findActive() {
+  // Iterate the system list; for each, count last-24h PvP kills, pick the busiest.
+  const ids = Object.keys(SYS_BY_NAME);
+  const cutoff = Math.floor(Date.now() / 1000) - 24 * 3600;
+  let best = null;
+  for (const name of ids) {
+    const sysId = SYS_BY_NAME[name];
+    try {
+      const kills = await fetchSystemKills(sysId);
+      const recent = kills.filter(k => !k.isNpc && k.ts >= cutoff);
+      if (!best || recent.length > best.count) {
+        best = { name, count: recent.length };
+      }
+    } catch {}
+  }
+  if (best) {
+    document.getElementById('t-system').value = best.name;
+    loadAndRender();
+  }
+}
+
+// Wire up
+document.getElementById('t-load').addEventListener('click', loadAndRender);
+document.getElementById('t-pickbest').addEventListener('click', findActive);
+document.getElementById('t-system').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadAndRender();
+});
+
+// Auto-load on first paint
+loadAndRender();
+</script>
+</body>
+</html>
