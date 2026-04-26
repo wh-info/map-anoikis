@@ -246,6 +246,8 @@ header {
 #classified .cls-section:first-child {
   margin-top: 0;
 }
+#classified dd.warn { color: var(--warn); }
+#classified dd.down { color: var(--danger); }
 
 footer {
   text-align: center;
@@ -583,6 +585,34 @@ function fmtMs(ms) {
   return Math.round(ms / 1000) + 's';
 }
 
+// Threshold-based color class for counter-bearing rows. Returns '' (no
+// special color), 'warn' (amber, noteworthy event), or 'down' (red, wrong).
+// Per-process counters reset on every Railway redeploy, so all thresholds
+// are interpreted within the current uptime window — context shown via
+// section header "since boot Xh ago" suffix.
+function cellClass(label, p) {
+  if (label === 'forward-stalls')          return p.forwardStallsTotal > 0 ? 'warn' : '';
+  if (label === '↳ recovered')             return p.forwardStallsRecovered > 0 ? 'warn' : '';
+  if (label === '↳ empty seqs')            return p.forwardStallsGhost > p.forwardStallsRecovered ? 'down' : '';
+  if (label === 'rollbacks (stuck ahead)') return p.rollbacksTotal > 1 ? 'warn' : '';
+  if (label === 'head-skips (backlog)') {
+    if (p.headSkipsTotal > 5) return 'down';
+    if (p.headSkipsTotal > 1) return 'warn';
+    return '';
+  }
+  return '';
+}
+
+// Section headers for these get a "since boot Xh ago" suffix because every
+// counter inside is process-lifetime and resets on Railway redeploy. Without
+// the suffix a counter like "slow-seqs: 104" reads as a permanent total
+// rather than "since the worker booted Xh ago."
+const COUNTER_SECTIONS = new Set([
+  '// POLLER //',
+  '// WATCHDOG //',
+  '// RECONCILE //',
+]);
+
 function renderClassified(h) {
   const section = document.getElementById('classified');
   if (section.hidden) return;
@@ -638,11 +668,19 @@ function renderClassified(h) {
     ['last compaction',     fmtDate(k.compactedAt)],
   ];
 
+  const uptimeSuffix = (h.uptime != null) ? ` · since boot ${formatDuration(h.uptime)} ago` : '';
+
   for (const item of items) {
     if (typeof item === 'string') {
       const hdr = document.createElement('div');
       hdr.className = 'cls-section';
-      hdr.textContent = item;
+      // Counter-bearing sections get the uptime context appended inside the
+      // closing slashes so the text reads "// POLLER · since boot 12h ago //".
+      if (COUNTER_SECTIONS.has(item) && uptimeSuffix) {
+        hdr.textContent = item.replace(/ \/\/$/, uptimeSuffix + ' //');
+      } else {
+        hdr.textContent = item;
+      }
       dl.appendChild(hdr);
       continue;
     }
@@ -651,10 +689,14 @@ function renderClassified(h) {
     dt.textContent = label;
     const dd = document.createElement('dd');
     dd.textContent = value;
+    const cls = cellClass(label, p);
+    if (cls) dd.className = cls;
     if (isSub) {
       dt.style.paddingLeft = '14px';
       dt.style.color = 'var(--muted)';
-      dd.style.color = 'var(--muted)';
+      // Sub-row dimming only applies when there's no anomaly color — a warn
+      // or down should override the muted treatment so it still pops.
+      if (!cls) dd.style.color = 'var(--muted)';
     }
     dl.appendChild(dt);
     dl.appendChild(dd);
