@@ -1994,7 +1994,7 @@ function buildRecentCard({ k, ts }) {
     ? `https://images.evetech.net/types/${victimShipId}/render?size=64` : '';
   const isk = formatIsk(k._zkbValue || 0);
   const implant = k.hasImplants
-    ? `<span class="intel-recent-implant" title="Pod had implants"><img src="./img/graphic/implant.png" alt="" /></span>`
+    ? `<span class="intel-recent-implant" data-tip="Pod had implants" aria-label="Pod had implants"><img src="./img/graphic/implant.png" alt="" /></span>`
     : '';
 
   const fbShipId = fb?.ship_type_id;
