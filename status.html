@@ -594,7 +594,7 @@ function cellClass(label, p) {
   if (label === 'forward-stalls')          return p.forwardStallsTotal > 0 ? 'warn' : '';
   if (label === '↳ recovered')             return p.forwardStallsRecovered > 0 ? 'warn' : '';
   if (label === '↳ empty seqs')            return p.forwardStallsGhost > p.forwardStallsRecovered ? 'down' : '';
-  if (label === 'rollbacks (stuck ahead)') return p.rollbacksTotal > 1 ? 'warn' : '';
+  if (label === 'rollbacks (stuck ahead)') return p.rollbacksTotal > 5 ? 'warn' : '';
   if (label === 'head-skips (backlog)') {
     if (p.headSkipsTotal > 5) return 'down';
     if (p.headSkipsTotal > 1) return 'warn';
