@@ -207,8 +207,8 @@
   .br-header {
     background: var(--panel);
     border: 1px solid var(--border-hi);
-    padding: 18px 22px;
-    margin-bottom: 14px;
+    padding: 14px 18px;
+    margin-bottom: 12px;
     backdrop-filter: blur(6px);
   }
   .br-title {
@@ -253,8 +253,8 @@
   .br-timeline {
     background: var(--panel-dark);
     border: 1px solid var(--border);
-    padding: 14px 16px;
-    margin-bottom: 14px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
   }
   .br-timeline-label {
     color: var(--dim);
@@ -471,20 +471,27 @@
     margin: 0 auto;
   }
 
-  /* Sides */
-  .br-sides {
+  /* Sides — strict two-column with the ISK efficiency bar serving as the
+     vertical divider AND the data viz between them. */
+  .br-sides-wrap {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-    margin-bottom: 14px;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 0;
+    margin-bottom: 12px;
   }
   .br-side {
     background: var(--panel);
     border: 1px solid var(--border-hi);
-    padding: 16px 18px;
+    padding: 14px 16px;
   }
-  .br-side.side-a { border-left: 3px solid var(--side-a); }
-  .br-side.side-b { border-left: 3px solid var(--side-b); }
+  .br-side.side-a {
+    border-right: none;
+    border-left: 3px solid var(--side-a);
+  }
+  .br-side.side-b {
+    border-left: none;
+    border-right: 3px solid var(--side-b);
+  }
   .br-side-name {
     font-size: 14px;
     font-weight: 700;
@@ -496,22 +503,142 @@
   .br-side-stats {
     color: var(--muted);
     font-size: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
   }
   .br-side-stats b { color: var(--text); }
-  .br-ship-list {
+
+  /* "Carried by" callout inside each side card */
+  .br-side-carry {
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
     gap: 6px;
-  }
-  .br-ship-chip {
+    padding: 6px 10px;
+    margin-bottom: 10px;
     background: var(--panel-dark);
     border: 1px solid var(--border);
-    padding: 3px 8px;
     font-size: 11px;
     color: var(--muted);
   }
-  .br-ship-chip b { color: var(--text); margin-left: 4px; }
+  .br-side-carry-star {
+    color: var(--highlight);
+    font-size: 12px;
+  }
+  .br-side-carry b { color: var(--text); }
+
+  /* Vertical efficiency divider (between the two side columns) */
+  .br-eff-vertical {
+    width: 56px;
+    background: var(--panel-dark);
+    border-top: 1px solid var(--border-hi);
+    border-bottom: 1px solid var(--border-hi);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .br-eff-vertical-label {
+    position: absolute;
+    top: 8px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: var(--dim);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+  }
+  .br-eff-vertical-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bg);
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .br-eff-vertical-fill.side-a { background: var(--side-a); top: 0; }
+  .br-eff-vertical-fill.side-b { background: var(--side-b); bottom: 0; }
+  .br-eff-vertical-divider {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--border-hi);
+  }
+
+  /* Headline kill — full-width below side cards, visually highlighted */
+  .br-headline {
+    display: grid;
+    grid-template-columns: 88px 1fr auto;
+    gap: 14px;
+    align-items: center;
+    background: var(--panel);
+    border: 1px solid var(--highlight);
+    box-shadow: 0 0 18px rgba(232, 212, 77, 0.12);
+    padding: 14px 18px;
+    margin-bottom: 12px;
+  }
+  .br-headline-img {
+    width: 88px;
+    height: 88px;
+    background-color: rgba(0, 0, 0, 0.4);
+    background-size: cover;
+    background-position: center;
+  }
+  .br-headline-info-label {
+    color: var(--highlight);
+    font-size: 9px;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  .br-headline-info-ship {
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .br-headline-info-meta {
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .br-headline-info-meta b { color: var(--text); }
+  .br-headline-isk {
+    color: var(--highlight);
+    font-size: 22px;
+    font-weight: 700;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .br-headline-time {
+    color: var(--dim);
+    font-size: 10px;
+    text-align: right;
+    margin-top: 4px;
+  }
+
+  /* Capital escalation markers (annotation overlay on cumulative ISK chart) */
+  .br-cap-markers {
+    color: var(--dim);
+    font-size: 11px;
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .br-cap-markers .marker {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .br-cap-markers .marker.side-a { color: var(--side-a); }
+  .br-cap-markers .marker.side-b { color: var(--side-b); }
+  .br-cap-markers .marker-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor;
+  }
 
   /* Kill list */
   .br-kills {
@@ -764,18 +891,18 @@ function detectSides(kills) {
         root,
         allianceIds: new Set(),
         corpIds: new Set(),
-        pilotIds: new Set(),       // unique character_ids on this side (attackers + victims)
+        pilotIds: new Set(),
         attackerCount: 0,
         killsScored: 0,
         killsLost: 0,
         iskKilled: 0,
         iskLost: 0,
-        shipBreakdown: new Map(),  // typeId -> count (ships THIS side lost)
-        // Ship class buckets: total fielded (estimated from attacker ship_type_id)
-        // and lost. We won't have full fleet rosters — only ships that appear as
-        // either attackers or victims.
-        classBrought: new Map(),   // class -> Set<character_id_or_typeId> (unique fields)
-        classLost:    new Map(),   // class -> count of victims in this class
+        shipBreakdown: new Map(),
+        classBrought: new Map(),
+        classLost:    new Map(),
+        // Top damage dealer tracking: characterId -> { damage, kills, ship }.
+        // Pick the highest-damage pilot when rendering the "Carried by" line.
+        damageByPilot: new Map(),
       });
     }
     return sideStats.get(root);
@@ -795,12 +922,22 @@ function detectSides(kills) {
         if (a.corporation_id) s.corpIds.add(a.corporation_id);
         if (a.character_id)   s.pilotIds.add(a.character_id);
         s.attackerCount++;
-        // Track this attacker's ship as "brought" — keyed by character to dedupe
-        // when the same pilot appears on multiple kills.
         if (a.character_id && a.ship_type_id) {
           const cls = shipClass(a.ship_type_id);
           if (!s.classBrought.has(cls)) s.classBrought.set(cls, new Set());
           s.classBrought.get(cls).add(a.character_id);
+        }
+        // Top damage dealer accumulation. damage_done is on each attacker
+        // record per killmail; sum it across all kills the pilot participated
+        // in. Also count kill participations and remember the most-used ship.
+        if (a.character_id && a.damage_done) {
+          let p = s.damageByPilot.get(a.character_id);
+          if (!p) {
+            p = { damage: 0, kills: 0, shipTypeId: a.ship_type_id || null };
+            s.damageByPilot.set(a.character_id, p);
+          }
+          p.damage += a.damage_done;
+          p.kills++;
         }
       }
     }
@@ -846,14 +983,23 @@ function detectSides(kills) {
   }
 
   // Convert to array, keep only sides that participated meaningfully.
-  const sides = Array.from(sideStats.values())
+  // Top 2 sides are the ones most heavily involved (kills scored + lost).
+  // Ranking among them: the side that destroyed MORE ISK is 'b' (right column,
+  // natural reading conclusion); the other is 'a' (left). Remaining go to 'other'.
+  const all = Array.from(sideStats.values())
     .filter(s => s.killsScored + s.killsLost >= 1)
     .sort((a, b) => (b.killsScored + b.killsLost) - (a.killsScored + a.killsLost));
-
-  for (let i = 0; i < sides.length; i++) {
-    sides[i].sideIdx = i === 0 ? 'a' : (i === 1 ? 'b' : 'other');
+  const top2 = all.slice(0, 2);
+  if (top2.length === 2) {
+    // Higher iskKilled goes on the right (sideIdx='b').
+    top2.sort((a, b) => a.iskKilled - b.iskKilled);
+    top2[0].sideIdx = 'a';
+    top2[1].sideIdx = 'b';
+  } else if (top2.length === 1) {
+    top2[0].sideIdx = 'a';
   }
-  return { sides, sideOfKey };
+  for (const s of all.slice(2)) s.sideIdx = 'other';
+  return { sides: all, sideOfKey };
 }
 
 // Ship class bucketing — group typeId into a coarse class label for the
@@ -1163,18 +1309,32 @@ async function renderSide(side, sideIdx) {
   const ships  = rows.reduce((s, r) => s + r.brought, 0);
   const lost   = rows.reduce((s, r) => s + r.lost, 0);
 
+  // Top damage dealer for this side
+  let carriedBy = '';
+  if (side.damageByPilot.size > 0) {
+    const top = Array.from(side.damageByPilot.entries())
+      .map(([id, stats]) => ({ id, ...stats }))
+      .sort((a, b) => b.damage - a.damage)[0];
+    if (top && top.damage > 0) {
+      const name = (await resolveName('char', top.id)) || `Pilot ${top.id}`;
+      const dmgM = (top.damage / 1e6).toFixed(1);
+      carriedBy = `<div class="br-side-carry">
+        <span class="br-side-carry-star">★</span>
+        Carried by <b>${escapeHtml(name)}</b> · <b>${dmgM}M</b> dmg · <b>${top.kills}</b> kill${top.kills===1?'':'s'}
+      </div>`;
+    }
+  }
+
   const div = el(`<div class="br-side ${cls}">
     <div class="br-side-name ${cls}">${escapeHtml(label)}</div>
     <div class="br-side-stats">
       <b>${pilots}</b> pilot${pilots===1?'':'s'} · <b>${ships}</b> ship${ships===1?'':'s'} · <b>${lost}</b> lost ·
       ISK destroyed <b>${formatIsk(side.iskKilled)}</b> · lost <b>${formatIsk(side.iskLost)}</b>
     </div>
+    ${carriedBy}
     <div class="br-class-rows">
       ${rows.map(r => {
         const broughtPct = (r.brought / maxBrought * 100).toFixed(1);
-        const lostPct    = r.brought > 0 ? (r.lost / r.brought * 100).toFixed(1) : 0;
-        // The red "lost" overlay is positioned within the brought-bar's footprint.
-        // Width of the lost overlay = (lost / brought) * (broughtPct of total bar).
         const lostOverlayPct = r.brought > 0 ? (r.lost / maxBrought * 100).toFixed(1) : 0;
         return `<div class="br-class-row">
           <span class="br-class-row-label">${r.cls}</span>
@@ -1190,27 +1350,87 @@ async function renderSide(side, sideIdx) {
   return div;
 }
 
-// ISK efficiency meter — single horizontal bar split by destroyed ISK.
-// 73% / 27% means side A destroyed 73% of all ISK destroyed in this fight.
-function renderEfficiency(sides) {
+// Vertical ISK efficiency divider — sits between the two side cards. Top
+// portion is side A's share of ISK destroyed; bottom is side B's. Functions
+// as both visual divider AND the efficiency meter.
+function renderEfficiencyVertical(sides) {
   const a = sides.find(s => s.sideIdx === 'a');
   const b = sides.find(s => s.sideIdx === 'b');
   if (!a || !b) return null;
   const total = a.iskKilled + b.iskKilled;
   if (total === 0) return null;
-  const aPct = a.iskKilled / total * 100;
+  const aPct = (a.iskKilled / total * 100);
   const bPct = 100 - aPct;
-  return el(`<div class="br-eff">
-    <div class="br-eff-label">ISK EFFICIENCY · WHO DEALT MORE DAMAGE</div>
-    <div class="br-eff-bar">
-      <div class="br-eff-fill-a" style="width: ${aPct.toFixed(1)}%">${aPct >= 12 ? aPct.toFixed(0) + '%' : ''}</div>
-      <div class="br-eff-fill-b" style="width: ${bPct.toFixed(1)}%">${bPct >= 12 ? bPct.toFixed(0) + '%' : ''}</div>
+  return el(`<div class="br-eff-vertical">
+    <div class="br-eff-vertical-label">EFF</div>
+    <div class="br-eff-vertical-fill side-a" style="height: ${aPct.toFixed(1)}%">${aPct >= 18 ? aPct.toFixed(0) + '%' : ''}</div>
+    <div class="br-eff-vertical-fill side-b" style="height: ${bPct.toFixed(1)}%">${bPct >= 18 ? bPct.toFixed(0) + '%' : ''}</div>
+    <div class="br-eff-vertical-divider" style="top: ${aPct.toFixed(1)}%"></div>
+  </div>`);
+}
+
+// Headline kill — the biggest single loss in the engagement, displayed as
+// a visually distinct card below the side cards. The fight's emotional
+// center of gravity. Pilots remember battles by this kill.
+async function renderHeadline(kills, sideOfKey, root2idx) {
+  const biggest = kills.slice().sort((a, b) => (b._zkbValue || b.value || 0) - (a._zkbValue || a.value || 0))[0];
+  if (!biggest) return null;
+  const value = biggest._zkbValue || biggest.value || 0;
+  const tid = biggest.victim?.ship_type_id || biggest.shipTypeId;
+  const shipName = (await resolveType(tid)) || 'Unknown';
+  const renderUrl = tid ? `https://images.evetech.net/types/${tid}/render?size=128` : '';
+  const corpName = (await resolveName('corp', biggest.victim?.corporation_id)) || '—';
+  const pilotName = biggest.victim?.character_id
+    ? ((await resolveName('char', biggest.victim.character_id)) || '')
+    : '';
+
+  // Killer side + label
+  const fb = (biggest.attackers || []).find(a => a.final_blow);
+  const killerCorp = fb ? (await resolveName('corp', fb.corporation_id)) || '' : '';
+
+  return el(`<div class="br-headline">
+    <div class="br-headline-img" ${renderUrl ? `style="background-image:url('${renderUrl}')"` : ''}></div>
+    <div class="br-headline-info">
+      <div class="br-headline-info-label">★ HEADLINE KILL</div>
+      <div class="br-headline-info-ship">${escapeHtml(shipName)}</div>
+      <div class="br-headline-info-meta">
+        ${pilotName ? `<b>${escapeHtml(pilotName)}</b> · ` : ''}${escapeHtml(corpName)}
+        ${killerCorp ? ` · killed by <b>${escapeHtml(killerCorp)}</b>` : ''}
+      </div>
     </div>
-    <div class="br-eff-meta">
-      <span class="a">${escapeHtml(a.label || '')} · destroyed ${formatIsk(a.iskKilled)}</span>
-      <span class="b">${escapeHtml(b.label || '')} · destroyed ${formatIsk(b.iskKilled)}</span>
+    <div>
+      <div class="br-headline-isk">${formatIsk(value)}</div>
+      <div class="br-headline-time">${formatTime(biggest.ts)}</div>
     </div>
   </div>`);
+}
+
+// Capital escalation markers — a small inline list shown UNDER the
+// cumulative ISK chart. For each capital-class kill in the engagement,
+// label the moment it dropped + which side lost it. Tells the dramatic
+// micro-narrative of "the supers showed up at minute 22."
+function renderCapEscalation(kills, sideOfKey, root2idx) {
+  const caps = [];
+  for (const k of kills) {
+    const tid = k.victim?.ship_type_id || k.shipTypeId;
+    if (!tid || !CAPITAL_TYPE_IDS.has(tid)) continue;
+    const victimKey = k.victim?.alliance_id ? k.victim.alliance_id
+                    : (k.victim?.corporation_id ? 'corp:' + k.victim.corporation_id : null);
+    const root = victimKey ? sideOfKey.get(victimKey) : null;
+    const sideIdx = root ? root2idx.get(root) : null;
+    caps.push({ ts: k.ts, tid, sideIdx });
+  }
+  if (caps.length === 0) return null;
+  caps.sort((a, b) => a.ts - b.ts);
+  const html = caps.map(c => {
+    const cls = c.sideIdx === 'a' ? 'side-a' : (c.sideIdx === 'b' ? 'side-b' : '');
+    const name = TYPE_NAMES[c.tid] || `Cap ${c.tid}`;
+    return `<span class="marker ${cls}">
+      <span class="marker-dot"></span>
+      ${escapeHtml(name)} · ${formatTime(c.ts)}
+    </span>`;
+  }).join('');
+  return el(`<div class="br-cap-markers">★ CAP ESCALATIONS · ${html}</div>`);
 }
 
 // Fleet strength over time — count of unique pilots per side that have appeared
@@ -1422,27 +1642,34 @@ async function loadAndRender() {
   </div>`);
   left.appendChild(header);
 
-  // Fleet strength over time
-  left.appendChild(renderFleetStrength(cluster.kills, sideOfKey, sides));
-
-  // Cumulative ISK destroyed over time
+  // Cumulative ISK destroyed over time (full-width across both side columns)
   left.appendChild(renderTimeline(cluster.kills, sideOfKey, sides));
 
-  // ISK efficiency meter
-  const eff = renderEfficiency(sides);
-  if (eff) left.appendChild(eff);
+  // Capital escalations — only if the fight involved capitals; otherwise null
+  const caps = renderCapEscalation(cluster.kills, sideOfKey, root2idx);
+  if (caps) left.appendChild(caps);
 
-  // Side cards
-  const sidesEl = el(`<div class="br-sides"></div>`);
-  for (const s of sides.slice(0, 2)) {
-    sidesEl.appendChild(await renderSide(s, s.sideIdx));
-  }
-  left.appendChild(sidesEl);
+  // Two-side layout: side A | vertical efficiency divider | side B
+  // Top 2 sides only (more sides shown as a small "other" line below)
+  const sidesWrap = el(`<div class="br-sides-wrap"></div>`);
+  const sideA = sides.find(s => s.sideIdx === 'a');
+  const sideB = sides.find(s => s.sideIdx === 'b');
+  if (sideA) sidesWrap.appendChild(await renderSide(sideA, 'a'));
+  const effDivider = renderEfficiencyVertical(sides);
+  if (effDivider) sidesWrap.appendChild(effDivider);
+  else sidesWrap.appendChild(el('<div></div>')); // placeholder to keep grid alignment
+  if (sideB) sidesWrap.appendChild(await renderSide(sideB, 'b'));
+  left.appendChild(sidesWrap);
 
+  // Headline kill — biggest single loss, full width below side cards
+  const headline = await renderHeadline(cluster.kills, sideOfKey, root2idx);
+  if (headline) left.appendChild(headline);
+
+  // "Other sides" small note if 3+ sides exist
   if (sides.length > 2) {
     const extraSides = sides.slice(2);
     const extraKills = extraSides.reduce((s,x) => s + x.killsScored + x.killsLost, 0);
-    const extra = el(`<div class="br-empty" style="padding:14px; font-size:12px; text-align:left; background:var(--panel-dark); border:1px solid var(--border);">
+    const extra = el(`<div class="br-empty" style="padding:10px; font-size:11px; text-align:left; background:var(--panel-dark); border:1px solid var(--border); color:var(--dim);">
       + ${extraSides.length} other side${extraSides.length===1?'':'s'} · ${extraKills} kill${extraKills===1?'':'s'} · grouped as "Other"
     </div>`);
     left.appendChild(extra);
