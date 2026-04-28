@@ -1449,10 +1449,22 @@ let intelEntityFilter = null;      // { kind: 'corp'|'alli', id }
 // Intel-wide filter: ships are always counted, fighters are always excluded,
 // the rest are toggleable via the footer chips. Applied by every intel
 // aggregator (short/long/parties) and the scatter renderer.
+//
+// EVE SDE groupID 31 is the Shuttle group. Used by the Shuttles chip in
+// both the killfeed and intel filters to identify shuttle kills via
+// authoritative SDE classification (window.TYPE_GROUPS), not icon slugs.
+// Declared here (before passesIntelFilter uses it) — the killfeed section
+// later in the file references the same constant.
+const SHUTTLE_GROUP_ID = 31;
 const INTEL_KINDS_KEY = 'anoikis-intel-kinds';
 const INTEL_NPC_KEY = 'anoikis-intel-npc';
+const INTEL_SHUTTLE_KEY = 'anoikis-intel-shuttle';
 const intelFilterKinds = new Set(JSON.parse(localStorage.getItem(INTEL_KINDS_KEY)) || ['structure']);
 let intelFilterNpc = localStorage.getItem(INTEL_NPC_KEY) === '1';
+// Default ON for new users; existing users get ON unless they explicitly
+// store '0' below by toggling the chip off. This matches the chip's
+// default-on visual state in the HTML.
+let intelFilterShuttle = localStorage.getItem(INTEL_SHUTTLE_KEY) !== '0';
 function passesIntelFilter(k) {
   const kind = k.kind;
   if (kind === 'fighter') return false;
@@ -1460,6 +1472,14 @@ function passesIntelFilter(k) {
     if (!intelFilterKinds.has(kind)) return false;
   }
   if (k.isNpc && !intelFilterNpc) return false;
+  // Shuttle filter — uses authoritative SDE groupID lookup. Falls through
+  // to passing the kill if TYPE_GROUPS is unavailable (defensive).
+  if (!intelFilterShuttle) {
+    const tid = k.victim?.ship_type_id;
+    if (tid && window.TYPE_GROUPS && window.TYPE_GROUPS[tid] === SHUTTLE_GROUP_ID) {
+      return false;
+    }
+  }
   return true;
 }
 
@@ -3918,12 +3938,29 @@ function techBadge(typeId) {
 
 const KILL_KINDS_KEY = 'anoikis-kill-kinds';
 const KILL_TAGS_KEY = 'anoikis-kill-tags';
+// SHUTTLE_GROUP_ID is declared earlier in the file alongside the intel
+// filter state. Both filters share the same constant.
 const activeKinds = new Set(JSON.parse(localStorage.getItem(KILL_KINDS_KEY)) || ['ship', 'structure']);
-const activeTags = new Set(JSON.parse(localStorage.getItem(KILL_TAGS_KEY)) || ['npc']);
-function isKillVisible(kind, isNpc, isDelayed) {
+const activeTags = new Set(JSON.parse(localStorage.getItem(KILL_TAGS_KEY)) || ['npc', 'shuttle']);
+// Migration: existing users have an older saved tag set without 'shuttle'.
+// Default the shuttle chip to ON for them too, so behavior matches the new
+// chip's default state. Only adds; never removes user-toggled-off settings.
+if (!activeTags.has('shuttle') && !localStorage.getItem('anoikis-kill-tags-shuttle-migrated')) {
+  activeTags.add('shuttle');
+  localStorage.setItem(KILL_TAGS_KEY, JSON.stringify([...activeTags]));
+  localStorage.setItem('anoikis-kill-tags-shuttle-migrated', '1');
+}
+function isKillVisible(kind, isNpc, isDelayed, typeId) {
   if (!activeKinds.has(kind)) return false;
   if (isNpc && !activeTags.has('npc')) return false;
   if (isDelayed && !activeTags.has('delayed')) return false;
+  // Shuttle filter (only ships in groupID 31 — racial + faction shuttles).
+  // Falls through to true if TYPE_GROUPS isn't available (defensive — keep
+  // ships visible rather than silently hide them on data-load failure).
+  if (typeId && window.TYPE_GROUPS && window.TYPE_GROUPS[typeId] === SHUTTLE_GROUP_ID
+      && !activeTags.has('shuttle')) {
+    return false;
+  }
   return true;
 }
 let locateHover = null;
@@ -3986,9 +4023,13 @@ function buildKillElement({ star, killId, typeId, kind, characterId, corporation
   const el = document.createElement('div');
   el.className = 'kill' + (isDelayed ? ' kill--delayed' : '');
   el.dataset.kind = kindKey;
+  // Stash typeId so the Shuttles chip filter can re-evaluate visibility on
+  // toggle without reaching back into the kill object. Read by isKillVisible
+  // from applyKillFilters and renderHistoryPage.
+  if (typeId) el.dataset.typeid = String(typeId);
   if (isNpc) el.dataset.npc = '1';
   if (isDelayed) el.dataset.delayed = '1';
-  if (!isKillVisible(kindKey, !!isNpc, !!isDelayed)) el.style.display = 'none';
+  if (!isKillVisible(kindKey, !!isNpc, !!isDelayed, typeId)) el.style.display = 'none';
 
   el.innerHTML = `
     <button class="kill-btn kill-btn--locate locate-btn" data-tip="Locate ${escapeHtml(starDisplayName)}" aria-label="Locate ${escapeHtml(starDisplayName)}">
@@ -4174,7 +4215,7 @@ function applyKillFilters() {
   for (const list of lists) {
     if (!list) continue;
     for (const el of list.children) {
-      el.style.display = isKillVisible(el.dataset.kind, el.dataset.npc === '1', el.dataset.delayed === '1') ? '' : 'none';
+      el.style.display = isKillVisible(el.dataset.kind, el.dataset.npc === '1', el.dataset.delayed === '1', Number(el.dataset.typeid) || null) ? '' : 'none';
     }
   }
   updateKillCount();
@@ -4224,7 +4265,7 @@ function renderHistoryPage() {
   for (let i = start; i < end; i++) {
     const { kill, star } = historyItems[i];
     const el = buildKillElement(killToParams(kill, star));
-    if (!isKillVisible(el.dataset.kind, el.dataset.npc === '1')) el.style.display = 'none';
+    if (!isKillVisible(el.dataset.kind, el.dataset.npc === '1', el.dataset.delayed === '1', Number(el.dataset.typeid) || null)) el.style.display = 'none';
     historyListEl.appendChild(el);
   }
   historyPageLabelEl.textContent = `Page ${historyPage + 1} / ${totalPages}`;
@@ -4332,8 +4373,9 @@ document.getElementById('intel-footer-toggle').addEventListener('click', () => {
 document.querySelectorAll('#intel-filters .kind-chip').forEach((chip) => {
   const kind = chip.dataset.kind;
   const tag  = chip.dataset.tag;
-  if (kind) chip.classList.toggle('on', intelFilterKinds.has(kind));
-  if (tag === 'npc') chip.classList.toggle('on', intelFilterNpc);
+  if (kind)             chip.classList.toggle('on', intelFilterKinds.has(kind));
+  if (tag === 'npc')    chip.classList.toggle('on', intelFilterNpc);
+  if (tag === 'shuttle') chip.classList.toggle('on', intelFilterShuttle);
   chip.addEventListener('click', () => {
     if (kind) {
       if (intelFilterKinds.has(kind)) intelFilterKinds.delete(kind);
@@ -4342,6 +4384,9 @@ document.querySelectorAll('#intel-filters .kind-chip').forEach((chip) => {
     } else if (tag === 'npc') {
       intelFilterNpc = !intelFilterNpc;
       localStorage.setItem(INTEL_NPC_KEY, intelFilterNpc ? '1' : '0');
+    } else if (tag === 'shuttle') {
+      intelFilterShuttle = !intelFilterShuttle;
+      localStorage.setItem(INTEL_SHUTTLE_KEY, intelFilterShuttle ? '1' : '0');
     }
     chip.classList.toggle('on');
     renderIntelAll();
