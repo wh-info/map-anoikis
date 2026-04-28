@@ -4209,9 +4209,9 @@ cinemaBtn.addEventListener('click', () => {
 // --- Kill feed ---------------------------------------------------
 const killList = document.getElementById('kill-list');
 const killCountEl = document.getElementById('kill-count');
-const MAX_KILLS = 60;
-const HISTORY_BUFFER_SIZE = 300;
-const HISTORY_PAGE_SIZE = 60;
+const MAX_KILLS = 50;
+const HISTORY_BUFFER_SIZE = 500;
+const HISTORY_PAGE_SIZE = 50;
 const killBuffer = []; // newest first, capped at HISTORY_BUFFER_SIZE
 let killViewMode = 'live'; // 'live' | 'history'
 let historyPage = 0;
