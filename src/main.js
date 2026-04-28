@@ -4728,14 +4728,29 @@ function updateHistoryBanner() {
 //   - Banner shows "N new kill — go to page 1" when on page 2+ and a matching
 //     kill arrives. Banner click jumps to page 1 instead of the global "back to live".
 
-// Toggle the disabled visual + interaction state of the Delayed chip in
-// the killfeed footer. Focused mode disables it (shows all 24h regardless);
-// global mode restores it. Other chips (kind/NPC/shuttle) stay active in
-// both modes.
+// Toggle the Delayed chip's visual state for focused mode. Focused mode
+// shows all 24h regardless of delayed state, so the chip is:
+//   - dimmed + click-blocked (.disabled), AND
+//   - forced visually ON (.on), since focused mode is effectively
+//     "delayed kills are included" regardless of the chip's saved value.
+// On exit, restore the saved on/off state from activeTags. Other chips
+// (kind/NPC/shuttle) stay active in both modes.
+let delayedChipPreFocusOn = null;
 function setFocusedChipDisabledState(disabled) {
   const chip = document.querySelector('#kill-filters .kind-chip[data-tag="delayed"]');
   if (!chip) return;
-  chip.classList.toggle('disabled', disabled);
+  if (disabled) {
+    // Remember the chip's visual on/off state so we can restore on exit.
+    delayedChipPreFocusOn = chip.classList.contains('on');
+    chip.classList.add('disabled');
+    chip.classList.add('on');  // force-on while focused (all kills shown)
+  } else {
+    chip.classList.remove('disabled');
+    // Restore the actual on/off state from activeTags.
+    const trulyOn = activeTags.has('delayed');
+    chip.classList.toggle('on', trulyOn);
+    delayedChipPreFocusOn = null;
+  }
 }
 
 function enterFocusMode(systemId) {
