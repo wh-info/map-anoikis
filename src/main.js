@@ -1285,6 +1285,27 @@ let intelCurrentRgb   = null;
 let intelCurrentStar  = null;
 let intelCurrentToken = 0;
 
+// Live-update plumbing for the intel panel:
+//
+// - intelFreshKills: a per-killmail "this just arrived" Map keyed by killId.
+//   Drives the brief size-pulse on new dots in the scatter view. Entries
+//   self-prune via the rAF loop after FRESH_DOT_DURATION_MS.
+//
+// - scatterPulseRaf: handle for the requestAnimationFrame loop that drives
+//   the pulse animation. Only runs while intelFreshKills is non-empty;
+//   self-terminates when the last entry expires. Zero idle cost.
+//
+// - intelHeavyRenderQueued: handle for the trailing-throttle setTimeout that
+//   batches expensive intel renders (hm60, prime time, rhythm, parties)
+//   into 3-second windows. Many live kills in a burst result in at most
+//   one heavy render every 3 seconds.
+const FRESH_DOT_DURATION_MS = 2500;
+const FRESH_DOT_DELTA       = 3;       // peak adds 3px on top of normal radius
+const HEAVY_RENDER_THROTTLE_MS = 3000;
+const intelFreshKills = new Map();     // killId -> firstShownTimestamp (performance.now())
+let scatterPulseRaf = null;
+let intelHeavyRenderQueued = null;
+
 // systemId → { fetchedAt, kills, pending }
 const intelKillCache = new Map();
 
@@ -1697,10 +1718,21 @@ function renderScatter() {
       if (role === 'victim')   color = ROLE_COLOR_VICTIM;
       if (role === 'attacker') color = ROLE_COLOR_ATTACKER;
     }
+    // Fresh-kill size pulse: dots that arrived in the last few seconds via
+    // the live WS stream are drawn larger and shrink back to normal radius
+    // over FRESH_DOT_DURATION_MS. The ease-out curve makes the shrink fast
+    // at first, slow near the end — feels like the dot "settling in."
+    let baseRadius = matched ? 2.6 : 2;
+    const t0 = intelFreshKills.get(k.id);
+    if (t0 != null) {
+      const t = Math.min(1, (performance.now() - t0) / FRESH_DOT_DURATION_MS);
+      const ease = (1 - t) * (1 - t); // quadratic ease-out
+      baseRadius += FRESH_DOT_DELTA * ease;
+    }
     ctx.fillStyle = color;
     ctx.globalAlpha = matched ? 0.85 : 0.1;
     ctx.beginPath();
-    ctx.arc(x, y, matched ? 2.6 : 2, 0, Math.PI * 2);
+    ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
     ctx.fill();
     if (matched) scatterHits.push({ x, y, k, color, cls });
   }
@@ -2339,6 +2371,65 @@ function renderRhythm(rh, longDays) {
     <div class="ir-cell"><span class="ir-label">Hottest day</span><span class="ir-value">${rh.hotDow} · ${rh.hotDowCount} kill${rh.hotDowCount !== 1 ? 's' : ''}</span></div>`;
 }
 
+// Mark a freshly-arrived kill so the next scatter render draws its dot at
+// boosted size. The size decays back to normal over FRESH_DOT_DURATION_MS
+// via the rAF loop. Safe to call when scatter isn't the active tab — the
+// pulse loop self-skips the paint and just prunes expired entries.
+function markFreshKill(killId) {
+  intelFreshKills.set(killId, performance.now());
+  startScatterPulseLoop();
+}
+
+// rAF loop that drives the fresh-dot size pulse. Runs only while at least
+// one entry is in intelFreshKills; self-terminates when the Map is empty.
+// Each frame: prune expired entries, repaint the scatter (if active), and
+// continue if anything is still pulsing.
+function startScatterPulseLoop() {
+  if (scatterPulseRaf) return;
+  const tick = () => {
+    const now = performance.now();
+    for (const [id, t0] of intelFreshKills) {
+      if (now - t0 > FRESH_DOT_DURATION_MS) intelFreshKills.delete(id);
+    }
+    if (intelOpen && intelView === 'scatter') renderScatter();
+    if (intelFreshKills.size > 0) {
+      scatterPulseRaf = requestAnimationFrame(tick);
+    } else {
+      scatterPulseRaf = null;
+    }
+  };
+  scatterPulseRaf = requestAnimationFrame(tick);
+}
+
+// Trailing throttle for the heavy intel renders: hm60, prime time, rhythm,
+// corp/alliance lists, 60d kill count. First call schedules a render in
+// HEAVY_RENDER_THROTTLE_MS; subsequent calls within that window are no-ops;
+// at fire time, runs the renders against whatever the cache currently holds.
+// Mirrors the heavy-render block from renderIntelAll exactly.
+function scheduleHeavyRender() {
+  if (intelHeavyRenderQueued) return;
+  intelHeavyRenderQueued = setTimeout(() => {
+    intelHeavyRenderQueued = null;
+    if (!intelOpen || !intelCurrentKills || !intelCurrentRgb) return;
+    const kills = intelCurrentKills;
+    const rgb   = intelCurrentRgb;
+    const longDays = intelRangeLong === '60d' ? 60 : 30;
+    const aLong = intelAggregateLong(kills, longDays);
+    const prime = computePrimeTime(aLong.matrix, aLong.killCount);
+    renderPrimeTime(prime, longDays);
+    renderHm60(aLong.matrix, rgb, prime ? prime.peak.hours : null);
+    renderRhythm(computeRhythm(kills, longDays), longDays);
+    document.getElementById('intel-count-60d').textContent =
+      `${aLong.killCount} kill${aLong.killCount !== 1 ? 's' : ''}`;
+    const partyDays = intelView === 'scatter'
+      ? (intelScatterRange === '60d' ? 60 : 30)
+      : longDays;
+    const { topCorps, topAllis } = intelAggregateParties(kills, partyDays);
+    renderParty('intel-corps',     topCorps, 'corporation', 'corp', (id) => `Corp ${id}`);
+    renderParty('intel-alliances', topAllis, 'alliance',    'alli', (id) => `Alliance ${id}`);
+  }, HEAVY_RENDER_THROTTLE_MS);
+}
+
 function renderIntelAll() {
   const kills = intelCurrentKills;
   const rgb   = intelCurrentRgb;
@@ -2365,24 +2456,31 @@ function renderIntelAll() {
   if (intelView === 'scatter') renderScatter();
   if (intelView === 'recent')  renderIntelRecent();
 
-  // Show how many kills are hidden by the current filter, scoped to the
-  // active tab's time window (24h for recent, 30/60d for heatmap + scatter).
+  updateFilteredCount();
+}
+
+// Show how many kills are hidden by the current filter, scoped to the
+// active tab's time window (24h for recent, 30/60d for heatmap + scatter).
+// Extracted from renderIntelAll so the live-kill WS handler can call it
+// without duplicating the cutoff/filter logic.
+function updateFilteredCount() {
+  const kills = intelCurrentKills;
+  if (!kills) return;
   const el = document.getElementById('intel-filtered-count');
-  if (el) {
-    let windowDays;
-    if (intelView === 'recent')      windowDays = 1;
-    else if (intelView === 'scatter') windowDays = intelScatterRange === '60d' ? 60 : 30;
-    else                              windowDays = intelRangeLong === '60d' ? 60 : 30;
-    const cutoff = Date.now() - windowDays * INTEL_DAY_MS;
-    let filtered = 0;
-    for (const k of kills) {
-      if (k.kind === 'fighter') continue;
-      const ts = k.killmail_time ? Date.parse(k.killmail_time) : 0;
-      if (ts < cutoff) continue;
-      if (!passesIntelFilter(k)) filtered++;
-    }
-    el.textContent = filtered > 0 ? `${filtered} hidden` : '';
+  if (!el) return;
+  let windowDays;
+  if (intelView === 'recent')      windowDays = 1;
+  else if (intelView === 'scatter') windowDays = intelScatterRange === '60d' ? 60 : 30;
+  else                              windowDays = intelRangeLong === '60d' ? 60 : 30;
+  const cutoff = Date.now() - windowDays * INTEL_DAY_MS;
+  let filtered = 0;
+  for (const k of kills) {
+    if (k.kind === 'fighter') continue;
+    const ts = k.killmail_time ? Date.parse(k.killmail_time) : 0;
+    if (ts < cutoff) continue;
+    if (!passesIntelFilter(k)) filtered++;
   }
+  el.textContent = filtered > 0 ? `${filtered} hidden` : '';
 }
 
 function renderParty(containerId, items, kind, prefix, fallback) {
@@ -4608,10 +4706,22 @@ function connectKillFeed() {
             });
           }
           if (isOpenForThisSystem) {
+            // Cheap sections — re-render every live kill (no throttle):
             const short = intelAggregateShort(intelCurrentKills, intelRangeShort);
             renderHmShort(short.counts, intelCurrentRgb, intelRangeShort);
             renderLiveness();
             if (intelView === 'recent') renderIntelRecent();
+            if (intelView === 'scatter') {
+              // Mark the new kill so its dot pulses larger then settles.
+              // Triggers the rAF loop that drives the size animation.
+              markFreshKill(k.id);
+              renderScatter();
+            }
+            updateFilteredCount();
+            // Heavy sections — re-aggregate over 30-60d data, batched
+            // through a 3-second trailing throttle so bursts of kills
+            // don't thrash the DOM. See scheduleHeavyRender().
+            scheduleHeavyRender();
           }
         }
       } else if (
