@@ -363,6 +363,18 @@ function renderActiveList() {
   const list = document.getElementById('active-now-list');
   if (!wrap || !list) return;
   wrap.classList.toggle('empty', activeSystems.length === 0);
+  // Clear any active-list-row hover trace before destroying the rows.
+  // Otherwise the deleted row's mouseleave never fires and the trace stays
+  // drawn indefinitely, pointing at a now-vanished active system.
+  if (locateHover && list.contains(locateHover.el)) {
+    locateHover = null;
+  }
+  // Same problem for the data-tip tooltip — if its target row vanishes,
+  // mouseout never fires and the tooltip lingers. Hide it preemptively.
+  if (customTipTarget && list.contains(customTipTarget)) {
+    customTipTarget = null;
+    customTip.style.display = 'none';
+  }
   list.innerHTML = '';
   for (const s of activeSystems) {
     const row = document.createElement('div');
