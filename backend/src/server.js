@@ -16,6 +16,7 @@ import { connectEvescout } from './evescout.js';
 import { createKillstore, buildIntelKill } from './killstore.js';
 import { createBootstrap } from './bootstrap.js';
 import { computeStats, getStats } from './stats.js';
+import { createActive } from './active.js';
 
 const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -165,6 +166,19 @@ fastify.get('/stats', {
 }, async (_req, reply) => {
   reply.header('Cache-Control', 'public, max-age=60');
   return getStats() ?? { error: 'not ready' };
+});
+
+// Hot-system detector — same pattern as stats. Every 60s the detector loops
+// over the killstore, applies the four-condition rule, and maintains an
+// in-memory list of currently-hot systems. /active serves it from cache.
+const active = createActive({ killstore, log: fastify.log });
+active.start();
+
+fastify.get('/active', {
+  config: { rateLimit: { max: 60, timeWindow: '1 minute' } }
+}, async (_req, reply) => {
+  reply.header('Cache-Control', 'public, max-age=30');
+  return active.getActive();
 });
 
 // Intel: return every kill we have for a system, newest first. The frontend
