@@ -561,6 +561,16 @@ html, body {
   border-color: var(--accent);
   box-shadow: 0 0 6px rgba(0, 200, 200, 0.7);
 }
+/* Disabled state — used for the Delayed chip while focus mode is active.
+   Focused mode shows everything in the last 24h regardless of delayed state,
+   so the chip becomes inert. Half opacity + click-blocked + no hover effect. */
+.kind-chip.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  cursor: default;
+}
+.kind-chip.disabled:hover { color: inherit; }
+.kind-chip.disabled:hover::after { border-color: inherit; }
 
 
 /* Live lines — restore button icon, top to bottom */

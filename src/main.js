@@ -4706,6 +4706,16 @@ function updateHistoryBanner() {
 //   - Banner shows "N new kill — go to page 1" when on page 2+ and a matching
 //     kill arrives. Banner click jumps to page 1 instead of the global "back to live".
 
+// Toggle the disabled visual + interaction state of the Delayed chip in
+// the killfeed footer. Focused mode disables it (shows all 24h regardless);
+// global mode restores it. Other chips (kind/NPC/shuttle) stay active in
+// both modes.
+function setFocusedChipDisabledState(disabled) {
+  const chip = document.querySelector('#kill-filters .kind-chip[data-tag="delayed"]');
+  if (!chip) return;
+  chip.classList.toggle('disabled', disabled);
+}
+
 function enterFocusMode(systemId) {
   // Reset state for the new focus.
   focusKills = [];
@@ -4714,6 +4724,10 @@ function enterFocusMode(systemId) {
   focusPendingWsKills = [];
   focusFetching = true;
   const myToken = ++focusFetchToken;
+  // Dim and disable the Delayed chip — focused mode shows everything in
+  // the last 24h regardless, so the chip can't filter anything. Other
+  // chips stay active (kind/NPC/shuttle still meaningfully filter).
+  setFocusedChipDisabledState(true);
 
   // Swap visible elements: hide the live list, show the history container
   // (which has the banner + paginated list + prev/next controls). DON'T
@@ -4762,6 +4776,8 @@ function exitFocusMode() {
   focusPendingWsKills = [];
   focusFetching = false;
   focusFetchToken++;  // invalidate any in-flight fetch
+  // Restore the Delayed chip's normal interactive state.
+  setFocusedChipDisabledState(false);
   // Restore global UI: show live list, hide history container, restore the toggle.
   killList.style.display = '';
   historyContainerEl.style.display = 'none';
@@ -4804,8 +4820,16 @@ function renderFocusPage() {
     const kill = focusKills[i];
     const star = starById.get(kill.systemId);
     if (!star) continue;
-    const el = buildKillElement(killToParams(kill, star));
-    if (!isKillVisible(el.dataset.kind, el.dataset.npc === '1', el.dataset.delayed === '1', Number(el.dataset.typeid) || null)) {
+    // Focused mode never shows DELAYED — neither the orange badge nor the
+    // 65% row opacity dim. Every kill renders at full opacity regardless of
+    // its receivedAt-ts gap. The per-row "Xh ago" timestamp is the only age
+    // indicator users need in this view.
+    const params = killToParams(kill, star);
+    params.isDelayed = false;
+    const el = buildKillElement(params);
+    // Visibility filter respects all chips EXCEPT delayed (we just forced
+    // isDelayed=false, so passing false here is consistent with the rendered state).
+    if (!isKillVisible(el.dataset.kind, el.dataset.npc === '1', false, Number(el.dataset.typeid) || null)) {
       el.style.display = 'none';
     }
     historyListEl.appendChild(el);
