@@ -259,17 +259,23 @@ const activeRingState = new Map();
 // global. Independent of hot status — a focused system stays focused even
 // when it stops being hot.
 let focusedSystemId = null;
-const ACTIVE_RING_DASH        = [6, 8];
-const ACTIVE_RING_ROTATION_MS = 5000;       // 1 turn per 5 seconds
+const ACTIVE_RING_DASH        = [12, 10];   // chunky scanning marks (was [6,8])
+const ACTIVE_RING_ROTATION_MS = 8000;       // 1 turn per 8 seconds (was 5000)
 const ACTIVE_RING_LINEWIDTH   = 1.4;
 const ACTIVE_RING_ALPHA       = 0.6;
 const ACTIVE_RING_RADIUS_PX   = 20;         // screen-pixel size, scaled by zoomK
 const ACTIVE_RING_FADE_IN_MS  = 1000;
 const ACTIVE_RING_FADE_OUT_MS = 2500;
-const ACTIVE_RING_COLOR_SHIFT_MS = 500;     // cyan↔yellow transition duration
-// Color RGB triplets for the ring states. var(--highlight) for hot, var(--accent) for focused-only.
-const ACTIVE_RING_COLOR_HOT     = [232, 212, 77];   // #e8d44d
-const ACTIVE_RING_COLOR_FOCUSED = [0, 200, 200];    // #00c8c8
+const ACTIVE_RING_COLOR_SHIFT_MS = 500;     // tier↔tier or hot↔focused transition
+// Tier-by-intensity color RGB triplets. Score = killCount × (totalIsk / 1B).
+// Tier 1 < 15: small fight (yellow). Tier 2 15-100: real fleet fight (ember).
+// Tier 3 ≥ 100: major event (red). Focused-only ring uses cyan.
+const ACTIVE_RING_COLOR_TIER1   = [232, 212, 77];   // #e8d44d yellow
+const ACTIVE_RING_COLOR_TIER2   = [232, 154, 77];   // #e89a4d ember/orange
+const ACTIVE_RING_COLOR_TIER3   = [254,  55, 67];   // #fe3743 red (matches --danger)
+const ACTIVE_RING_COLOR_FOCUSED = [  0, 200, 200];  // #00c8c8 cyan
+const ACTIVE_RING_TIER2_THRESHOLD = 15;
+const ACTIVE_RING_TIER3_THRESHOLD = 100;
 
 // Active Eve-Scout Thera connections, pushed by the backend over /ws.
 // Each entry: { id, in_system_id, in_system_name, in_system_class,
@@ -375,11 +381,22 @@ async function pollActive() {
 
 // Compute the desired ring color for a system right now. Returns a 3-tuple
 // RGB array, or null if no ring should render.
+//
+// Color is tier-based when the system is hot:
+//   score = killCount × (totalIsk / 1B)
+//   < 15      → tier 1 (yellow)   small fight, worth glancing
+//   15 – 100  → tier 2 (ember)    real fleet fight, worth flying to
+//   ≥ 100     → tier 3 (red)      major event / eviction
+// Focused-but-not-hot systems use cyan regardless of any prior tier color.
 function desiredRingColor(systemId) {
-  const isHot = activeSystems.some(s => s.systemId === systemId);
-  const isFocused = focusedSystemId === systemId;
-  if (isHot)     return ACTIVE_RING_COLOR_HOT;
-  if (isFocused) return ACTIVE_RING_COLOR_FOCUSED;
+  const hot = activeSystems.find(s => s.systemId === systemId);
+  if (hot) {
+    const score = hot.killCount * ((hot.totalIsk || 0) / 1_000_000_000);
+    if (score >= ACTIVE_RING_TIER3_THRESHOLD) return ACTIVE_RING_COLOR_TIER3;
+    if (score >= ACTIVE_RING_TIER2_THRESHOLD) return ACTIVE_RING_COLOR_TIER2;
+    return ACTIVE_RING_COLOR_TIER1;
+  }
+  if (focusedSystemId === systemId) return ACTIVE_RING_COLOR_FOCUSED;
   return null;
 }
 
@@ -414,7 +431,7 @@ function drawHotSystemRings(now) {
       st = {
         angle: Math.random() * Math.PI * 2,  // randomized initial angle
         alphaCurrent: 0,
-        color: desiredRingColor(systemId) || ACTIVE_RING_COLOR_HOT,
+        color: desiredRingColor(systemId) || ACTIVE_RING_COLOR_TIER1,
         // Smooth color shift when hot⇄focused transitions happen. While
         // colorShiftStart is set, the color RGB interpolates from
         // colorShiftFrom to colorShiftTo over ACTIVE_RING_COLOR_SHIFT_MS.

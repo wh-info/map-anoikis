@@ -213,6 +213,20 @@ html, body {
   margin-right: 4px;
 }
 
+/* Focus Killfeed section in the system info panel. Centers the button
+   (half-width) below the System/Intel button row so it visually sits as
+   a subordinate action rather than competing for the same horizontal weight. */
+.si-focus-killfeed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.si-focus-killfeed .si-view-btn {
+  flex: 0 0 auto;
+  min-width: 50%;
+  margin-top: 4px;
+}
+
 .sr-item {
   padding: 7px 10px;
   cursor: pointer;
