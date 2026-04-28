@@ -214,8 +214,9 @@ html, body {
 }
 
 /* Focus Killfeed section in the system info panel. Centers the button
-   (half-width) below the System/Intel button row so it visually sits as
-   a subordinate action rather than competing for the same horizontal weight. */
+   (half-width) between matching dashed separators above and below. The
+   separators already carry margin: 6px 0, so we don't add extra button
+   margins — keeps spacing symmetric above and below the button. */
 .si-focus-killfeed {
   display: flex;
   flex-direction: column;
@@ -224,7 +225,9 @@ html, body {
 .si-focus-killfeed .si-view-btn {
   flex: 0 0 auto;
   min-width: 50%;
-  margin-top: 4px;
+}
+.si-focus-killfeed .si-thera-sep {
+  width: 100%;
 }
 
 .sr-item {

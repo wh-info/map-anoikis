@@ -244,6 +244,9 @@ resetView();
 let showLabels = localStorage.getItem('anoikis-labels') === '1';
 let potatoMode = localStorage.getItem('anoikis-potato') === '1';
 let showThera  = localStorage.getItem('anoikis-thera')  === '1';
+// Active rings — defaults ON. Hides only the rotating dashed rings on the
+// map; the // ACTIVE NOW // sidebar list stays visible regardless.
+let showActiveRings = localStorage.getItem('anoikis-active-rings') !== '0';
 
 // Active hot systems — fetched from backend /active every 60s. Each entry:
 //   { systemId, name, class, killCount, lastKillTs, totalIsk,
@@ -261,7 +264,7 @@ const activeRingState = new Map();
 let focusedSystemId = null;
 const ACTIVE_RING_DASH        = [12, 10];   // chunky scanning marks (was [6,8])
 const ACTIVE_RING_ROTATION_MS = 8000;       // 1 turn per 8 seconds (was 5000)
-const ACTIVE_RING_LINEWIDTH   = 1.4;
+const ACTIVE_RING_LINEWIDTH   = 2;
 const ACTIVE_RING_ALPHA       = 0.6;
 const ACTIVE_RING_RADIUS_PX   = 20;         // screen-pixel size, scaled by zoomK
 const ACTIVE_RING_FADE_IN_MS  = 1000;
@@ -359,6 +362,18 @@ function renderActiveList() {
       const star = starById.get(s.systemId);
       if (star) locateStar(star);
     });
+    // Hover trace from the row to the system on the map — mirrors the
+    // killfeed locate-button trace. Skipped on touch devices (hover events
+    // don't fire there, same as the locate-button pattern).
+    if (!isTouchDevice) {
+      row.addEventListener('mouseenter', () => {
+        const star = starById.get(s.systemId);
+        if (star) locateHover = { el: row, star };
+      });
+      row.addEventListener('mouseleave', () => {
+        if (locateHover && locateHover.el === row) locateHover = null;
+      });
+    }
     list.appendChild(row);
   }
 }
@@ -415,6 +430,9 @@ function desiredRingAlpha(systemId) {
 // Per-system state (alpha, color, angle) lives in activeRingState. Entries
 // are created on first appearance and pruned after fade-out completes.
 function drawHotSystemRings(now) {
+  // Settings toggle gates the entire ring rendering. The active-list sidebar
+  // and detector polling stay running — only map decoration is hidden.
+  if (!showActiveRings) return;
   // Build the union of systemIds that need a ring this frame.
   const ids = new Set();
   for (const s of activeSystems) ids.add(s.systemId);
@@ -4008,6 +4026,17 @@ function setShowThera(v) {
 setShowThera(showThera);
 theraBtn.addEventListener('click',   () => setShowThera(!showThera));
 siTheraBtn.addEventListener('click', () => setShowThera(!showThera));
+
+// Active rings toggle — gates the rotating dashed ring rendering on the map.
+// Sidebar list and backend polling are unaffected. Default ON.
+const activeRingsBtn = document.getElementById('toggle-active-rings');
+function setShowActiveRings(v) {
+  showActiveRings = v;
+  activeRingsBtn.classList.toggle('on', showActiveRings);
+  localStorage.setItem('anoikis-active-rings', showActiveRings ? '1' : '0');
+}
+setShowActiveRings(showActiveRings);
+activeRingsBtn.addEventListener('click', () => setShowActiveRings(!showActiveRings));
 
 // NOTE: The 'anoikis' palette has been removed from the settings panel UI
 // but the palette data and this handler are preserved for future use.
