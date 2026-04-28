@@ -4354,6 +4354,16 @@ const KILL_TAGS_KEY = 'anoikis-kill-tags';
 // SHUTTLE_GROUP_ID is declared earlier in the file alongside the intel
 // filter state. Both filters share the same constant.
 const activeKinds = new Set(JSON.parse(localStorage.getItem(KILL_KINDS_KEY)) || ['ship', 'structure']);
+// Migration: the Ships chip was removed from the killfeed filter UI on
+// 2026-04-26 (real ships always show now). Existing users whose saved
+// activeKinds lacked 'ship' (because they had toggled it off before the
+// chip removal) had no way to re-enable it — every ship kill stayed
+// hidden. Force-add 'ship' once and persist; flag prevents re-running.
+if (!activeKinds.has('ship') && !localStorage.getItem('anoikis-kill-kinds-ship-restored')) {
+  activeKinds.add('ship');
+  localStorage.setItem(KILL_KINDS_KEY, JSON.stringify([...activeKinds]));
+  localStorage.setItem('anoikis-kill-kinds-ship-restored', '1');
+}
 const activeTags = new Set(JSON.parse(localStorage.getItem(KILL_TAGS_KEY)) || ['npc', 'shuttle']);
 // Migration: existing users have an older saved tag set without 'shuttle'.
 // Default the shuttle chip to ON for them too, so behavior matches the new
