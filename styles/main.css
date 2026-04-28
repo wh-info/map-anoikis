@@ -214,13 +214,15 @@ html, body {
 }
 
 /* Focus Killfeed section in the system info panel. Centers the button
-   (half-width) between matching dashed separators above and below. The
-   separators already carry margin: 6px 0, so we don't add extra button
-   margins — keeps spacing symmetric above and below the button. */
+   (half-width) below a dashed separator. No bottom separator — when Thera
+   connections render below, their own separator provides the visual break.
+   When Thera doesn't render, padding-bottom keeps spacing symmetric with
+   the gap above the button (which comes from the separator's bottom margin). */
 .si-focus-killfeed {
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding-bottom: 6px;
 }
 .si-focus-killfeed .si-view-btn {
   flex: 0 0 auto;
