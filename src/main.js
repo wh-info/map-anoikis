@@ -5362,7 +5362,25 @@ function connectKillFeed() {
               corporation_id: k.fbCorporationId,
             }] : [];
             target.push({
+              // Flat WS-shape fields: required by focus-mode rendering
+              // (renderFocusPage → killToParams) and by the intel cache
+              // dedupe-by-id lookup.
               id: k.id,
+              systemId: k.systemId,
+              ts: k.ts,
+              shipTypeId: k.shipTypeId,
+              characterId: k.characterId,
+              corporationId: k.corporationId,
+              value: k.value,
+              receivedAt: k.receivedAt,
+              fbShipTypeId: k.fbShipTypeId,
+              fbCharacterId: k.fbCharacterId,
+              fbCorporationId: k.fbCorporationId,
+              attackerCount: k.attackerCount,
+              _isDelayed: k._isDelayed,
+              _isHistoryOnly: k._isHistoryOnly,
+              // Intel-shape fields: used by the intel panel's aggregators
+              // and the Recent tab's engagement cards.
               killmail_time: new Date(k.ts * 1000).toISOString(),
               kind: k.kind,
               isNpc: k.isNpc,
