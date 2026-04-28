@@ -262,6 +262,20 @@ const activeRingState = new Map();
 // global. Independent of hot status — a focused system stays focused even
 // when it stops being hot.
 let focusedSystemId = null;
+// Focused-mode killfeed state. Backed by /intel/{systemId} filtered to last
+// 24h, sorted newest-first, paginated at HISTORY_PAGE_SIZE per page. Live
+// WS kills for the focused system prepend to focusKills as they arrive.
+// focusFetchToken is a monotonic counter used to invalidate stale fetches
+// when the user switches focus mid-load.
+const FOCUS_WINDOW_MS = 24 * 60 * 60 * 1000;     // 24h slice
+let focusKills = [];                              // intel-shape kills, newest-first
+let focusPage = 0;                                // 0-based current page index
+let focusUnseenCount = 0;                         // banner counter (reset on page-1 view)
+let focusFetchToken = 0;
+// Kills arriving over WS while the /intel fetch is in flight need to be
+// queued so they aren't dropped. Drained into focusKills after fetch resolves.
+let focusPendingWsKills = [];
+let focusFetching = false;
 const ACTIVE_RING_DASH        = [12, 10];   // chunky scanning marks (was [6,8])
 const ACTIVE_RING_ROTATION_MS = 8000;       // 1 turn per 8 seconds (was 5000)
 const ACTIVE_RING_LINEWIDTH   = 2;
@@ -472,20 +486,19 @@ function drawHotSystemRings(now) {
     const targetColor = desiredRingColor(systemId);
     const targetAlpha = desiredRingAlpha(systemId);
 
-    // Alpha interpolation. Hot rings: 1s fade-in / 2.5s fade-out. Focused
-    // rings: snap to target (no fade). We approximate "snap" by using a
-    // very-fast-fade for the focused-only case so the existing animation
-    // path is reused. Concretely: fade speed depends on whether the ring
-    // is "hot-tied" — if any neighbor in activeSystems references this
-    // system, treat as hot fade; else (pure focus toggle), snap.
+    // Alpha interpolation. Rule:
+    //  - System currently hot → fade in/out (smooth).
+    //  - System currently NOT hot → snap in/out (no fade) — covers focused-only.
+    // This is the simplest rule that matches "focused ring snaps" while
+    // preserving the hot-system fade behavior. A system that was hot then
+    // becomes only-focused will snap to focused alpha on the next tick;
+    // visually the user sees the hot ring's fade-out start, then a snap to
+    // focused alpha — acceptable for the rare hot+focused-then-cold path.
     const isHot = activeSystems.some(s => s.systemId === systemId);
-    const wasFocusOnly = !isHot && targetAlpha > 0;
-    const fadeMs = wasFocusOnly
-      ? 0
-      : (targetAlpha > st.alphaCurrent ? ACTIVE_RING_FADE_IN_MS : ACTIVE_RING_FADE_OUT_MS);
-    if (fadeMs === 0) {
+    if (!isHot) {
       st.alphaCurrent = targetAlpha;
     } else {
+      const fadeMs = targetAlpha > st.alphaCurrent ? ACTIVE_RING_FADE_IN_MS : ACTIVE_RING_FADE_OUT_MS;
       const step = dt / fadeMs;
       if (targetAlpha > st.alphaCurrent) {
         st.alphaCurrent = Math.min(targetAlpha, st.alphaCurrent + step * ACTIVE_RING_ALPHA);
@@ -564,15 +577,21 @@ function drawHotSystemRings(now) {
 // Persistence is none in v1 — focus resets on page reload.
 
 function setKillFocus(systemId) {
+  const wasFocused = focusedSystemId != null;
   focusedSystemId = systemId;
   // Show/hide the exit ✕ in the kill header.
   const exitBtn = document.getElementById('kill-focus-exit');
   if (exitBtn) exitBtn.style.display = systemId != null ? '' : 'none';
-  // Update header label (live or history depending on current view).
+
+  if (systemId != null) {
+    // Entering or switching focus — fetch from /intel and render paginated.
+    enterFocusMode(systemId);
+  } else if (wasFocused) {
+    // Exiting focus — restore global mode.
+    exitFocusMode();
+  }
+  // Update header label (live + focused or just live).
   updateKillHeaderLabel();
-  // Re-render the live list and history with the new filter applied.
-  rebuildKillListFromBuffer();
-  if (killViewMode === 'history') renderHistoryPage();
   updateKillCount();
 }
 
@@ -4533,10 +4552,9 @@ function spawnLiveKill(params) {
   // Map animation fires regardless of focus mode. Focus only filters which
   // kills appear in the visible list — the map stays global.
   if (params.animated) triggerKillAnim(params.star, !!params.isDelayed, params.kind, params.typeId);
-  // Focused mode: only kills matching the focused system enter the live list.
-  // Other systems' kills still pulse the map (above), still go into the
-  // history buffer, just don't render here.
-  if (focusedSystemId != null && params.star?.id !== focusedSystemId) return;
+  // Focused mode owns its own rendering pipeline (prependFocusKill from the
+  // WS handler). The global live list is hidden, so don't write to it.
+  if (focusedSystemId != null) return;
   const el = buildKillElement(params);
   killList.insertBefore(el, killList.firstChild);
   while (killList.children.length > MAX_KILLS) killList.removeChild(killList.lastChild);
@@ -4624,18 +4642,18 @@ function pushToBuffer(kill, star) {
 }
 
 function renderHistoryPage() {
+  // Focused mode uses its own paginated renderer (renderFocusPage), backed
+  // by /intel — not the cluster-wide buffer. Early-return so this function
+  // doesn't accidentally clobber the focused list when called from a stale
+  // path (e.g., bound button handler that didn't get focus-aware logic).
+  if (focusedSystemId != null) return;
   // History = every kill in the buffer that's not currently shown in the live
   // list. The live list holds the newest MAX_KILLS items that are NOT
   // history-only (>16h delayed kills are routed straight here regardless of
   // position in the buffer).
   // Within history, sort by killmail timestamp descending — this undoes any
   // out-of-order insertion caused by zKB catching up on delayed kills in bulk.
-  // When focused on a system, both the live and history views are scoped
-  // to that system. We filter the buffer early so the live-vs-history
-  // partition logic operates on the post-focus set.
-  const eligible = focusedSystemId == null
-    ? killBuffer
-    : killBuffer.filter(item => item.kill.systemId === focusedSystemId);
+  const eligible = killBuffer;
   let liveCount = 0;
   const historyItems = [];
   for (const item of eligible) {
@@ -4677,10 +4695,167 @@ function updateHistoryBanner() {
   }
 }
 
+// ─── Focused killfeed (system-scoped, intel-backed, paginated) ──────────
+//
+// Fundamentally different rendering path from the global killfeed:
+//   - Source: /intel/{systemId} filtered to last 24h (not the cluster-wide buffer).
+//   - Single paginated list, no live/history toggle.
+//   - Renders into the existing #kill-history container (banner + list + nav)
+//     while #kill-list is hidden. Header label uses the existing focus prefix.
+//   - Live WS kills for the focused system prepend to focusKills as they arrive.
+//   - Banner shows "N new kill — go to page 1" when on page 2+ and a matching
+//     kill arrives. Banner click jumps to page 1 instead of the global "back to live".
+
+function enterFocusMode(systemId) {
+  // Reset state for the new focus.
+  focusKills = [];
+  focusPage = 0;
+  focusUnseenCount = 0;
+  focusPendingWsKills = [];
+  focusFetching = true;
+  const myToken = ++focusFetchToken;
+
+  // Swap visible elements: hide the live list, show the history container
+  // (which has the banner + paginated list + prev/next controls). DON'T
+  // toggle history-mode CSS — focused mode keeps the normal header colors.
+  killList.style.display = 'none';
+  historyContainerEl.style.display = 'flex';
+  // Hide the history toggle button — focused mode has no separate history view.
+  if (historyToggleBtn) historyToggleBtn.style.display = 'none';
+  // Empty the visible list while we fetch.
+  historyListEl.innerHTML = '<div class="kill-history-loading">Loading…</div>';
+  historyBannerEl.style.display = 'none';
+  historyPageLabelEl.textContent = '';
+  historyPrevBtn.disabled = true;
+  historyNextBtn.disabled = true;
+
+  fetchSystemKills(systemId).then((kills) => {
+    // Stale fetch guard — user may have switched focus or exited.
+    if (myToken !== focusFetchToken) return;
+    if (focusedSystemId !== systemId) return;
+    focusFetching = false;
+    const cutoff = Math.floor((Date.now() - FOCUS_WINDOW_MS) / 1000);
+    // /intel kills come newest-first already. Filter to 24h and sort to be safe.
+    focusKills = (kills || [])
+      .filter(k => k && k.ts && k.ts >= cutoff)
+      .sort((a, b) => b.ts - a.ts);
+    // Drain any WS kills that arrived during the fetch. Dedupe by id.
+    for (const wsKill of focusPendingWsKills) {
+      if (focusKills.some(k => k.id === wsKill.id)) continue;
+      if (wsKill.ts && wsKill.ts >= cutoff) focusKills.unshift(wsKill);
+    }
+    focusPendingWsKills = [];
+    focusKills.sort((a, b) => b.ts - a.ts);
+    renderFocusPage();
+  }).catch((err) => {
+    if (myToken !== focusFetchToken) return;
+    focusFetching = false;
+    historyListEl.innerHTML = '<div class="kill-history-empty">Couldn\'t load recent kills.</div>';
+    console.warn('[focus] fetch failed:', err?.message || err);
+  });
+}
+
+function exitFocusMode() {
+  focusKills = [];
+  focusPage = 0;
+  focusUnseenCount = 0;
+  focusPendingWsKills = [];
+  focusFetching = false;
+  focusFetchToken++;  // invalidate any in-flight fetch
+  // Restore global UI: show live list, hide history container, restore the toggle.
+  killList.style.display = '';
+  historyContainerEl.style.display = 'none';
+  if (historyToggleBtn) historyToggleBtn.style.display = '';
+  historyBannerEl.style.display = 'none';
+  historyBannerEl.textContent = '';
+  // Reset killViewMode to 'live' (focus exits always land in live mode).
+  killViewMode = 'live';
+  panelRightEl.classList.remove('history-mode');
+  // Rebuild the live list from the buffer — focus may have masked WS kills
+  // that arrived for other systems. The buffer has them; rebuild from it.
+  rebuildKillListFromBuffer();
+  unseenLiveKills = 0;
+  updateHistoryBanner();
+  updateKillCount();
+}
+
+// Render the current page of focusKills into the history list element. Also
+// updates the page label, prev/next disabled state, and banner.
+function renderFocusPage() {
+  const total = focusKills.length;
+  if (total === 0) {
+    const star = starById.get(focusedSystemId);
+    const name = star ? displayName(star) : 'this system';
+    historyListEl.innerHTML = `<div class="kill-history-empty">${escapeHtml(name)} has been quiet for 24 hours.</div>`;
+    historyPageLabelEl.textContent = '';
+    historyPrevBtn.disabled = true;
+    historyNextBtn.disabled = true;
+    historyBannerEl.style.display = 'none';
+    updateKillCount();
+    return;
+  }
+  const totalPages = Math.max(1, Math.ceil(total / HISTORY_PAGE_SIZE));
+  if (focusPage >= totalPages) focusPage = totalPages - 1;
+  if (focusPage < 0) focusPage = 0;
+  const start = focusPage * HISTORY_PAGE_SIZE;
+  const end = Math.min(start + HISTORY_PAGE_SIZE, total);
+  historyListEl.innerHTML = '';
+  for (let i = start; i < end; i++) {
+    const kill = focusKills[i];
+    const star = starById.get(kill.systemId);
+    if (!star) continue;
+    const el = buildKillElement(killToParams(kill, star));
+    if (!isKillVisible(el.dataset.kind, el.dataset.npc === '1', el.dataset.delayed === '1', Number(el.dataset.typeid) || null)) {
+      el.style.display = 'none';
+    }
+    historyListEl.appendChild(el);
+  }
+  historyPageLabelEl.textContent = `Page ${focusPage + 1} / ${totalPages}`;
+  historyPrevBtn.disabled = focusPage === 0;
+  historyNextBtn.disabled = focusPage >= totalPages - 1;
+  // Banner: only visible when user is on page 2+ AND we've accumulated unseen
+  // matching kills since they last viewed page 1.
+  if (focusPage > 0 && focusUnseenCount > 0) {
+    historyBannerEl.style.display = '';
+    historyBannerEl.textContent = `${focusUnseenCount} new kill${focusUnseenCount !== 1 ? 's' : ''} — click to return to page 1`;
+  } else {
+    historyBannerEl.style.display = 'none';
+    // If user navigated to page 1, clear the unseen counter.
+    if (focusPage === 0) focusUnseenCount = 0;
+  }
+  updateKillCount();
+}
+
+// Called by the WS live-kill handler when a kill arrives for the focused
+// system. Either prepends to focusKills directly (post-fetch) or queues
+// it (during initial fetch). If user is on page 1, re-render. Otherwise
+// bump the new-kill counter and update the banner.
+function prependFocusKill(kill) {
+  if (focusFetching) {
+    focusPendingWsKills.push(kill);
+    return;
+  }
+  // Dedupe (in case the same kill came through both initial fetch and WS).
+  if (focusKills.some(k => k.id === kill.id)) return;
+  // Filter to 24h window.
+  const cutoff = Math.floor((Date.now() - FOCUS_WINDOW_MS) / 1000);
+  if (!kill.ts || kill.ts < cutoff) return;
+  focusKills.unshift(kill);
+  if (focusPage === 0) {
+    renderFocusPage();
+  } else {
+    focusUnseenCount++;
+    renderFocusPage();  // updates banner
+  }
+}
+
 const killHeaderLabelEl = document.getElementById('kill-header-label');
 const panelRightEl = document.getElementById('panel-right');
 
 function setKillView(mode) {
+  // Focused mode has no separate live/history views — single paginated list.
+  // The history toggle button is hidden while focused, but guard here too.
+  if (focusedSystemId != null) return;
   killViewMode = mode;
   if (mode === 'history') {
     killList.style.display = 'none';
@@ -4709,13 +4884,33 @@ function setKillView(mode) {
 historyToggleBtn.addEventListener('click', () => {
   setKillView(killViewMode === 'live' ? 'history' : 'live');
 });
-historyBannerEl.addEventListener('click', () => setKillView('live'));
+historyBannerEl.addEventListener('click', () => {
+  // In focused mode the banner says "click to return to page 1" — jump there
+  // and clear the unseen counter. In global history mode it says "click to
+  // return to Live" — restore the live view.
+  if (focusedSystemId != null) {
+    focusPage = 0;
+    focusUnseenCount = 0;
+    renderFocusPage();
+  } else {
+    setKillView('live');
+  }
+});
 historyPrevBtn.addEventListener('click', () => {
-  if (historyPage > 0) { historyPage--; renderHistoryPage(); }
+  if (focusedSystemId != null) {
+    if (focusPage > 0) { focusPage--; renderFocusPage(); }
+  } else {
+    if (historyPage > 0) { historyPage--; renderHistoryPage(); }
+  }
 });
 historyNextBtn.addEventListener('click', () => {
-  const totalPages = Math.max(1, Math.ceil(killBuffer.length / HISTORY_PAGE_SIZE));
-  if (historyPage < totalPages - 1) { historyPage++; renderHistoryPage(); }
+  if (focusedSystemId != null) {
+    const totalPages = Math.max(1, Math.ceil(focusKills.length / HISTORY_PAGE_SIZE));
+    if (focusPage < totalPages - 1) { focusPage++; renderFocusPage(); }
+  } else {
+    const totalPages = Math.max(1, Math.ceil(killBuffer.length / HISTORY_PAGE_SIZE));
+    if (historyPage < totalPages - 1) { historyPage++; renderHistoryPage(); }
+  }
 });
 document.querySelectorAll('#kill-filters .kind-chip').forEach((chip) => {
   const kind = chip.dataset.kind;
@@ -5066,15 +5261,36 @@ function connectKillFeed() {
         // list. Filter first so history-only kills don't take live slots only
         // to be dropped by spawnLiveKill — that would leave the live list
         // shorter than MAX_KILLS even when there's plenty of fresh activity.
-        killList.innerHTML = '';
-        const recent = msg.kills.filter(k => !k._isHistoryOnly).slice(-MAX_KILLS);
-        for (const k of recent) handleBackendKill(k, false);
-        if (killViewMode === 'history') renderHistoryPage();
+        // Skip the live-list render entirely while focused — focused mode
+        // owns its own rendering pipeline (renderFocusPage from /intel).
+        if (focusedSystemId == null) {
+          killList.innerHTML = '';
+          const recent = msg.kills.filter(k => !k._isHistoryOnly).slice(-MAX_KILLS);
+          for (const k of recent) handleBackendKill(k, false);
+          if (killViewMode === 'history') renderHistoryPage();
+        }
       } else if (msg.type === 'kill' && msg.kill) {
         stampKill(msg.kill);
         const star = starById.get(msg.kill.systemId);
         if (star) pushToBuffer(msg.kill, star);
-        if (killViewMode === 'live') {
+        // Map animation always fires regardless of focus state.
+        if (focusedSystemId != null) {
+          if (msg.kill.systemId === focusedSystemId) {
+            // Kill is for the focused system — feed it into the focused list.
+            // prependFocusKill handles the page-1 render or banner increment,
+            // and queues the kill if /intel is still being fetched.
+            prependFocusKill(msg.kill);
+            if (star && !msg.kill._isHistoryOnly) {
+              triggerKillAnim(star, !!msg.kill._isDelayed, msg.kill.kind, msg.kill.shipTypeId);
+              flashRestoreRight();
+            }
+          } else if (star && !msg.kill._isHistoryOnly) {
+            // Kill is for a different system — pulse the map but skip the
+            // focused list. Buffer push above keeps it for global history if
+            // user later exits focus.
+            triggerKillAnim(star, !!msg.kill._isDelayed, msg.kill.kind, msg.kill.shipTypeId);
+          }
+        } else if (killViewMode === 'live') {
           // handleBackendKill -> spawnLiveKill self-gates on isHistoryOnly,
           // so this is a no-op for >16h kills.
           handleBackendKill(msg.kill, true);
