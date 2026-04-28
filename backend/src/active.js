@@ -1,12 +1,18 @@
 // Hot-system detection — runs every 60s over the killstore and produces a
 // list of systems that meet our "currently happening fight" rule.
 //
-// Detection rule (locked 2026-04-28):
-//   1. ≥10 PvP kills in last 10 min (isNpc: false only)
-//   2. AND ≥500M ISK destroyed in last 10 min
+// Detection rule (v2, tuned 2026-04-28 after observing v1 in production):
+//   1. ≥10 PvP kills in last 15 min (isNpc: false only)
+//   2. AND ≥300M ISK destroyed in last 15 min
 //   3. AND ≥2 ships lost on each of two distinct alliance/corp sides
 //      (mutual loss with depth — both sides have to actually be bleeding)
-//   4. AND last kill within last 10 min
+//   4. AND last kill within last 20 min
+//
+// v1 used 10-min window, 500M ISK, 10-min recency. Tightened ISK floor
+// caused real frigate brawls (10 kills, mutual loss, ~120M total ISK) to
+// fail. v2 widens the cluster window for slower-paced fights, drops the
+// ISK floor to catch frigate engagements, and extends recency so a fight
+// stays in the list briefly after the last kill.
 //
 // Always uses kill.ts (killmail_time) — never receivedAt. The detector
 // asks "is this fight happening now in EVE?" not "did the backend just
@@ -31,10 +37,10 @@ for (const [k, v] of Object.entries(rawSystems)) {
 // Detection thresholds. Tunable via constant-edit + redeploy. We deliberately
 // don't expose these as env vars — tuning happens rarely and a redeploy is
 // cheap. If we end up tuning frequently we can revisit.
-const WINDOW_MS         = 10 * 60 * 1000;   // sliding kill-cluster window
-const RECENCY_MS        = 10 * 60 * 1000;   // last-kill-must-be-within
+const WINDOW_MS         = 15 * 60 * 1000;   // sliding kill-cluster window
+const RECENCY_MS        = 20 * 60 * 1000;   // last-kill-must-be-within
 const MIN_KILLS         = 10;               // condition 1
-const MIN_ISK           = 500_000_000;      // condition 2
+const MIN_ISK           = 300_000_000;      // condition 2
 const MIN_SIDE_LOSSES   = 2;                // condition 3 — losses per side
 const TICK_MS           = 60_000;           // detector tick cadence
 
