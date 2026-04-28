@@ -156,6 +156,63 @@ html, body {
 }
 #search-results:empty { display: none; }
 
+/* Active hot systems list — sits between search and system info. Auto-collapses
+   to zero height when no systems are hot (via .empty class on #active-now). */
+#active-now {
+  margin-top: 12px;
+}
+#active-now.empty { display: none; }
+.active-now-heading {
+  color: var(--highlight);
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-hi);
+  padding-bottom: 4px;
+}
+.active-now-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+  font-size: 11px;
+}
+.active-now-row:last-child { border-bottom: none; }
+.active-now-row:hover { background: rgba(232, 212, 77, 0.06); }
+.active-now-row .an-sys {
+  color: var(--text);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.active-now-row .an-sys-class {
+  color: var(--muted);
+  font-weight: 400;
+  margin-left: 4px;
+}
+.active-now-row .an-meta {
+  color: var(--dim);
+  white-space: nowrap;
+  font-size: 10px;
+}
+
+/* Bold yellow J-code prefix in the kill panel header when focused on a
+   specific system. Live mode shows "<J-code> Killfeed Online", history
+   shows "<J-code> Killfeed History". Only the J-code is restyled — the
+   header background itself stays unchanged. */
+.killfeed-focus-jcode {
+  color: var(--highlight);
+  font-weight: 700;
+  margin-right: 4px;
+}
+
 .sr-item {
   padding: 7px 10px;
   cursor: pointer;

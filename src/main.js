@@ -245,6 +245,32 @@ let showLabels = localStorage.getItem('anoikis-labels') === '1';
 let potatoMode = localStorage.getItem('anoikis-potato') === '1';
 let showThera  = localStorage.getItem('anoikis-thera')  === '1';
 
+// Active hot systems — fetched from backend /active every 60s. Each entry:
+//   { systemId, name, class, killCount, lastKillTs, totalIsk,
+//     lastKill: { shipTypeId, isk, ts } | null }
+// Drives the // ACTIVE NOW // sidebar list and the yellow rotating dashed
+// rings on the map. Empty when no system meets the four-condition rule.
+let activeSystems = [];
+// systemId -> per-system render state for the rotating ring on the map.
+// Tracks fade-in/out alpha (for hot transitions), color shift state (for
+// hot↔focused transitions), and a randomized initial rotation angle.
+const activeRingState = new Map();
+// User's currently-focused system for the killfeed scope feature. null when
+// global. Independent of hot status — a focused system stays focused even
+// when it stops being hot.
+let focusedSystemId = null;
+const ACTIVE_RING_DASH        = [6, 8];
+const ACTIVE_RING_ROTATION_MS = 5000;       // 1 turn per 5 seconds
+const ACTIVE_RING_LINEWIDTH   = 1.4;
+const ACTIVE_RING_ALPHA       = 0.6;
+const ACTIVE_RING_RADIUS_PX   = 20;         // screen-pixel size, scaled by zoomK
+const ACTIVE_RING_FADE_IN_MS  = 1000;
+const ACTIVE_RING_FADE_OUT_MS = 2500;
+const ACTIVE_RING_COLOR_SHIFT_MS = 500;     // cyan↔yellow transition duration
+// Color RGB triplets for the ring states. var(--highlight) for hot, var(--accent) for focused-only.
+const ACTIVE_RING_COLOR_HOT     = [232, 212, 77];   // #e8d44d
+const ACTIVE_RING_COLOR_FOCUSED = [0, 200, 200];    // #00c8c8
+
 // Active Eve-Scout Thera connections, pushed by the backend over /ws.
 // Each entry: { id, in_system_id, in_system_name, in_system_class,
 //   wh_type, max_ship_size, remaining_hours, wh_exits_outward,
@@ -266,14 +292,291 @@ function theraSizeColor(size) {
   return THERA_COLORS[size] || THERA_DEFAULT_COLOR;
 }
 
-// Re-render the Thera connection list in the system-info panel. Two modes:
-// - Thera selected: lists every active Eve-Scout connection.
-// - Non-Thera system selected: if that system is the far end of an active
-//   connection, renders a reciprocal row pointing back to Thera (same wh_type,
-//   flipped arrow). Otherwise the wrapper hides entirely.
-// Owns the visibility of `#si-thera-links` so it stays correct across both
-// selection changes and live WS pushes. Called from selectStar (on selection
-// change) and from the WS handler (on poll update).
+// ─── Active hot systems ──────────────────────────────────────────────────
+//
+// Fetched from backend /active every 60s. The list drives both the sidebar
+// "// ACTIVE NOW //" UI and the yellow rotating dashed rings on the map.
+// Per-system render state for the rings (fade alpha, rotation angle, color
+// transition) lives in activeRingState — entries are added when a system
+// becomes hot or focused, kept across polls, and pruned after fade-out.
+
+function fmtAge(ts) {
+  if (!ts) return '';
+  const sec = Math.floor(Date.now() / 1000) - ts;
+  if (sec < 60)    return sec + 's ago';
+  if (sec < 3600)  return Math.floor(sec / 60) + 'm ago';
+  if (sec < 86400) return Math.floor(sec / 3600) + 'h ago';
+  return Math.floor(sec / 86400) + 'd ago';
+}
+
+function fmtIskCompact(v) {
+  if (!v || v <= 0) return '0';
+  if (v >= 1e12) return (v / 1e12).toFixed(1) + 'T';
+  if (v >= 1e9)  return (v / 1e9).toFixed(1) + 'B';
+  if (v >= 1e6)  return (v / 1e6).toFixed(0) + 'M';
+  if (v >= 1e3)  return (v / 1e3).toFixed(0) + 'K';
+  return String(Math.round(v));
+}
+
+// Tooltip body for a hot-list row. Two lines:
+//   "14 kills · 8.4B ISK destroyed"
+//   "Last: Vargur · 1.2B · 47s ago"
+// Resolves the ship name via window.TYPE_NAMES (already loaded). No ESI
+// lookup — the data we need is in the /active payload.
+function activeRowTooltip(s) {
+  const lines = [];
+  lines.push(`${s.killCount} kills · ${fmtIskCompact(s.totalIsk)} ISK destroyed`);
+  if (s.lastKill) {
+    const shipName = window.TYPE_NAMES?.[s.lastKill.shipTypeId] || 'Unknown';
+    const isk = fmtIskCompact(s.lastKill.isk);
+    const age = fmtAge(s.lastKill.ts);
+    lines.push(`Last: ${shipName} · ${isk} · ${age}`);
+  }
+  return lines.join('\n');
+}
+
+function renderActiveList() {
+  const wrap = document.getElementById('active-now');
+  const list = document.getElementById('active-now-list');
+  if (!wrap || !list) return;
+  wrap.classList.toggle('empty', activeSystems.length === 0);
+  list.innerHTML = '';
+  for (const s of activeSystems) {
+    const row = document.createElement('div');
+    row.className = 'active-now-row';
+    row.dataset.tip = activeRowTooltip(s);
+    row.innerHTML = `
+      <span class="an-sys">${escapeHtml(s.name)}<span class="an-sys-class"> · ${escapeHtml(s.class)}</span></span>
+      <span class="an-meta">${s.killCount} kills · ${fmtAge(s.lastKillTs)}</span>
+    `;
+    row.addEventListener('click', () => {
+      const star = starById.get(s.systemId);
+      if (star) locateStar(star);
+    });
+    list.appendChild(row);
+  }
+}
+
+// Poll backend /active. Updates activeSystems and triggers re-render of the
+// sidebar list. Ring rendering reads activeSystems directly each frame in
+// the draw loop, so nothing else needs to be poked here.
+async function pollActive() {
+  try {
+    const r = await fetch(`${intelApiBase()}/active`);
+    if (!r.ok) return;
+    const body = await r.json();
+    if (!body || !Array.isArray(body.systems)) return;
+    activeSystems = body.systems;
+    renderActiveList();
+  } catch {
+    // Network blip — the next poll will recover. Keep showing the last list.
+  }
+}
+
+// Compute the desired ring color for a system right now. Returns a 3-tuple
+// RGB array, or null if no ring should render.
+function desiredRingColor(systemId) {
+  const isHot = activeSystems.some(s => s.systemId === systemId);
+  const isFocused = focusedSystemId === systemId;
+  if (isHot)     return ACTIVE_RING_COLOR_HOT;
+  if (isFocused) return ACTIVE_RING_COLOR_FOCUSED;
+  return null;
+}
+
+// Compute the desired alpha (target) for a system's ring right now. Hot
+// rings fade in/out; focused rings snap in/out (no fade). The state machine
+// handles the actual interpolation in drawHotSystemRings.
+function desiredRingAlpha(systemId) {
+  const isHot = activeSystems.some(s => s.systemId === systemId);
+  const isFocused = focusedSystemId === systemId;
+  return (isHot || isFocused) ? ACTIVE_RING_ALPHA : 0;
+}
+
+// Draws yellow rings on hot systems and cyan rings on focused-but-not-hot
+// systems. Called from the main draw loop AFTER stars and Thera arcs but
+// BEFORE kill ring pulses (so kill events stay visible on top during fights).
+// Per-system state (alpha, color, angle) lives in activeRingState. Entries
+// are created on first appearance and pruned after fade-out completes.
+function drawHotSystemRings(now) {
+  // Build the union of systemIds that need a ring this frame.
+  const ids = new Set();
+  for (const s of activeSystems) ids.add(s.systemId);
+  if (focusedSystemId != null) ids.add(focusedSystemId);
+  // Also include systems already in the state map that may still be fading out.
+  for (const id of activeRingState.keys()) ids.add(id);
+
+  for (const systemId of ids) {
+    const star = starById.get(systemId);
+    if (!star) continue;
+
+    let st = activeRingState.get(systemId);
+    if (!st) {
+      st = {
+        angle: Math.random() * Math.PI * 2,  // randomized initial angle
+        alphaCurrent: 0,
+        color: desiredRingColor(systemId) || ACTIVE_RING_COLOR_HOT,
+        // Smooth color shift when hot⇄focused transitions happen. While
+        // colorShiftStart is set, the color RGB interpolates from
+        // colorShiftFrom to colorShiftTo over ACTIVE_RING_COLOR_SHIFT_MS.
+        colorShiftStart: 0,
+        colorShiftFrom: null,
+        colorShiftTo:   null,
+        lastFrameTime:  now,
+      };
+      activeRingState.set(systemId, st);
+    }
+
+    // Time delta since last frame (for rotation + alpha animation).
+    const dt = Math.max(0, now - (st.lastFrameTime || now));
+    st.lastFrameTime = now;
+
+    // Rotation — clockwise, ACTIVE_RING_ROTATION_MS per turn.
+    st.angle += (Math.PI * 2) * (dt / ACTIVE_RING_ROTATION_MS);
+    if (st.angle > Math.PI * 2) st.angle -= Math.PI * 2;
+
+    const targetColor = desiredRingColor(systemId);
+    const targetAlpha = desiredRingAlpha(systemId);
+
+    // Alpha interpolation. Hot rings: 1s fade-in / 2.5s fade-out. Focused
+    // rings: snap to target (no fade). We approximate "snap" by using a
+    // very-fast-fade for the focused-only case so the existing animation
+    // path is reused. Concretely: fade speed depends on whether the ring
+    // is "hot-tied" — if any neighbor in activeSystems references this
+    // system, treat as hot fade; else (pure focus toggle), snap.
+    const isHot = activeSystems.some(s => s.systemId === systemId);
+    const wasFocusOnly = !isHot && targetAlpha > 0;
+    const fadeMs = wasFocusOnly
+      ? 0
+      : (targetAlpha > st.alphaCurrent ? ACTIVE_RING_FADE_IN_MS : ACTIVE_RING_FADE_OUT_MS);
+    if (fadeMs === 0) {
+      st.alphaCurrent = targetAlpha;
+    } else {
+      const step = dt / fadeMs;
+      if (targetAlpha > st.alphaCurrent) {
+        st.alphaCurrent = Math.min(targetAlpha, st.alphaCurrent + step * ACTIVE_RING_ALPHA);
+      } else {
+        st.alphaCurrent = Math.max(targetAlpha, st.alphaCurrent - step * ACTIVE_RING_ALPHA);
+      }
+    }
+
+    // Color shift handling. When the desired color differs from the current
+    // resting color and we're not already shifting, kick off a transition.
+    if (targetColor) {
+      const from = st.colorShiftTo || st.color;
+      const same = from && from[0] === targetColor[0] && from[1] === targetColor[1] && from[2] === targetColor[2];
+      if (!same && !st.colorShiftStart) {
+        st.colorShiftStart = now;
+        st.colorShiftFrom = from;
+        st.colorShiftTo   = targetColor;
+      }
+    }
+    let renderColor = st.color;
+    if (st.colorShiftStart) {
+      const t = Math.min(1, (now - st.colorShiftStart) / ACTIVE_RING_COLOR_SHIFT_MS);
+      renderColor = [
+        Math.round(st.colorShiftFrom[0] + (st.colorShiftTo[0] - st.colorShiftFrom[0]) * t),
+        Math.round(st.colorShiftFrom[1] + (st.colorShiftTo[1] - st.colorShiftFrom[1]) * t),
+        Math.round(st.colorShiftFrom[2] + (st.colorShiftTo[2] - st.colorShiftFrom[2]) * t),
+      ];
+      if (t >= 1) {
+        st.color = st.colorShiftTo;
+        st.colorShiftStart = 0;
+        st.colorShiftFrom  = null;
+        st.colorShiftTo    = null;
+      }
+    } else if (targetColor) {
+      st.color = targetColor;
+      renderColor = targetColor;
+    }
+
+    // Skip drawing if effectively invisible (and prune the state if it's
+    // also at target zero — no further animation to drive).
+    if (st.alphaCurrent < 0.01 && targetAlpha === 0) {
+      activeRingState.delete(systemId);
+      continue;
+    }
+    if (st.alphaCurrent < 0.01) continue;
+
+    const p = worldToScreen(star.x, star.y);
+    // Cull if offscreen (saves work during pan/zoom away from hot cluster).
+    if (p.x < -50 || p.x > window.innerWidth + 50 || p.y < -50 || p.y > window.innerHeight + 50) continue;
+
+    // Screen-pixel sizing — the ring stays the same on-screen size at any
+    // zoom level. Without this, the ring would shrink to invisibility when
+    // zoomed out. Mirrors the kill-ring pulse pattern.
+    const zoomK = clamp(camera.scale, 0.5, 1.8);
+    const radius = ACTIVE_RING_RADIUS_PX / zoomK;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.translate(p.x, p.y);
+    ctx.rotate(st.angle);
+    ctx.setLineDash(ACTIVE_RING_DASH);
+    ctx.lineWidth = ACTIVE_RING_LINEWIDTH;
+    ctx.strokeStyle = `rgba(${renderColor[0]}, ${renderColor[1]}, ${renderColor[2]}, ${st.alphaCurrent})`;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+}
+
+// ─── Killfeed focus mode ─────────────────────────────────────────────────
+//
+// When focused on a system, the live kill list filters to only that system.
+// Map animations stay global. Header label gets a bold yellow J-code prefix.
+// Persistence is none in v1 — focus resets on page reload.
+
+function setKillFocus(systemId) {
+  focusedSystemId = systemId;
+  // Show/hide the exit ✕ in the kill header.
+  const exitBtn = document.getElementById('kill-focus-exit');
+  if (exitBtn) exitBtn.style.display = systemId != null ? '' : 'none';
+  // Update header label (live or history depending on current view).
+  updateKillHeaderLabel();
+  // Re-render the live list and history with the new filter applied.
+  rebuildKillListFromBuffer();
+  if (killViewMode === 'history') renderHistoryPage();
+  updateKillCount();
+}
+
+// Returns the J-code string for the focused system, or null. Resolves via
+// the existing star map — ANOIKIS_SYSTEMS already loaded.
+function focusedSystemName() {
+  if (focusedSystemId == null) return null;
+  const star = starById.get(focusedSystemId);
+  return star ? displayName(star) : null;
+}
+
+// Render the kill panel header label with the optional J-code prefix.
+// Called from setKillView() and setKillFocus(). Replaces the previous
+// direct textContent assignments.
+function updateKillHeaderLabel() {
+  const suffix = killViewMode === 'history' ? 'Killfeed History' : 'Killfeed Online';
+  const jcode = focusedSystemName();
+  if (jcode) {
+    killHeaderLabelEl.innerHTML =
+      `<span class="killfeed-focus-jcode">${escapeHtml(jcode)}</span>${escapeHtml(suffix)}`;
+  } else {
+    killHeaderLabelEl.textContent = suffix;
+  }
+}
+
+// Rebuild the live kill list DOM from the buffer, applying the current
+// focus filter. Called when entering or exiting focus, or when toggling
+// to live view. Preserves chronological order (newest at top).
+function rebuildKillListFromBuffer() {
+  killList.innerHTML = '';
+  const liveSlice = killBuffer.slice(0, MAX_KILLS);
+  for (let i = liveSlice.length - 1; i >= 0; i--) {
+    const { kill, star } = liveSlice[i];
+    if (focusedSystemId != null && kill.systemId !== focusedSystemId) continue;
+    const el = buildKillElement(killToParams(kill, star));
+    killList.insertBefore(el, killList.firstChild);
+  }
+}
+
 function renderTheraConnectionList() {
   const el = document.getElementById('si-thera-connections');
   const wrap = document.getElementById('si-thera-links');
@@ -2649,6 +2952,27 @@ document.getElementById('si-intel').addEventListener('click', () => {
   else openIntel(selected);
 });
 
+// --- Focus Killfeed wiring --------------------------------------
+document.getElementById('si-focus-btn')?.addEventListener('click', () => {
+  if (!selected) return;
+  setKillFocus(selected.id);
+  // On touch devices, jump to the killfeed panel so the user immediately
+  // sees the focused state. Mirrors the pattern used by locate buttons.
+  if (isTouchDevice) {
+    document.getElementById('panel-left')?.classList.add('panel--hidden');
+    document.getElementById('panel-right')?.classList.remove('panel--hidden');
+    document.getElementById('mnav-killfeed')?.classList.add('active');
+  }
+});
+document.getElementById('kill-focus-exit')?.addEventListener('click', () => {
+  setKillFocus(null);
+});
+
+// --- Active hot systems polling ---------------------------------
+// Poll backend /active every 60s. First poll fires on page load.
+pollActive();
+setInterval(pollActive, 60_000);
+
 // --- Kill animations --------------------------------------------
 // Ring pulse is sized and timed per kill weight. Tiny stuff (pods, shuttles,
 // fighters) gets a smaller, quicker ring; structures get a bigger, longer
@@ -2841,6 +3165,10 @@ function draw() {
   ctx.globalCompositeOperation = 'lighter';
 
   if (showThera && theraConnections.length) drawTheraConnections(now);
+
+  // Hot-system rotating dashed rings — sit between Thera arcs and kill ring
+  // pulses so individual kill events stay visible on top during fights.
+  drawHotSystemRings(now);
 
   ctx.globalCompositeOperation = 'lighter';
   for (let i = activeAnims.length - 1; i >= 0; i--) {
@@ -3394,6 +3722,9 @@ function deselectStar() {
   closeOrrery();
   closeIntel();
   clearUrlSysParam();
+  // Hide the Focus Killfeed section — only relevant when a system is selected.
+  const focusSection = document.getElementById('si-focus-killfeed');
+  if (focusSection) focusSection.style.display = 'none';
   if (isTouchDevice) tooltip.classList.remove('visible');
 }
 
@@ -3464,6 +3795,11 @@ function selectStar(s, focus) {
     closeSunPopup();
   }
   if (intelOpen) openIntel(s);
+  // Show the Focus Killfeed section in the system info panel for any
+  // selected system (hot or not). Hidden by default in HTML; we just toggle
+  // its display whenever a system gets selected.
+  const focusSection = document.getElementById('si-focus-killfeed');
+  if (focusSection) focusSection.style.display = '';
   if (isTouchDevice) {
     ttName.textContent = displayName(s) + '  ' + displayClass(s);
     ttClass.textContent = shortLabel(s.regionName) + ' · ' + shortLabel(s.constellation);
@@ -4148,7 +4484,13 @@ function spawnLiveKill(params) {
   // no map animation, no DOM row, no kill counter bump. They still ride the
   // history buffer + intel cache via the WS handler upstream.
   if (params.isHistoryOnly) return;
+  // Map animation fires regardless of focus mode. Focus only filters which
+  // kills appear in the visible list — the map stays global.
   if (params.animated) triggerKillAnim(params.star, !!params.isDelayed, params.kind, params.typeId);
+  // Focused mode: only kills matching the focused system enter the live list.
+  // Other systems' kills still pulse the map (above), still go into the
+  // history buffer, just don't render here.
+  if (focusedSystemId != null && params.star?.id !== focusedSystemId) return;
   const el = buildKillElement(params);
   killList.insertBefore(el, killList.firstChild);
   while (killList.children.length > MAX_KILLS) killList.removeChild(killList.lastChild);
@@ -4242,9 +4584,15 @@ function renderHistoryPage() {
   // position in the buffer).
   // Within history, sort by killmail timestamp descending — this undoes any
   // out-of-order insertion caused by zKB catching up on delayed kills in bulk.
+  // When focused on a system, both the live and history views are scoped
+  // to that system. We filter the buffer early so the live-vs-history
+  // partition logic operates on the post-focus set.
+  const eligible = focusedSystemId == null
+    ? killBuffer
+    : killBuffer.filter(item => item.kill.systemId === focusedSystemId);
   let liveCount = 0;
   const historyItems = [];
-  for (const item of killBuffer) {
+  for (const item of eligible) {
     if (item.kill._isHistoryOnly) {
       historyItems.push(item);
       continue;
@@ -4293,7 +4641,6 @@ function setKillView(mode) {
     historyContainerEl.style.display = 'flex';
     historyToggleBtn.classList.add('on');
     panelRightEl.classList.add('history-mode');
-    killHeaderLabelEl.textContent = 'Killfeed History';
     historyPage = 0;
     renderHistoryPage();
   } else {
@@ -4301,20 +4648,15 @@ function setKillView(mode) {
     historyContainerEl.style.display = 'none';
     historyToggleBtn.classList.remove('on');
     panelRightEl.classList.remove('history-mode');
-    killHeaderLabelEl.textContent = 'Killfeed Online';
     // Rebuild the live list from the buffer — kills that arrived while
-    // history was open aren't in the DOM yet. killBuffer is newest-first,
-    // so the first MAX_KILLS entries are the ones the live list should show.
-    killList.innerHTML = '';
-    const liveSlice = killBuffer.slice(0, MAX_KILLS);
-    for (let i = liveSlice.length - 1; i >= 0; i--) {
-      const { kill, star } = liveSlice[i];
-      const el = buildKillElement(killToParams(kill, star));
-      killList.insertBefore(el, killList.firstChild);
-    }
+    // history was open aren't in the DOM yet. Respects focus filter.
+    rebuildKillListFromBuffer();
     unseenLiveKills = 0;
     updateKillCount();
   }
+  // Header label depends on view mode AND focus state — both branches share
+  // this single source of truth.
+  updateKillHeaderLabel();
   updateHistoryBanner();
 }
 
