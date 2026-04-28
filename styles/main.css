@@ -2675,7 +2675,7 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   z-index: 10000;
   display: none;
   justify-content: center;
-  padding-top: 15vh;
+  padding-top: 8vh;
 }
 .info-backdrop.open { display: flex; }
 
