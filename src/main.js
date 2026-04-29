@@ -5221,30 +5221,36 @@ function renderKillPopupBody(fb, token) {
   } else {
     kpShip.textContent = 'Unknown ship';
   }
-  if (fb.isNpc) {
-    kpPilot.textContent = 'o7';
-    kpCorp.textContent  = '';
-    kpLabel.textContent = 'NPC KILL';
-  } else {
+  // Label rule:
+  //  - Has character_id  → Final blow (pilot + corp render normally).
+  //  - No character_id but has corporation_id → Final blow (e.g. Astrahus
+  //    structure final-blowing a ship). Pilot line is 'o7', corp shows.
+  //  - Neither character nor corp → NPC KILL (true rat kill — Sansha etc.).
+  // The zKB-derived `isNpc` flag is too coarse on its own: it's true for both
+  // structure final-blows AND rat final-blows. Using the attacker shape is
+  // accurate. The intel kill card already handles this correctly.
+  if (fb.characterId) {
     kpLabel.textContent = 'Final blow';
-    if (fb.characterId) {
-      kpPilot.textContent = 'Loading…';
-      resolveEntityName('char', fb.characterId).then((name) => {
-        if (token !== kpToken) return;
-        kpPilot.textContent = name || 'Unknown pilot';
-      });
-    } else {
-      kpPilot.textContent = 'Unknown pilot';
-    }
-    if (fb.corporationId) {
-      kpCorp.textContent = 'Loading…';
-      resolveEntityName('corp', fb.corporationId).then((name) => {
-        if (token !== kpToken) return;
-        kpCorp.textContent = name || '';
-      });
-    } else {
-      kpCorp.textContent = '';
-    }
+    kpPilot.textContent = 'Loading…';
+    resolveEntityName('char', fb.characterId).then((name) => {
+      if (token !== kpToken) return;
+      kpPilot.textContent = name || 'Unknown pilot';
+    });
+  } else if (fb.corporationId) {
+    kpLabel.textContent = 'Final blow';
+    kpPilot.textContent = 'o7';
+  } else {
+    kpLabel.textContent = 'NPC KILL';
+    kpPilot.textContent = 'o7';
+  }
+  if (fb.corporationId) {
+    kpCorp.textContent = 'Loading…';
+    resolveEntityName('corp', fb.corporationId).then((name) => {
+      if (token !== kpToken) return;
+      kpCorp.textContent = name || '';
+    });
+  } else {
+    kpCorp.textContent = '';
   }
 }
 
@@ -5314,25 +5320,31 @@ function renderInlineFb(fb, imgEl, shipEl, pilotEl, corpEl, labelEl, guardEl, ga
     if (localName) shipEl.textContent = localName;
     else { shipEl.textContent = 'Type ' + fb.shipTypeId; resolveType(fb.shipTypeId, shipEl, null); }
   } else { shipEl.textContent = 'Unknown ship'; }
-  if (fb.isNpc) {
-    pilotEl.textContent = 'o7'; corpEl.textContent = ''; labelEl.textContent = 'NPC KILL';
-  } else {
+  // Same label rule as the desktop popup — see renderKillPopupBody for why.
+  // character → Final blow + name + corp.
+  // no character but corporation → Final blow + 'o7' + corp (e.g. Astrahus).
+  // neither → NPC KILL + 'o7' (true rat).
+  if (fb.characterId) {
     labelEl.textContent = 'Final blow';
-    if (fb.characterId) {
-      pilotEl.textContent = 'Loading…';
-      resolveEntityName('char', fb.characterId).then((n) => {
-        if (inlineFbEl !== guardEl) return;
-        pilotEl.textContent = n || 'Unknown pilot';
-      });
-    } else { pilotEl.textContent = 'Unknown pilot'; }
-    if (fb.corporationId) {
-      corpEl.textContent = 'Loading…';
-      resolveEntityName('corp', fb.corporationId).then((n) => {
-        if (inlineFbEl !== guardEl) return;
-        corpEl.textContent = n || '';
-      });
-    } else { corpEl.textContent = ''; }
+    pilotEl.textContent = 'Loading…';
+    resolveEntityName('char', fb.characterId).then((n) => {
+      if (inlineFbEl !== guardEl) return;
+      pilotEl.textContent = n || 'Unknown pilot';
+    });
+  } else if (fb.corporationId) {
+    labelEl.textContent = 'Final blow';
+    pilotEl.textContent = 'o7';
+  } else {
+    labelEl.textContent = 'NPC KILL';
+    pilotEl.textContent = 'o7';
   }
+  if (fb.corporationId) {
+    corpEl.textContent = 'Loading…';
+    resolveEntityName('corp', fb.corporationId).then((n) => {
+      if (inlineFbEl !== guardEl) return;
+      corpEl.textContent = n || '';
+    });
+  } else { corpEl.textContent = ''; }
 }
 
 async function openInlineFinalBlow(rowEl, killId) {
