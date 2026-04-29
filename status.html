@@ -649,6 +649,7 @@ function renderClassified(h) {
     ['seen (total)',        fmt(h.seenTotal)],
     ['seen (anoikis)',      fmt(h.seenAnoikis)],
     ['last upstream kill',  fmtDate(p.lastKillAt)],
+    ['last anoikis kill',   fmtDate(h.lastAnoikisKillAt)],
 
     '// POLLER //',
     ['next sequence',       p.nextSeq ?? '—'],
