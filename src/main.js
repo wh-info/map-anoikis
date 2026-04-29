@@ -4624,7 +4624,11 @@ function killToParams(kill, star) {
 }
 
 function updateKillCount() {
-  const container = killViewMode === 'history'
+  // Count hidden rows from the currently-visible list. Three states:
+  //   - Focused mode: focused kills render into #kill-history-list.
+  //   - Global history mode: same #kill-history-list element.
+  //   - Global live mode: #kill-list.
+  const container = (focusedSystemId != null || killViewMode === 'history')
     ? document.getElementById('kill-history-list')
     : killList;
   let hidden = 0;
