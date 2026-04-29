@@ -160,6 +160,9 @@ html, body {
    to zero height when no systems are hot (via .empty class on #active-now). */
 #active-now {
   margin-top: 12px;
+  background: var(--panel-dark);
+  border: 1px solid var(--border-hi);
+  padding: 6px 8px 4px;
 }
 #active-now.empty { display: none; }
 .active-now-heading {

@@ -394,7 +394,10 @@ function renderActiveList() {
     if (!isTouchDevice) {
       row.addEventListener('mouseenter', () => {
         const star = starById.get(s.systemId);
-        if (star) locateHover = { el: row, star };
+        // fromRightEdge: trace line origin starts at the row's right edge
+        // (toward the map) instead of the center. Killfeed locate buttons
+        // omit this flag and keep the center-origin behavior.
+        if (star) locateHover = { el: row, star, fromRightEdge: true };
       });
       row.addEventListener('mouseleave', () => {
         if (locateHover && locateHover.el === row) locateHover = null;
@@ -3367,7 +3370,9 @@ function draw() {
     const traceColor = starColor(locateHover.star);
     if (!locateHover.noTrace) {
       const rect = locateHover.el.getBoundingClientRect();
-      const bx = rect.left + rect.width / 2;
+      // Active-list rows trace from the right edge (toward the map).
+      // Other locate sources (kill rows, etc.) trace from the center.
+      const bx = locateHover.fromRightEdge ? rect.right : (rect.left + rect.width / 2);
       const by = rect.top + rect.height / 2;
       const grad = ctx.createLinearGradient(bx, by, sp.x, sp.y);
       grad.addColorStop(0, 'rgba(0,200,200,0.80)');
