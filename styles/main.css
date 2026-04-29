@@ -165,6 +165,11 @@ html, body {
   padding: 6px 8px 4px;
 }
 #active-now.empty { display: none; }
+/* Each section (active / cooling) can independently collapse via .empty.
+   When the parent #active-now is non-empty but a section is empty, that
+   section stays hidden so the user only sees the heading they need. */
+.active-now-section.empty { display: none; }
+.active-now-section + .active-now-section { margin-top: 8px; }
 .active-now-heading {
   color: var(--highlight);
   font-size: 10px;
@@ -175,6 +180,16 @@ html, body {
   border-bottom: 1px solid var(--border-hi);
   padding-bottom: 4px;
 }
+/* Cooling section's heading uses the muted/dim tone so the active section
+   visually dominates. Same shape, different colour. */
+.active-now-section--cooling .active-now-heading {
+  color: var(--muted);
+  border-bottom-color: var(--border);
+}
+/* Cooling rows are dimmed slightly so the eye reads "this is past tense"
+   without losing legibility. Hover keeps the same yellow tint. */
+.active-now-row--cooling { opacity: 0.7; }
+.active-now-row--cooling:hover { opacity: 1; }
 .active-now-row {
   display: flex;
   justify-content: space-between;

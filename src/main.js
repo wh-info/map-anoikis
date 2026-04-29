@@ -279,20 +279,23 @@ let focusFetching = false;
 const ACTIVE_RING_DASH        = [12, 10];   // chunky scanning marks (was [6,8])
 const ACTIVE_RING_ROTATION_MS = 8000;       // 1 turn per 8 seconds (was 5000)
 const ACTIVE_RING_LINEWIDTH   = 2;
-const ACTIVE_RING_ALPHA       = 0.6;
+const ACTIVE_RING_ALPHA       = 0.9;        // peak alpha for active rings (v3, was 0.6)
+const ACTIVE_RING_COOLING_ALPHA_MIN = 0.4;  // alpha at end of 30-min linger
 const ACTIVE_RING_RADIUS_PX   = 20;         // screen-pixel size, scaled by zoomK
 const ACTIVE_RING_FADE_IN_MS  = 1000;
 const ACTIVE_RING_FADE_OUT_MS = 2500;
 const ACTIVE_RING_COLOR_SHIFT_MS = 500;     // tier↔tier or hot↔focused transition
 // Tier-by-intensity color RGB triplets. Score = killCount × (totalIsk / 1B).
-// Tier 1 < 15: small fight (yellow). Tier 2 15-100: real fleet fight (ember).
-// Tier 3 ≥ 100: major event (red). Focused-only ring uses cyan.
+// Tier 1 < 15: small fight (yellow). Tier 2 15-200: real fleet fight (ember).
+// Tier 3 ≥ 200: major event (red). Focused-only ring uses cyan.
 const ACTIVE_RING_COLOR_TIER1   = [232, 212, 77];   // #e8d44d yellow
 const ACTIVE_RING_COLOR_TIER2   = [232, 154, 77];   // #e89a4d ember/orange
 const ACTIVE_RING_COLOR_TIER3   = [254,  55, 67];   // #fe3743 red (matches --danger)
 const ACTIVE_RING_COLOR_FOCUSED = [  0, 200, 200];  // #00c8c8 cyan
 const ACTIVE_RING_TIER2_THRESHOLD = 15;
-const ACTIVE_RING_TIER3_THRESHOLD = 100;
+const ACTIVE_RING_TIER3_THRESHOLD = 200;            // bumped from 100 in v3
+// v3 — cooling linger window. Mirrors backend LINGER_MS.
+const COOLING_LINGER_MS = 30 * 60 * 1000;
 
 // Active Eve-Scout Thera connections, pushed by the backend over /ws.
 // Each entry: { id, in_system_id, in_system_name, in_system_class,
@@ -341,69 +344,119 @@ function fmtIskCompact(v) {
   return String(Math.round(v));
 }
 
-// Tooltip body for a hot-list row. Two lines:
-//   "14 kills · 8.4B ISK destroyed"
-//   "Last: Vargur · 1.2B · 47s ago"
+// Tooltip body for an active-list row. Two lines (v3 format):
+//   "16.0B ISK destroyed · Active for 14 min"
+//   "Biggest loss: Vargur · 1.2B · 47s ago"
+// For cooling rows, line 1 says "ended X min ago" instead of "Active for".
 // Resolves the ship name via window.TYPE_NAMES (already loaded). No ESI
 // lookup — the data we need is in the /active payload.
 function activeRowTooltip(s) {
   const lines = [];
-  lines.push(`${s.killCount} kills · ${fmtIskCompact(s.totalIsk)} ISK destroyed`);
-  if (s.lastKill) {
-    const shipName = window.TYPE_NAMES?.[s.lastKill.shipTypeId] || 'Unknown';
-    const isk = fmtIskCompact(s.lastKill.isk);
-    const age = fmtAge(s.lastKill.ts);
-    lines.push(`Last: ${shipName} · ${isk} · ${age}`);
+  const isk = fmtIskCompact(s.clusterTotalIsk ?? s.totalIsk ?? 0);
+  if (s.state === 'cooling') {
+    lines.push(`${isk} ISK destroyed · ended ${fmtAge(s.cooledAt)}`);
+  } else if (s.clusterStartTs) {
+    const mins = Math.max(1, Math.floor((Date.now() / 1000 - s.clusterStartTs) / 60));
+    lines.push(`${isk} ISK destroyed · Active for ${mins} min`);
+  } else {
+    // Backwards-compat for v2 backend during rollout — show the v2 line.
+    lines.push(`${s.killCount} kills · ${isk} ISK destroyed`);
+  }
+  const big = s.biggestKill || s.lastKill;
+  if (big) {
+    const shipName = window.TYPE_NAMES?.[big.shipTypeId] || 'Unknown';
+    const biskF = fmtIskCompact(big.isk);
+    const age = fmtAge(big.ts);
+    const label = s.biggestKill ? 'Biggest loss' : 'Last';
+    lines.push(`${label}: ${shipName} · ${biskF} · ${age}`);
   }
   return lines.join('\n');
 }
 
+function buildActiveRow(s) {
+  const row = document.createElement('div');
+  row.className = 'active-now-row';
+  if (s.state === 'cooling') row.classList.add('active-now-row--cooling');
+  row.dataset.tip = activeRowTooltip(s);
+  // Row label: cluster kill count (v3) or 15-min count (v2 fallback).
+  const kc  = s.clusterKillCount ?? s.killCount;
+  // Right side: cooling rows show "ended X ago", active rows show last-kill age.
+  const meta = s.state === 'cooling'
+    ? `${kc} kills · ended ${fmtAge(s.cooledAt)}`
+    : `${kc} kills · ${fmtAge(s.lastKillTs)}`;
+  row.innerHTML = `
+    <span class="an-sys">${escapeHtml(s.name)}<span class="an-sys-class"> · ${escapeHtml(s.class)}</span></span>
+    <span class="an-meta">${meta}</span>
+  `;
+  row.addEventListener('click', () => {
+    const star = starById.get(s.systemId);
+    if (star) locateStar(star);
+  });
+  // Hover trace from the row to the system on the map — mirrors the
+  // killfeed locate-button trace. Skipped on touch devices (hover events
+  // don't fire there, same as the locate-button pattern).
+  if (!isTouchDevice) {
+    row.addEventListener('mouseenter', () => {
+      const star = starById.get(s.systemId);
+      // fromRightEdge: trace line origin starts at the row's right edge
+      // (toward the map) instead of the center. Killfeed locate buttons
+      // omit this flag and keep the center-origin behavior.
+      if (star) locateHover = { el: row, star, fromRightEdge: true };
+    });
+    row.addEventListener('mouseleave', () => {
+      if (locateHover && locateHover.el === row) locateHover = null;
+    });
+  }
+  return row;
+}
+
 function renderActiveList() {
-  const wrap = document.getElementById('active-now');
-  const list = document.getElementById('active-now-list');
+  const wrap        = document.getElementById('active-now');
+  const list        = document.getElementById('active-now-list');
+  const coolingWrap = document.getElementById('recently-active');
+  const coolingList = document.getElementById('recently-active-list');
   if (!wrap || !list) return;
-  wrap.classList.toggle('empty', activeSystems.length === 0);
+
+  // Partition the unified /active list by state. Cooling entries arrive
+  // sorted newest-cooled-first by the backend; we honor that order.
+  const activeRows  = activeSystems.filter(s => !s.state || s.state === 'active');
+  const coolingRows = activeSystems.filter(s => s.state === 'cooling');
+
+  // Top-level wrapper: empty only when BOTH sections are empty.
+  wrap.classList.toggle('empty', activeRows.length === 0 && coolingRows.length === 0);
+
   // Clear any active-list-row hover trace before destroying the rows.
   // Otherwise the deleted row's mouseleave never fires and the trace stays
   // drawn indefinitely, pointing at a now-vanished active system.
-  if (locateHover && list.contains(locateHover.el)) {
+  const inActiveList   = locateHover && list.contains(locateHover.el);
+  const inCoolingList  = coolingList && locateHover && coolingList.contains(locateHover.el);
+  if (inActiveList || inCoolingList) {
     locateHover = null;
   }
   // Same problem for the data-tip tooltip — if its target row vanishes,
   // mouseout never fires and the tooltip lingers. Hide it preemptively.
-  if (customTipTarget && list.contains(customTipTarget)) {
+  const tipInActive  = customTipTarget && list.contains(customTipTarget);
+  const tipInCooling = coolingList && customTipTarget && coolingList.contains(customTipTarget);
+  if (tipInActive || tipInCooling) {
     customTipTarget = null;
     customTip.style.display = 'none';
   }
+
+  // ACTIVE NOW section — hide the heading + list when no active rows.
+  // The section wrapper exists in v3 HTML; older HTML has the list directly
+  // under #active-now (no per-section toggle needed in that case).
   list.innerHTML = '';
-  for (const s of activeSystems) {
-    const row = document.createElement('div');
-    row.className = 'active-now-row';
-    row.dataset.tip = activeRowTooltip(s);
-    row.innerHTML = `
-      <span class="an-sys">${escapeHtml(s.name)}<span class="an-sys-class"> · ${escapeHtml(s.class)}</span></span>
-      <span class="an-meta">${s.killCount} kills · ${fmtAge(s.lastKillTs)}</span>
-    `;
-    row.addEventListener('click', () => {
-      const star = starById.get(s.systemId);
-      if (star) locateStar(star);
-    });
-    // Hover trace from the row to the system on the map — mirrors the
-    // killfeed locate-button trace. Skipped on touch devices (hover events
-    // don't fire there, same as the locate-button pattern).
-    if (!isTouchDevice) {
-      row.addEventListener('mouseenter', () => {
-        const star = starById.get(s.systemId);
-        // fromRightEdge: trace line origin starts at the row's right edge
-        // (toward the map) instead of the center. Killfeed locate buttons
-        // omit this flag and keep the center-origin behavior.
-        if (star) locateHover = { el: row, star, fromRightEdge: true };
-      });
-      row.addEventListener('mouseleave', () => {
-        if (locateHover && locateHover.el === row) locateHover = null;
-      });
-    }
-    list.appendChild(row);
+  const activeSection = document.getElementById('active-now-section');
+  if (activeSection) {
+    activeSection.classList.toggle('empty', activeRows.length === 0);
+  }
+  for (const s of activeRows) list.appendChild(buildActiveRow(s));
+
+  // RECENTLY ACTIVE section — only present if the HTML has the container.
+  if (coolingWrap && coolingList) {
+    coolingWrap.classList.toggle('empty', coolingRows.length === 0);
+    coolingList.innerHTML = '';
+    for (const s of coolingRows) coolingList.appendChild(buildActiveRow(s));
   }
 }
 
@@ -426,16 +479,40 @@ async function pollActive() {
 // Compute the desired ring color for a system right now. Returns a 3-tuple
 // RGB array, or null if no ring should render.
 //
-// Color is tier-based when the system is hot:
-//   score = killCount × (totalIsk / 1B)
+// Color is tier-based when the system is active:
+//   score = clusterKillCount × (clusterTotalIsk / 1B)
 //   < 15      → tier 1 (yellow)   small fight, worth glancing
-//   15 – 100  → tier 2 (ember)    real fleet fight, worth flying to
-//   ≥ 100     → tier 3 (red)      major event / eviction
-// Focused-but-not-hot systems use cyan regardless of any prior tier color.
+//   15 – 200  → tier 2 (ember)    real fleet fight, worth flying to
+//   ≥ 200     → tier 3 (red)      major event / eviction
+// During cooling, the tier descends through the frozenTier (snapshot at
+// cool-start) → ember → yellow over the LINGER_MS window. Cooling tiers
+// win over focused cyan — focus is orthogonal to fight state.
+// Focused-but-not-hot-and-not-cooling systems use cyan.
 function desiredRingColor(systemId) {
-  const hot = activeSystems.find(s => s.systemId === systemId);
-  if (hot) {
-    const score = hot.killCount * ((hot.totalIsk || 0) / 1_000_000_000);
+  const sys = activeSystems.find(s => s.systemId === systemId);
+  if (sys) {
+    if (sys.state === 'cooling') {
+      // Snap-step through tiers. Start tier comes from frozenTier; descend
+      // to lower tiers at thirds of the linger window. Tier1-start fights
+      // hold yellow the whole linger.
+      const ratio = clamp((Date.now() / 1000 - sys.cooledAt) * 1000 / COOLING_LINGER_MS, 0, 1);
+      const frozen = sys.frozenTier || 'tier1';
+      if (frozen === 'tier3') {
+        if (ratio < 0.34) return ACTIVE_RING_COLOR_TIER3;
+        if (ratio < 0.67) return ACTIVE_RING_COLOR_TIER2;
+        return ACTIVE_RING_COLOR_TIER1;
+      }
+      if (frozen === 'tier2') {
+        if (ratio < 0.5) return ACTIVE_RING_COLOR_TIER2;
+        return ACTIVE_RING_COLOR_TIER1;
+      }
+      return ACTIVE_RING_COLOR_TIER1;
+    }
+    // state === 'active'. Use cluster fields (v3) when present, fall back
+    // to 15-min fields (v2 backend during rollout).
+    const kc  = sys.clusterKillCount ?? sys.killCount;
+    const isk = sys.clusterTotalIsk  ?? sys.totalIsk ?? 0;
+    const score = kc * (isk / 1_000_000_000);
     if (score >= ACTIVE_RING_TIER3_THRESHOLD) return ACTIVE_RING_COLOR_TIER3;
     if (score >= ACTIVE_RING_TIER2_THRESHOLD) return ACTIVE_RING_COLOR_TIER2;
     return ACTIVE_RING_COLOR_TIER1;
@@ -444,13 +521,22 @@ function desiredRingColor(systemId) {
   return null;
 }
 
-// Compute the desired alpha (target) for a system's ring right now. Hot
-// rings fade in/out; focused rings snap in/out (no fade). The state machine
-// handles the actual interpolation in drawHotSystemRings.
+// Compute the desired alpha (target) for a system's ring right now.
+//   - active rings:  ACTIVE_RING_ALPHA (peak), with hot fade-in/out smoothing.
+//   - cooling rings: linear fade from ACTIVE_RING_ALPHA down to
+//                    ACTIVE_RING_COOLING_ALPHA_MIN over COOLING_LINGER_MS.
+//   - focused-only:  ACTIVE_RING_ALPHA (snap, no fade).
 function desiredRingAlpha(systemId) {
-  const isHot = activeSystems.some(s => s.systemId === systemId);
-  const isFocused = focusedSystemId === systemId;
-  return (isHot || isFocused) ? ACTIVE_RING_ALPHA : 0;
+  const sys = activeSystems.find(s => s.systemId === systemId);
+  if (sys) {
+    if (sys.state === 'cooling') {
+      const ratio = clamp((Date.now() / 1000 - sys.cooledAt) * 1000 / COOLING_LINGER_MS, 0, 1);
+      return ACTIVE_RING_ALPHA - (ACTIVE_RING_ALPHA - ACTIVE_RING_COOLING_ALPHA_MIN) * ratio;
+    }
+    return ACTIVE_RING_ALPHA;
+  }
+  if (focusedSystemId === systemId) return ACTIVE_RING_ALPHA;
+  return 0;
 }
 
 // Draws yellow rings on hot systems and cyan rings on focused-but-not-hot
@@ -502,17 +588,15 @@ function drawHotSystemRings(now) {
     const targetAlpha = desiredRingAlpha(systemId);
 
     // Alpha interpolation. Rule:
-    //  - System currently hot → fade in/out (smooth).
-    //  - System currently NOT hot → snap in/out (no fade) — covers focused-only.
-    // This is the simplest rule that matches "focused ring snaps" while
-    // preserving the hot-system fade behavior. A system that was hot then
-    // becomes only-focused will snap to focused alpha on the next tick;
-    // visually the user sees the hot ring's fade-out start, then a snap to
-    // focused alpha — acceptable for the rare hot+focused-then-cold path.
-    const isHot = activeSystems.some(s => s.systemId === systemId);
-    if (!isHot) {
-      st.alphaCurrent = targetAlpha;
-    } else {
+    //  - state==='active'  → fade in/out (smooth) toward ACTIVE_RING_ALPHA.
+    //  - state==='cooling' → snap to targetAlpha (which already encodes the
+    //                        linear linger fade in desiredRingAlpha).
+    //  - focused-only / vanished → snap to targetAlpha (covers cyan + 0).
+    // The 30-min linger cutoff: when the backend removes a cooling system
+    // entirely, sys becomes undefined → targetAlpha=0 → ring snaps to
+    // invisible. Per spec: "ring vanishes instantly, not faded to zero."
+    const sys = activeSystems.find(s => s.systemId === systemId);
+    if (sys?.state === 'active') {
       const fadeMs = targetAlpha > st.alphaCurrent ? ACTIVE_RING_FADE_IN_MS : ACTIVE_RING_FADE_OUT_MS;
       const step = dt / fadeMs;
       if (targetAlpha > st.alphaCurrent) {
@@ -520,6 +604,8 @@ function drawHotSystemRings(now) {
       } else {
         st.alphaCurrent = Math.max(targetAlpha, st.alphaCurrent - step * ACTIVE_RING_ALPHA);
       }
+    } else {
+      st.alphaCurrent = targetAlpha;
     }
 
     // Color shift handling. When the desired color differs from the current
