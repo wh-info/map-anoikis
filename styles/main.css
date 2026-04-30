@@ -2713,7 +2713,7 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   z-index: 10000;
   display: none;
   justify-content: center;
-  padding-top: 8vh;
+  padding-top: 5vh;
 }
 .info-backdrop.open { display: flex; }
 
@@ -2723,7 +2723,11 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   border: 1px solid var(--border);
   width: 1060px;
   max-width: calc(100vw - 40px);
-  max-height: calc(100vh - 20vh);
+  /* Modal can use up to ~88vh (was 80) so the about content fits without
+     scrollbar on standard desktop heights. With the 5vh padding-top of
+     the backdrop, that leaves ~7vh below — comfortable visual breathing
+     room. On laptops/short screens the body still scrolls when needed. */
+  max-height: 88vh;
   display: flex;
   flex-direction: column;
   align-self: flex-start;
