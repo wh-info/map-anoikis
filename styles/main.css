@@ -3036,12 +3036,17 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     margin-bottom: 4px;
   }
 
-  /* --- Info modal — use full screen on mobile --------------------- */
+  /* --- Info modal — leaves room for mobile bottom nav -------------- */
+  /* Backdrop ends 48px above viewport bottom so the mobile nav (also
+     48px tall, fixed at bottom) remains visible AND tappable. Without
+     this, the backdrop's z-index 10000 sits over the nav's z-index 20
+     and blocks the four icons. */
   .info-backdrop {
     padding-top: 2vh;
+    bottom: 48px;
   }
   .info-modal {
-    max-height: calc(100vh - 4vh - 52px);
+    max-height: calc(100vh - 4vh - 52px - 48px);
     max-width: calc(100vw - 16px);
   }
   .info-modal-body {

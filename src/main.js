@@ -5655,6 +5655,12 @@ connectKillFeed();
   backdrop.addEventListener('click', (e) => {
     if (e.target === backdrop) backdrop.classList.remove('open');
   });
+  // Mobile: tapping any of the four bottom-nav icons closes the info modal
+  // before its own handler runs. Delegated on the .mobile-nav container so
+  // future buttons added there inherit this behavior automatically.
+  document.querySelector('.mobile-nav')?.addEventListener('click', () => {
+    backdrop.classList.remove('open');
+  });
 
   tabAbout.addEventListener('click', () => {
     tabAbout.classList.add('on'); tabLegal.classList.remove('on');
