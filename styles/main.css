@@ -3037,13 +3037,17 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   }
 
   /* --- Info modal — leaves room for mobile bottom nav -------------- */
-  /* Backdrop ends 48px above viewport bottom so the mobile nav (also
-     48px tall, fixed at bottom) remains visible AND tappable. Without
-     this, the backdrop's z-index 10000 sits over the nav's z-index 20
-     and blocks the four icons. */
+  /* Backdrop ends 48px above viewport bottom so the mobile nav (48px
+     tall, fixed at bottom) remains visible AND tappable. The backdrop's
+     z-index 10000 would otherwise sit over the nav's z-index 20 and
+     block the four icons.
+     `!important` on bottom because the base rule uses `inset: 0` which
+     is a shorthand for top/right/bottom/left — being explicit here
+     guarantees the longhand override wins regardless of source order. */
   .info-backdrop {
     padding-top: 2vh;
-    bottom: 48px;
+    bottom: 48px !important;
+    height: calc(100vh - 48px);
   }
   .info-modal {
     max-height: calc(100vh - 4vh - 52px - 48px);
