@@ -206,14 +206,28 @@ html, body {
 .active-now-row .an-sys {
   color: var(--text);
   font-weight: 600;
+  /* inline-flex lets the J-code (.an-sys-name) ellipsis-truncate while the
+     class label (.an-sys-class) stays always-rendered via flex-shrink:0.
+     Without this, on cooling rows where the right-side meta text is
+     wider ("174 kills · ended 13m ago"), the parent ellipsis would
+     truncate the class to "..." instead of just shortening the J-code. */
+  display: inline-flex;
+  align-items: baseline;
+  min-width: 0;
+  overflow: hidden;
+}
+.active-now-row .an-sys-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 .active-now-row .an-sys-class {
   color: var(--muted);
   font-weight: 400;
   margin-left: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .active-now-row .an-meta {
   color: var(--dim);

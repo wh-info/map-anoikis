@@ -385,7 +385,7 @@ function buildActiveRow(s) {
     ? `${kc} kills · ended ${fmtAge(s.cooledAt)}`
     : `${kc} kills · ${fmtAge(s.lastKillTs)}`;
   row.innerHTML = `
-    <span class="an-sys">${escapeHtml(s.name)}<span class="an-sys-class"> · ${escapeHtml(s.class)}</span></span>
+    <span class="an-sys"><span class="an-sys-name">${escapeHtml(s.name)}</span><span class="an-sys-class"> · ${escapeHtml(s.class)}</span></span>
     <span class="an-meta">${meta}</span>
   `;
   row.addEventListener('click', () => {
