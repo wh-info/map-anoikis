@@ -3113,9 +3113,12 @@ document.getElementById('si-focus-btn')?.addEventListener('click', () => {
   setKillFocus(selected.id);
   // On touch devices, jump to the killfeed panel so the user immediately
   // sees the focused state. Mirrors the pattern used by locate buttons.
+  // Also clear the search-icon active state since the left panel just got
+  // hidden — without this, both icons read as active in the bottom nav.
   if (isTouchDevice) {
     document.getElementById('panel-left')?.classList.add('panel--hidden');
     document.getElementById('panel-right')?.classList.remove('panel--hidden');
+    document.getElementById('mnav-search')?.classList.remove('active');
     document.getElementById('mnav-killfeed')?.classList.add('active');
   }
 });
