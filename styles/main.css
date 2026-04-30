@@ -2834,6 +2834,34 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   width: 120px;
   height: auto;
 }
+/* Footer "powered by" line at the bottom of the About modal.
+   Desktop: single horizontal line, centered.
+   Mobile: 2x2 grid (handled in the @media (pointer:coarse) block).
+   Links inherit the standard `.info-modal-body a` cyan style — same as
+   the coffee link in the support paragraph.
+   Negative bottom margin pulls the block toward the modal-body's bottom
+   border so it sits as a true footer, just a few pixels above the edge,
+   instead of floating mid-gap inside the body's 30px padding. */
+.info-poweredby {
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 0.5px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 8px;
+  text-align: center;
+  margin-bottom: -22px;
+}
+.info-poweredby-label { white-space: nowrap; }
+.info-poweredby-cells {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 10px;
+}
+.info-poweredby-cell { white-space: nowrap; }
 
 /* ================================================================ */
 /* MOBILE / TOUCH DEVICES                                           */
@@ -3056,6 +3084,27 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   .info-modal-body {
     padding: 20px 20px;
   }
+  /* Powered-by footer: 2x2 grid on mobile, all centered.
+     Layout target (centered horizontally on the screen):
+       powered by
+       · zKillboard R2Z2 · EVE ESI/SDE/EIS
+       · EVE-SCOUT       · whtype.info     */
+  .info-poweredby {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    /* Mobile body padding is 20px (vs desktop 30px), so pull less to keep
+       the same ~8px gap above the modal's bottom border. */
+    margin-bottom: -12px;
+  }
+  .info-poweredby-cells {
+    display: grid;
+    grid-template-columns: auto auto;
+    justify-content: center;
+    gap: 4px 12px;
+    width: 100%;
+  }
+  .info-poweredby-cell { text-align: left; }
 
   /* --- Intel view toggle — bigger tap targets -------------------- */
   .intel-view-toggle {
