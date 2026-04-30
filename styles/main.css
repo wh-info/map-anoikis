@@ -2723,12 +2723,12 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   border: 1px solid var(--border);
   width: 1060px;
   max-width: calc(100vw - 40px);
-  /* Modal can use up to ~92vh so the about content fits without scrollbar
-     on standard desktop heights (1080+). With the 5vh padding-top of the
-     backdrop, that leaves ~3vh below — tight but the modal hugs the
-     viewport top rather than floating mid-screen. On laptops/short
-     screens the body still scrolls when needed. */
-  max-height: 92vh;
+  /* Modal can use up to 88vh on desktop (was 80vh originally — bumped so
+     about content fits without scrollbar on standard desktop heights).
+     With the 5vh padding-top of the backdrop, that leaves ~7vh of dark
+     space below for visual breathing room. On laptops/short screens the
+     body's overflow-y: auto kicks in and shows a scrollbar. */
+  max-height: 88vh;
   display: flex;
   flex-direction: column;
   align-self: flex-start;
@@ -2843,10 +2843,7 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
    Desktop: single horizontal line, centered.
    Mobile: 2x2 grid (handled in the @media (pointer:coarse) block).
    Links inherit the standard `.info-modal-body a` cyan style — same as
-   the coffee link in the support paragraph.
-   Negative bottom margin pulls the block toward the modal-body's bottom
-   border so it sits as a true footer, just a few pixels above the edge,
-   instead of floating mid-gap inside the body's 30px padding. */
+   the coffee link in the support paragraph. */
 .info-poweredby {
   font-size: 11px;
   color: var(--dim);
@@ -2857,7 +2854,6 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   justify-content: center;
   gap: 6px 8px;
   text-align: center;
-  margin-bottom: -22px;
 }
 .info-poweredby-label { white-space: nowrap; }
 .info-poweredby-cells {
@@ -3098,9 +3094,6 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    /* Mobile body padding is 20px (vs desktop 30px), so pull less to keep
-       the same ~8px gap above the modal's bottom border. */
-    margin-bottom: -12px;
   }
   .info-poweredby-cells {
     display: grid;
