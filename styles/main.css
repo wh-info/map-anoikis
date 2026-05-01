@@ -141,6 +141,11 @@ html, body {
   font-weight: 400;
   letter-spacing: 0.02em;
 }
+/* Yellow placeholder used by the "praise bob" easter egg response. The
+   class is added by JS for ~2s after the user submits "praise bob" — Bob's
+   acknowledgement lingers, then the class is removed and the placeholder
+   reverts to the default search hint. */
+#search.search--bob::placeholder { color: var(--highlight); }
 #search:focus {
   border-color: var(--accent);
   border-left-color: var(--accent);

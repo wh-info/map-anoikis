@@ -4200,11 +4200,58 @@ searchEl.addEventListener('input', () => {
   }
 });
 
+// Easter egg: "praise bob" → 15 random kill pulses across Anoikis over 1s.
+// Fires once per page load. Subsequent attempts get acknowledged via the
+// search input's placeholder ("praise bob!", yellow) — Bob hears you, but
+// he's pleased enough for now. Placeholder lingers 2s then reverts. Refresh
+// resets the once-per-load gate.
+const SEARCH_DEFAULT_PLACEHOLDER = searchEl.placeholder;
+let bobPraised = false;
+let bobLingerTimer = null;
+
 searchEl.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
+  if (searchEl.value.trim().toLowerCase() === 'praise bob') {
+    e.preventDefault();
+    searchEl.value = '';
+    searchResults.innerHTML = '';
+    if (!bobPraised) {
+      // First fire: pulses only. No yellow response — the visual is the
+      // animation itself. Placeholder stays default.
+      triggerBob();
+      bobPraised = true;
+    } else {
+      // Bob is already pleased — show yellow "praise bob!" placeholder for
+      // 2s, then revert. Cancels any prior linger timer so spammed presses
+      // share one revert cycle.
+      searchEl.placeholder = 'praise bob!';
+      searchEl.classList.add('search--bob');
+      clearTimeout(bobLingerTimer);
+      bobLingerTimer = setTimeout(() => {
+        if (searchEl.placeholder === 'praise bob!') {
+          searchEl.placeholder = SEARCH_DEFAULT_PLACEHOLDER;
+          searchEl.classList.remove('search--bob');
+        }
+      }, 2000);
+    }
+    return;
+  }
   const first = searchResults.querySelector('.sr-item');
   if (first) first.click();
 });
+
+function triggerBob() {
+  const KIND_POOL = ['ship', 'structure', 'tower', 'fighter', 'deployable'];
+  for (let i = 0; i < 15; i++) {
+    const delay = Math.random() * 1000;
+    setTimeout(() => {
+      const star = stars[Math.floor(Math.random() * stars.length)];
+      if (!star) return;
+      const kind = KIND_POOL[Math.floor(Math.random() * KIND_POOL.length)];
+      triggerKillAnim(star, false, kind, null);
+    }, delay);
+  }
+}
 
 // --- vSDE panel --------------------------------------------------
 async function showSdePanel() {
