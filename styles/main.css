@@ -1981,7 +1981,7 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
 }
 .intel-dlabel {
   height: 22px;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--dim);
   width: 26px;
   display: flex;
@@ -2100,18 +2100,6 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   padding: 6px 8px 10px;
   background: rgba(0, 0, 0, 0.55);
 }
-.intel-scatter-note {
-  display: none;
-  margin-top: 8px;
-  padding: 6px 8px;
-  font-size: 9px;
-  line-height: 1.5;
-  color: rgba(220, 180, 100, 0.85);
-  background: rgba(220, 180, 100, 0.06);
-  border-left: 2px solid rgba(220, 180, 100, 0.55);
-  letter-spacing: 0.03em;
-}
-.intel-scatter-note.on { display: block; }
 .intel-scatter-legend {
   display: grid;
   grid-template-columns: repeat(4, max-content);
@@ -2395,7 +2383,7 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
 }
 .intel-hlabel {
   flex: 1;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--dim);
   text-align: left;
   line-height: 1;

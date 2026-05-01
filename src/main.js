@@ -2275,7 +2275,7 @@ function renderScatter() {
     return 1;
   };
 
-  ctx.font = '9px monospace';
+  ctx.font = '10px monospace';
   ctx.textBaseline = 'alphabetic';
   ctx.lineWidth = 1;
   // Static ticks at 1M / 100M / 1B (emphasized). Dynamic top tick = ceiling.
@@ -2309,9 +2309,9 @@ function renderScatter() {
     const x = padL + ((preset.span - t) / preset.span) * plotW;
     const isNow = t === 0;
     const lbl = isNow ? 'NOW' : `-${t}${preset.unit}`;
-    if (isNow) ctx.font = 'bold 9px monospace';
+    if (isNow) ctx.font = 'bold 10px monospace';
     ctx.fillText(lbl, x - ctx.measureText(lbl).width / 2, cssH - 3);
-    if (isNow) ctx.font = '9px monospace';
+    if (isNow) ctx.font = '10px monospace';
   }
 
   scatterHits = [];
@@ -2352,61 +2352,6 @@ function renderScatter() {
     if (matched) scatterHits.push({ x, y, k, color, cls });
   }
   ctx.globalAlpha = 1;
-
-  // Thera hits zKB's pagination cap before reaching 30/60 days back. Find the
-  // oldest kill we actually got and draw a "data ends here" marker so users
-  // aren't misled by the empty area to the left. Only Thera for now — other
-  // systems are quiet enough to fit inside the cap.
-  const isThera = !!intelCurrentStar && (intelCurrentStar.class === 'Thera' || intelCurrentStar.name === 'Thera');
-  const noteEl = document.getElementById('intel-scatter-note');
-  let truncated = false;
-  // Truncation indicator only meaningful at day-scale (Thera's killstore can
-  // be capped at ~30d when 60d is requested). At hour-scale the cutoff itself
-  // is so short that data-cap is irrelevant — skip the whole block.
-  const isHourScale = intelScatterRange === '3h' || intelScatterRange === '12h';
-  const rangeDays = rangeMs / INTEL_DAY_MS;
-  let oldestSpanDays = rangeDays;
-  if (isThera && !isHourScale) {
-    let oldestTs = Infinity;
-    for (const k of kills) {
-      const ts = new Date(k.killmail_time).getTime();
-      if (Number.isFinite(ts) && ts >= cutoff && ts < oldestTs) oldestTs = ts;
-    }
-    if (Number.isFinite(oldestTs)) {
-      oldestSpanDays = (now - oldestTs) / INTEL_DAY_MS;
-      if (oldestSpanDays < rangeDays * 0.9) {
-        truncated = true;
-        const cutX = padL + ((oldestTs - cutoff) / (now - cutoff)) * plotW;
-        ctx.save();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-        ctx.fillRect(padL, padT, Math.max(0, cutX - padL), plotH);
-        ctx.strokeStyle = 'rgba(220, 180, 100, 0.6)';
-        ctx.setLineDash([3, 3]);
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(cutX, padT);
-        ctx.lineTo(cutX, padT + plotH);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.fillStyle = 'rgba(220, 180, 100, 0.85)';
-        ctx.font = '9px monospace';
-        const lbl = 'data ends';
-        const lblW = ctx.measureText(lbl).width;
-        const lblX = Math.min(cutX + 4, cssW - padR - lblW);
-        ctx.fillText(lbl, lblX, padT + 10);
-        ctx.restore();
-      }
-    }
-  }
-  if (truncated && noteEl) {
-    noteEl.classList.add('on');
-    noteEl.textContent =
-      `Showing ~${Math.round(oldestSpanDays)} days. Thera gets too many kills ` +
-      `for zKillboard to return a full ${Math.round(rangeDays)} days of history.`;
-  } else if (noteEl) {
-    noteEl.classList.remove('on');
-    noteEl.textContent = '';
-  }
 
   const legendEl = document.getElementById('intel-scatter-legend');
   legendEl.textContent = `${scatterHits.length} kill${scatterHits.length !== 1 ? 's' : ''}`;
