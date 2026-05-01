@@ -1872,11 +1872,21 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
 .intel-range-toggle {
   display: inline-flex;
   gap: 4px;
+  align-items: center;
+}
+/* Dot separator between hour-scale and day-scale groups in the scatter
+   range toggle. Visually communicates "different mode" — short windows
+   are for watching live action, long windows for analyzing patterns. */
+.intel-range-toggle-sep {
+  color: var(--dim);
+  padding: 0 2px;
+  font-size: 11px;
+  user-select: none;
 }
 .intel-range-toggle button {
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: 0;
   padding: 1px 7px;
   font: inherit;
   font-size: 10px;

@@ -13,7 +13,7 @@
 <meta name="robots" content="index,follow">
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
-<link rel="stylesheet" href="./styles/main.css?v=20260501a" />
+<link rel="stylesheet" href="./styles/main.css?v=20260501b" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="57ac0157-6021-4a9e-b0a0-73fddc9eb45d"></script>
 </head>
 <body class="no-flash">
@@ -251,8 +251,11 @@
     <div id="intel-view-scatter" style="display:none;">
       <div class="intel-section-label">
         <div class="intel-range-toggle" data-range="scatter">
-          <button data-mode="30d" class="active">30 Days</button>
-          <button data-mode="60d">60 Days</button>
+          <button data-mode="3h">3H</button>
+          <button data-mode="12h">12H</button>
+          <span class="intel-range-toggle-sep" aria-hidden="true">·</span>
+          <button data-mode="30d" class="active">30D</button>
+          <button data-mode="60d">60D</button>
         </div>
         <span id="intel-scatter-legend" class="intel-section-count"></span>
       </div>
@@ -501,6 +504,6 @@
   </button>
 </nav>
 
-<script src="./src/main.js?v=20260501a"></script>
+<script src="./src/main.js?v=20260501b"></script>
 </body>
 </html>

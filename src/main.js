@@ -1932,7 +1932,16 @@ function intelAggregateParties(kills, days) {
 // color = victim ship class. Reveals system character at a glance — ratter
 // farm vs. brawl hub vs. capital killing field.
 let intelView         = 'recent'; // 'recent' | 'heatmap' | 'scatter'
-let intelScatterRange = '30d';     // '30d' | '60d'
+let intelScatterRange = '30d';     // '3h' | '12h' | '30d' | '60d'
+// Lookup of scatter range → window in ms. Used by renderScatter and
+// updateFilteredCount. Hour-scale ranges are scatter-only — parties +
+// other intel views always operate on day-scale windows.
+const SCATTER_RANGE_MS = {
+  '3h':  3  * 60 * 60 * 1000,
+  '12h': 12 * 60 * 60 * 1000,
+  '30d': 30 * 24 * 60 * 60 * 1000,
+  '60d': 60 * 24 * 60 * 60 * 1000,
+};
 let scatterHits       = [];        // {x, y, k, color, label} — rebuilt each draw
 let intelEntityFilter = null;      // { kind: 'corp'|'alli', id }
 
@@ -2132,12 +2141,12 @@ function renderScatter() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, cssW, cssH);
 
-  const days = intelScatterRange === '60d' ? 60 : 30;
+  const rangeMs = SCATTER_RANGE_MS[intelScatterRange] || SCATTER_RANGE_MS['30d'];
   const padL = 30, padR = 8, padT = 8, padB = 22;
   const plotW = cssW - padL - padR;
   const plotH = cssH - padT - padB;
   const now    = Date.now();
-  const cutoff = now - days * INTEL_DAY_MS;
+  const cutoff = now - rangeMs;
   // Y ceiling: 15B by default, but auto-grows if a kill in-window exceeds it
   // (with 20% headroom). Floor stays at 1M.
   const minLog = 6; // 1M ISK
@@ -2199,11 +2208,20 @@ function renderScatter() {
     ctx.fillText(lbl, 2, y + 3);
   }
   ctx.fillStyle = 'rgba(0,220,220,0.7)';
-  const xTicks = days === 60 ? [60, 45, 30, 15, 0] : [30, 20, 10, 0];
-  for (const d of xTicks) {
-    const x = padL + ((days - d) / days) * plotW;
-    const isNow = d === 0;
-    const lbl = isNow ? 'NOW' : `-${d}d`;
+  // X-axis tick presets per range. Each entry: { ticks: [...], unit, span }.
+  // The numeric ticks are positioned at (span - tick) / span * plotW so 0
+  // sits at the right edge ("NOW") and the largest tick at the left edge.
+  const tickPresets = {
+    '3h':  { ticks: [3, 2, 1, 0],     unit: 'h', span: 3  },
+    '12h': { ticks: [12, 9, 6, 3, 0], unit: 'h', span: 12 },
+    '30d': { ticks: [30, 20, 10, 0],  unit: 'd', span: 30 },
+    '60d': { ticks: [60, 45, 30, 15, 0], unit: 'd', span: 60 },
+  };
+  const preset = tickPresets[intelScatterRange] || tickPresets['30d'];
+  for (const t of preset.ticks) {
+    const x = padL + ((preset.span - t) / preset.span) * plotW;
+    const isNow = t === 0;
+    const lbl = isNow ? 'NOW' : `-${t}${preset.unit}`;
     if (isNow) ctx.font = 'bold 9px monospace';
     ctx.fillText(lbl, x - ctx.measureText(lbl).width / 2, cssH - 3);
     if (isNow) ctx.font = '9px monospace';
@@ -2931,6 +2949,9 @@ function scheduleHeavyRender() {
     renderRhythm(computeRhythm(kills, longDays), longDays);
     document.getElementById('intel-count-60d').textContent =
       `${aLong.killCount} kill${aLong.killCount !== 1 ? 's' : ''}`;
+    // Parties window: when scatter is on a day-scale (30d/60d), match it.
+    // When scatter is on hour-scale (3h/12h), parties default to 30d —
+    // the daily-buckets aggregation isn't meaningful at hour resolution.
     const partyDays = intelView === 'scatter'
       ? (intelScatterRange === '60d' ? 60 : 30)
       : longDays;
@@ -2978,11 +2999,24 @@ function updateFilteredCount() {
   if (!kills) return;
   const el = document.getElementById('intel-filtered-count');
   if (!el) return;
-  let windowDays;
-  if (intelView === 'recent')      windowDays = 1;
-  else if (intelView === 'scatter') windowDays = intelScatterRange === '60d' ? 60 : 30;
-  else                              windowDays = intelRangeLong === '60d' ? 60 : 30;
-  const cutoff = Date.now() - windowDays * INTEL_DAY_MS;
+  // Filtered-count window. Scatter on hour-scale (3h/12h) still uses the
+  // 30d window for the "X hidden" counter — that counter is a longer-term
+  // signal of "how much filtering is hiding from you" and isn't meaningful
+  // at hour resolution.
+  let cutoff;
+  if (intelView === 'recent') {
+    cutoff = Date.now() - INTEL_DAY_MS;
+  } else if (intelView === 'scatter') {
+    // Use the actual scatter range when day-scale, else default to 30d.
+    const isHourScale = intelScatterRange === '3h' || intelScatterRange === '12h';
+    const windowDays = intelScatterRange === '60d' ? 60 : 30;
+    cutoff = isHourScale
+      ? Date.now() - 30 * INTEL_DAY_MS
+      : Date.now() - windowDays * INTEL_DAY_MS;
+  } else {
+    const windowDays = intelRangeLong === '60d' ? 60 : 30;
+    cutoff = Date.now() - windowDays * INTEL_DAY_MS;
+  }
   let filtered = 0;
   for (const k of kills) {
     if (k.kind === 'fighter') continue;
