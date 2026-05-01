@@ -1928,6 +1928,93 @@ function intelAggregateParties(kills, days) {
   return { topCorps: top(cMap, 10), topAllis: top(aMap, 10) };
 }
 
+// Hour-scale variant of intelAggregateParties for short scatter windows
+// (3h / 12h). Same shape return, same field names — drawSparkline is fully
+// bucket-count agnostic and reads dailyV.length, so the sparkline renders
+// unchanged with hourly buckets instead of daily ones.
+//
+// Field names kept as `dailyV` / `dailyA` (despite the name being misleading
+// at hour-scale) so the rendering pipeline doesn't need to fork. They're
+// "per-bucket victim/attacker counts" — the daily naming is descriptive
+// of how the original function uses them, not a constraint.
+function intelAggregatePartiesLive(kills, windowMs, bucketCount) {
+  const now      = Date.now();
+  const cutoff   = now - windowMs;
+  const bucketMs = windowMs / bucketCount;
+  const cMap = new Map();
+  const aMap = new Map();
+  const ensure = (m, id) => {
+    let e = m.get(id);
+    if (!e) {
+      e = {
+        count:  0,
+        dailyV: new Array(bucketCount).fill(0),
+        dailyA: new Array(bucketCount).fill(0),
+      };
+      m.set(id, e);
+    }
+    return e;
+  };
+  for (const k of kills) {
+    if (!passesIntelFilter(k)) continue;
+    const ts = new Date(k.killmail_time).getTime();
+    if (!Number.isFinite(ts) || ts < cutoff) continue;
+    // Same shape as the day-scale formula: oldest bucket on the left,
+    // most-recent on the right.
+    const bucketIdx = (bucketCount - 1) - Math.min(Math.floor((now - ts) / bucketMs), bucketCount - 1);
+
+    const vCorp = k.victim?.corporation_id;
+    const vAlli = k.victim?.alliance_id;
+    if (vCorp) ensure(cMap, vCorp).dailyV[bucketIdx]++;
+    if (vAlli) ensure(aMap, vAlli).dailyV[bucketIdx]++;
+
+    const seenC = new Set();
+    const seenA = new Set();
+    if (Array.isArray(k.attackers)) {
+      for (const at of k.attackers) {
+        const cId = at.corporation_id;
+        const aId = at.alliance_id;
+        if (cId && !seenC.has(cId) && cId !== vCorp) {
+          seenC.add(cId);
+          ensure(cMap, cId).dailyA[bucketIdx]++;
+        }
+        if (aId && !seenA.has(aId) && aId !== vAlli) {
+          seenA.add(aId);
+          ensure(aMap, aId).dailyA[bucketIdx]++;
+        }
+      }
+    }
+  }
+  for (const m of [cMap, aMap]) {
+    for (const e of m.values()) {
+      let total = 0;
+      for (let i = 0; i < bucketCount; i++) total += e.dailyV[i] + e.dailyA[i];
+      e.count = total;
+    }
+  }
+  const top = (m, n) =>
+    [...m.entries()]
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, n)
+      .map(([id, e]) => ({ id, count: e.count, dailyV: e.dailyV, dailyA: e.dailyA }));
+  return { topCorps: top(cMap, 10), topAllis: top(aMap, 10) };
+}
+
+// Dispatch helper — picks the right aggregation function based on current
+// view + scatter range. Centralizes the branch so the two call sites
+// (renderIntelAll + the throttled-render block) stay identical.
+function getPartyAggregation(kills) {
+  if (intelView === 'scatter' && (intelScatterRange === '3h' || intelScatterRange === '12h')) {
+    return intelAggregatePartiesLive(kills, SCATTER_RANGE_MS[intelScatterRange], 12);
+  }
+  // Day-scale path — match scatter range when in scatter view, else fall
+  // back to the long-range setting (heatmap/prime/rhythm context).
+  const partyDays = intelView === 'scatter'
+    ? (intelScatterRange === '60d' ? 60 : 30)
+    : (intelRangeLong === '60d' ? 60 : 30);
+  return intelAggregateParties(kills, partyDays);
+}
+
 // Kill scatter view. Each kill = one dot. X = time, Y = log10(ISK value),
 // color = victim ship class. Reveals system character at a glance — ratter
 // farm vs. brawl hub vs. capital killing field.
@@ -2954,13 +3041,11 @@ function scheduleHeavyRender() {
     renderRhythm(computeRhythm(kills, longDays), longDays);
     document.getElementById('intel-count-60d').textContent =
       `${aLong.killCount} kill${aLong.killCount !== 1 ? 's' : ''}`;
-    // Parties window: when scatter is on a day-scale (30d/60d), match it.
-    // When scatter is on hour-scale (3h/12h), parties default to 30d —
-    // the daily-buckets aggregation isn't meaningful at hour resolution.
-    const partyDays = intelView === 'scatter'
-      ? (intelScatterRange === '60d' ? 60 : 30)
-      : longDays;
-    const { topCorps, topAllis } = intelAggregateParties(kills, partyDays);
+    // Parties window dispatch — getPartyAggregation picks day-scale
+    // (intelAggregateParties) or hour-scale (intelAggregatePartiesLive)
+    // based on current view + scatter range. Sparkline render is identical
+    // regardless of bucket count.
+    const { topCorps, topAllis } = getPartyAggregation(kills);
     renderParty('intel-corps',     topCorps, 'corporation', 'corp', (id) => `Corp ${id}`);
     renderParty('intel-alliances', topAllis, 'alliance',    'alli', (id) => `Alliance ${id}`);
   }, HEAVY_RENDER_THROTTLE_MS);
@@ -2982,11 +3067,9 @@ function renderIntelAll() {
   document.getElementById('intel-count-60d').textContent =
     `${aLong.killCount} kill${aLong.killCount !== 1 ? 's' : ''}`;
   // Parties window follows whichever view is active so the corp/alli list
-  // matches what the user is looking at.
-  const partyDays = intelView === 'scatter'
-    ? (intelScatterRange === '60d' ? 60 : 30)
-    : longDays;
-  const { topCorps, topAllis } = intelAggregateParties(kills, partyDays);
+  // matches what the user is looking at. getPartyAggregation handles the
+  // day-scale vs hour-scale dispatch.
+  const { topCorps, topAllis } = getPartyAggregation(kills);
   renderParty('intel-corps',     topCorps, 'corporation', 'corp', (id) => `Corp ${id}`);
   renderParty('intel-alliances', topAllis, 'alliance',    'alli', (id) => `Alliance ${id}`);
   if (intelView === 'scatter') renderScatter();
