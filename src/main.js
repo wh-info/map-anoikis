@@ -2278,6 +2278,11 @@ function renderScatter() {
   ctx.font = '10px monospace';
   ctx.textBaseline = 'alphabetic';
   ctx.lineWidth = 1;
+  // Axis label color matches the heatmap labels (var(--dim) = #3d8888) so
+  // every label across the intel panel reads at the same visual weight.
+  // Gridline at 1B kept slightly brighter — that's a structural reference,
+  // not a label.
+  const labelDim = '#3d8888';
   // Static ticks at 1M / 100M / 1B (emphasized). Dynamic top tick = ceiling.
   const ticks = [
     [6, '<1M',  false],
@@ -2291,10 +2296,12 @@ function renderScatter() {
     ctx.beginPath();
     ctx.moveTo(padL, y); ctx.lineTo(cssW - padR, y);
     ctx.stroke();
-    ctx.fillStyle = emph ? 'rgba(0,220,220,0.85)' : 'rgba(0,220,220,0.7)';
+    ctx.fillStyle = labelDim;
+    if (emph) ctx.font = 'bold 10px monospace';
     ctx.fillText(lbl, 2, y + 3);
+    if (emph) ctx.font = '10px monospace';
   }
-  ctx.fillStyle = 'rgba(0,220,220,0.7)';
+  ctx.fillStyle = labelDim;
   // X-axis tick presets per range. Each entry: { ticks: [...], unit, span }.
   // The numeric ticks are positioned at (span - tick) / span * plotW so 0
   // sits at the right edge ("NOW") and the largest tick at the left edge.
