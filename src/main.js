@@ -2273,8 +2273,13 @@ function renderScatter() {
   const isThera = !!intelCurrentStar && (intelCurrentStar.class === 'Thera' || intelCurrentStar.name === 'Thera');
   const noteEl = document.getElementById('intel-scatter-note');
   let truncated = false;
-  let oldestSpanDays = days;
-  if (isThera) {
+  // Truncation indicator only meaningful at day-scale (Thera's killstore can
+  // be capped at ~30d when 60d is requested). At hour-scale the cutoff itself
+  // is so short that data-cap is irrelevant — skip the whole block.
+  const isHourScale = intelScatterRange === '3h' || intelScatterRange === '12h';
+  const rangeDays = rangeMs / INTEL_DAY_MS;
+  let oldestSpanDays = rangeDays;
+  if (isThera && !isHourScale) {
     let oldestTs = Infinity;
     for (const k of kills) {
       const ts = new Date(k.killmail_time).getTime();
@@ -2282,7 +2287,7 @@ function renderScatter() {
     }
     if (Number.isFinite(oldestTs)) {
       oldestSpanDays = (now - oldestTs) / INTEL_DAY_MS;
-      if (oldestSpanDays < days * 0.9) {
+      if (oldestSpanDays < rangeDays * 0.9) {
         truncated = true;
         const cutX = padL + ((oldestTs - cutoff) / (now - cutoff)) * plotW;
         ctx.save();
@@ -2310,7 +2315,7 @@ function renderScatter() {
     noteEl.classList.add('on');
     noteEl.textContent =
       `Showing ~${Math.round(oldestSpanDays)} days. Thera gets too many kills ` +
-      `for zKillboard to return a full ${days} days of history.`;
+      `for zKillboard to return a full ${Math.round(rangeDays)} days of history.`;
   } else if (noteEl) {
     noteEl.classList.remove('on');
     noteEl.textContent = '';
