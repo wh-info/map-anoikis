@@ -339,6 +339,25 @@ function fmtAge(ts) {
   return Math.floor(sec / 86400) + 'd ago';
 }
 
+// Compact-but-precise age string for scatter dot tooltips. Sub-hour kills
+// get minute precision; hour-scale kills show hours + minutes; day+ kills
+// show whole days only. The 30s/4m/22m/1h 8m/11h 5m/4d shape gives recent
+// kills the precision they need on 3h/12h scatter without inflating older
+// kills with irrelevant minute remainders.
+function fmtAgeScatter(ts) {
+  if (!ts) return '';
+  const sec = Math.floor(Date.now() / 1000) - ts;
+  if (sec < 60)    return sec + 's ago';
+  const mins = Math.floor(sec / 60);
+  if (mins < 60)   return mins + 'm ago';
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) {
+    const remM = mins % 60;
+    return remM > 0 ? `${hours}h ${remM}m ago` : `${hours}h ago`;
+  }
+  return Math.floor(hours / 24) + 'd ago';
+}
+
 // Long-form age string for tooltips that want a more readable phrase than
 // the compact `fmtAge`. Used in active-list tooltips.
 //   45 sec ago / 4 min ago / 1 hour ago / 2 hours ago / 3 days ago
@@ -2421,9 +2440,8 @@ document.querySelectorAll('[data-view-toggle] button[data-view]').forEach((btn) 
     const shipId   = k.victim?.ship_type_id;
     const shipName = (window.TYPE_NAMES && window.TYPE_NAMES[shipId]) || `Type ${shipId}`;
     const isk = k._zkbValue || 0;
-    const when = new Date(k.killmail_time);
-    const ago = Math.floor((Date.now() - when.getTime()) / (60 * 60 * 1000));
-    const agoLbl = ago < 24 ? `${ago}h ago` : `${Math.floor(ago / 24)}d ago`;
+    const tsSec = Math.floor(new Date(k.killmail_time).getTime() / 1000);
+    const agoLbl = fmtAgeScatter(tsSec);
     tip.innerHTML =
       `<div style="color:${best.color};font-weight:600;">${shipName}</div>` +
       `<div style="color:var(--muted);">${best.cls}</div>` +
@@ -2460,9 +2478,8 @@ document.querySelectorAll('[data-view-toggle] button[data-view]').forEach((btn) 
       const shipId   = k.victim?.ship_type_id;
       const shipName = (window.TYPE_NAMES && window.TYPE_NAMES[shipId]) || `Type ${shipId}`;
       const isk = k._zkbValue || 0;
-      const when = new Date(k.killmail_time);
-      const ago = Math.floor((Date.now() - when.getTime()) / (60 * 60 * 1000));
-      const agoLbl = ago < 24 ? `${ago}h ago` : `${Math.floor(ago / 24)}d ago`;
+      const tsSec = Math.floor(new Date(k.killmail_time).getTime() / 1000);
+      const agoLbl = fmtAgeScatter(tsSec);
       tip.innerHTML =
         `<div style="color:${best.color};font-weight:600;">${shipName}</div>` +
         `<div style="color:var(--muted);">${best.cls}</div>` +
