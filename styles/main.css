@@ -438,7 +438,7 @@ html, body {
 /* KILL FEED — header + filters                                     */
 /* ================================================================ */
 #kill-header {
-  padding: 10px 14px;
+  padding: 10px 14px 10px 6px;
   display: flex; justify-content: space-between; align-items: center;
   border-bottom: 1px solid var(--border);
 }
