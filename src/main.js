@@ -247,6 +247,11 @@ let showThera  = localStorage.getItem('anoikis-thera')  === '1';
 // Active rings — defaults ON. Hides only the rotating dashed rings on the
 // map; the // ACTIVE NOW // sidebar list stays visible regardless.
 let showActiveRings = localStorage.getItem('anoikis-active-rings') !== '0';
+// Star glow intensity (0..1). Multiplies BOTH halo alpha and halo size in
+// the draw loop. 1.0 = today's appearance (max). Lower = subtler stars.
+// The crisp center dot is untouched, so the map stays readable at any value.
+let starGlow = parseFloat(localStorage.getItem('anoikis-star-glow'));
+if (!Number.isFinite(starGlow) || starGlow < 0 || starGlow > 1) starGlow = 1;
 
 // Active hot systems — fetched from backend /active every 60s. Each entry:
 //   { systemId, name, class, killCount, lastKillTs, totalIsk,
@@ -3420,9 +3425,15 @@ function draw() {
       ctx.arc(p.x, p.y, dotR, 0, Math.PI * 2);
       ctx.fill();
     } else {
+      // Halo: alpha and size both multiplied by starGlow (settings slider).
+      // 1.0 = today's appearance, 0 = invisible halo. The crisp center dot
+      // below stays untouched so the map remains readable at any slider value.
       ctx.globalCompositeOperation = 'screen';
-      ctx.globalAlpha = clamp(0.16 + intensity * 0.24 * glowFactor, 0.10, 0.56 + flare * 0.35);
-      ctx.drawImage(spr, p.x - size / 2, p.y - size / 2, size, size);
+      ctx.globalAlpha = clamp(0.16 + intensity * 0.24 * glowFactor, 0.10, 0.56 + flare * 0.35) * starGlow;
+      const haloSize = size * starGlow;
+      if (haloSize > 0.5 && ctx.globalAlpha > 0.001) {
+        ctx.drawImage(spr, p.x - haloSize / 2, p.y - haloSize / 2, haloSize, haloSize);
+      }
 
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = clamp(0.75 + zoomT * 0.2 + flare * 0.2, 0.65, 1);
@@ -4266,7 +4277,25 @@ potatoBtn.addEventListener('click', () => {
   potatoMode = !potatoMode;
   potatoBtn.classList.toggle('on', potatoMode);
   localStorage.setItem('anoikis-potato', potatoMode ? '1' : '0');
+  // The star-glow slider is irrelevant in potato mode (flat dots, no halo).
+  // Dim + disable so the user knows it's not currently affecting anything.
+  if (glowSlider) glowSlider.disabled = potatoMode;
 });
+
+// Star glow slider — multiplies halo alpha + size in the draw loop. Lives
+// in the settings panel. Disabled while potato mode is on (flat-dot rendering
+// has no halo to dampen). Persisted in localStorage so the setting carries
+// across page loads.
+const glowSlider = document.getElementById('star-glow-slider');
+if (glowSlider) {
+  glowSlider.value = Math.round(starGlow * 100);
+  glowSlider.disabled = potatoMode;
+  glowSlider.addEventListener('input', () => {
+    const n = parseInt(glowSlider.value, 10);
+    starGlow = Math.max(0, Math.min(1, (Number.isFinite(n) ? n : 100) / 100));
+    localStorage.setItem('anoikis-star-glow', String(starGlow));
+  });
+}
 
 // Two buttons share the same showThera state: the one in the settings panel
 // and a contextual one inside the system-info panel (visible only when Thera

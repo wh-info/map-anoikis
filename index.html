@@ -13,7 +13,7 @@
 <meta name="robots" content="index,follow">
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
-<link rel="stylesheet" href="./styles/main.css?v=20260501f" />
+<link rel="stylesheet" href="./styles/main.css?v=20260501g" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="57ac0157-6021-4a9e-b0a0-73fddc9eb45d"></script>
 </head>
 <body class="no-flash">
@@ -396,12 +396,8 @@
   <button class="ctrl settings-reset" id="reset-view">Reset view</button>
   <div class="settings-sep"></div>
   <div class="settings-row">
-    <span>Labels</span>
+    <span data-tip="Regions / Constellations / Systems">Labels</span>
     <button class="toggle-pill" id="toggle-labels"><span class="toggle-knob"></span></button>
-  </div>
-  <div class="settings-row">
-    <span>Potato map</span>
-    <button class="toggle-pill" id="toggle-potato"><span class="toggle-knob"></span></button>
   </div>
   <div class="settings-row">
     <span>Thera connections</span>
@@ -410,6 +406,17 @@
   <div class="settings-row">
     <span>Active rings</span>
     <button class="toggle-pill" id="toggle-active-rings"><span class="toggle-knob"></span></button>
+  </div>
+  <div class="settings-sep"></div>
+  <div class="settings-row">
+    <span data-tip="Flat dots - lighter on performance">Potato map</span>
+    <button class="toggle-pill" id="toggle-potato"><span class="toggle-knob"></span></button>
+  </div>
+  <div class="settings-row settings-row--slider">
+    <span>Star glow</span>
+    <input type="range" id="star-glow-slider" class="settings-slider"
+           min="0" max="100" step="1" value="100"
+           aria-label="Star glow intensity" />
   </div>
   <div class="settings-sep"></div>
   <div class="settings-row settings-row--colors">
@@ -512,6 +519,6 @@
   </button>
 </nav>
 
-<script src="./src/main.js?v=20260501h"></script>
+<script src="./src/main.js?v=20260501i"></script>
 </body>
 </html>

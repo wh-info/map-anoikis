@@ -1481,13 +1481,69 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   text-transform: uppercase;
 }
 .settings-row--colors {
-  align-items: flex-start;
+  align-items: center;
 }
+/* Slider row — star glow control. The label sits left of the slider on the
+   same row, slider takes the remaining space. Disabled state dims the row
+   so users see the slider is inert (potato mode active). */
+.settings-row--slider {
+  align-items: center;
+}
+.settings-row--slider > span {
+  flex-shrink: 0;
+}
+.settings-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  outline: none;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+}
+.settings-slider:disabled { opacity: 0.4; cursor: not-allowed; }
+.settings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 1px solid var(--border-hi);
+  cursor: pointer;
+  margin-top: 0;
+  transition: background 0.12s, transform 0.12s;
+}
+.settings-slider::-webkit-slider-thumb:hover {
+  background: var(--highlight);
+  transform: scale(1.15);
+}
+.settings-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 1px solid var(--border-hi);
+  cursor: pointer;
+  transition: background 0.12s, transform 0.12s;
+}
+.settings-slider::-moz-range-thumb:hover {
+  background: var(--highlight);
+  transform: scale(1.15);
+}
+.settings-slider:disabled::-webkit-slider-thumb { background: var(--dim); cursor: not-allowed; }
+.settings-slider:disabled::-moz-range-thumb     { background: var(--dim); cursor: not-allowed; }
 .settings-palette-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 4px;
   flex: 1;
+  border-left: 1px solid var(--border);
+  padding-left: 10px;
 }
 .settings-palette-grid .ctrl {
   width: auto !important;
