@@ -411,8 +411,17 @@ const RETENTION_SEC = 60 * 24 * 60 * 60;
 // Daily reconciliation sweep — catches anything R2Z2 missed silently or that
 // zKB published very late. Piggybacks killstore compaction at the end so the
 // NDJSON file stays bounded at ~6 MB steady state.
-const DAILY_MS = 24 * 60 * 60 * 1000;
-setInterval(async () => {
+//
+// Post-boot warmup (added 2026-05-01): a fresh worker reconciles 30 min
+// after boot, then every 24h thereafter. Self-heals the redeploy-resets-
+// the-timer caveat — frequent deploys would otherwise keep resetting the
+// 24h interval and reconcile would never fire. Bootstrap walker has
+// finished its first-pass work by 30min, so ESI budget is full when
+// warmup-reconcile runs.
+const DAILY_MS  = 24 * 60 * 60 * 1000;
+const WARMUP_MS = 30 * 60 * 1000;
+
+async function dailyReconcileTick() {
   const nowSec = Math.floor(Date.now() / 1000);
   await runReconcile(nowSec - 24 * 60 * 60, nowSec, 'daily');
   try {
@@ -421,6 +430,11 @@ setInterval(async () => {
   } catch (err) {
     fastify.log.warn({ err: err.message }, 'compact failed');
   }
-}, DAILY_MS).unref?.();
+}
+
+setTimeout(() => {
+  dailyReconcileTick();
+  setInterval(dailyReconcileTick, DAILY_MS).unref?.();
+}, WARMUP_MS).unref?.();
 
 fastify.log.info({ port: PORT, ringSize: RING_SIZE }, 'anoikis worker ready');

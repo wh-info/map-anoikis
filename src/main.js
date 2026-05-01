@@ -279,21 +279,25 @@ let focusFetching = false;
 const ACTIVE_RING_DASH        = [12, 10];   // chunky scanning marks (was [6,8])
 const ACTIVE_RING_ROTATION_MS = 8000;       // 1 turn per 8 seconds (was 5000)
 const ACTIVE_RING_LINEWIDTH   = 2;
-const ACTIVE_RING_ALPHA       = 0.9;        // peak alpha for active rings (v3, was 0.6)
+const ACTIVE_RING_ALPHA       = 0.8;        // peak alpha for active rings (was 0.9)
 const ACTIVE_RING_COOLING_ALPHA_MIN = 0.4;  // alpha at end of 30-min linger
 const ACTIVE_RING_RADIUS_PX   = 20;         // screen-pixel size, scaled by zoomK
 const ACTIVE_RING_FADE_IN_MS  = 1000;
 const ACTIVE_RING_FADE_OUT_MS = 2500;
 const ACTIVE_RING_COLOR_SHIFT_MS = 500;     // tier↔tier or hot↔focused transition
-// Tier-by-intensity color RGB triplets. Score = killCount × (totalIsk / 1B).
-// Tier 1 < 15: small fight (yellow). Tier 2 15-200: real fleet fight (ember).
-// Tier 3 ≥ 200: major event (red). Focused-only ring uses cyan.
+// Tier-by-intensity color RGB triplets. Tiers (Option D, decoupled AND-rules):
+// Tier 1 (yellow): qualifying floor (small fight, worth glancing).
+// Tier 2 (ember):  ≥15 kills AND ≥3B ISK   (real fleet fight, worth flying to).
+// Tier 3 (red):    ≥30 kills AND ≥10B ISK  (major event / eviction).
+// Focused-only ring uses cyan.
 const ACTIVE_RING_COLOR_TIER1   = [232, 212, 77];   // #e8d44d yellow
 const ACTIVE_RING_COLOR_TIER2   = [232, 154, 77];   // #e89a4d ember/orange
 const ACTIVE_RING_COLOR_TIER3   = [254,  55, 67];   // #fe3743 red (matches --danger)
 const ACTIVE_RING_COLOR_FOCUSED = [  0, 200, 200];  // #00c8c8 cyan
-const ACTIVE_RING_TIER2_THRESHOLD = 15;
-const ACTIVE_RING_TIER3_THRESHOLD = 200;            // bumped from 100 in v3
+const ACTIVE_RING_TIER2_KILLS = 15;
+const ACTIVE_RING_TIER2_ISK   = 3_000_000_000;
+const ACTIVE_RING_TIER3_KILLS = 30;
+const ACTIVE_RING_TIER3_ISK   = 10_000_000_000;
 // v3 — cooling linger window. Mirrors backend LINGER_MS.
 const COOLING_LINGER_MS = 30 * 60 * 1000;
 
@@ -335,6 +339,22 @@ function fmtAge(ts) {
   return Math.floor(sec / 86400) + 'd ago';
 }
 
+// Long-form age string for tooltips that want a more readable phrase than
+// the compact `fmtAge`. Used in active-list tooltips.
+//   45 sec ago / 4 min ago / 1 hour ago / 2 hours ago / 3 days ago
+function fmtAgeLong(ts) {
+  if (!ts) return '';
+  const sec = Math.floor(Date.now() / 1000) - ts;
+  if (sec < 60)    return sec + ' sec ago';
+  if (sec < 3600)  return Math.floor(sec / 60) + ' min ago';
+  if (sec < 86400) {
+    const h = Math.floor(sec / 3600);
+    return h + (h === 1 ? ' hour ago' : ' hours ago');
+  }
+  const d = Math.floor(sec / 86400);
+  return d + (d === 1 ? ' day ago' : ' days ago');
+}
+
 function fmtIskCompact(v) {
   if (!v || v <= 0) return '0';
   if (v >= 1e12) return (v / 1e12).toFixed(1) + 'T';
@@ -344,17 +364,21 @@ function fmtIskCompact(v) {
   return String(Math.round(v));
 }
 
-// Tooltip body for an active-list row. Two lines (v3 format):
-//   "16.0B ISK destroyed · Active for 14 min"
-//   "Biggest loss: Vargur · 1.2B · 47s ago"
-// For cooling rows, line 1 says "ended X min ago" instead of "Active for".
+// Tooltip body for an active-list row. Two lines:
+//   Active:  "16.0B ISK destroyed · Active for 14 min"
+//            "Biggest loss: Vargur · 1.2B · 47 sec ago"
+//   Cooling: "16.0B ISK destroyed · last kill 4 min ago"
+//            "Biggest loss: Vargur · 1.2B · 47 sec ago"
+// Cooling line 1 was "ended X ago" but "ended" is misleading — cooledAt is
+// when the state machine flipped, not when activity stopped. Kills can keep
+// arriving after that (just not at fight intensity). lastKillTs is honest.
 // Resolves the ship name via window.TYPE_NAMES (already loaded). No ESI
 // lookup — the data we need is in the /active payload.
 function activeRowTooltip(s) {
   const lines = [];
   const isk = fmtIskCompact(s.clusterTotalIsk ?? s.totalIsk ?? 0);
   if (s.state === 'cooling') {
-    lines.push(`${isk} ISK destroyed · ended ${fmtAge(s.cooledAt)}`);
+    lines.push(`${isk} ISK destroyed · last kill ${fmtAgeLong(s.lastKillTs)}`);
   } else if (s.clusterStartTs) {
     const mins = Math.max(1, Math.floor((Date.now() / 1000 - s.clusterStartTs) / 60));
     lines.push(`${isk} ISK destroyed · Active for ${mins} min`);
@@ -366,7 +390,7 @@ function activeRowTooltip(s) {
   if (big) {
     const shipName = window.TYPE_NAMES?.[big.shipTypeId] || 'Unknown';
     const biskF = fmtIskCompact(big.isk);
-    const age = fmtAge(big.ts);
+    const age = fmtAgeLong(big.ts);
     const label = s.biggestKill ? 'Biggest loss' : 'Last';
     lines.push(`${label}: ${shipName} · ${biskF} · ${age}`);
   }
@@ -378,12 +402,19 @@ function buildActiveRow(s) {
   row.className = 'active-now-row';
   if (s.state === 'cooling') row.classList.add('active-now-row--cooling');
   row.dataset.tip = activeRowTooltip(s);
-  // Row label: cluster kill count (v3) or 15-min count (v2 fallback).
-  const kc  = s.clusterKillCount ?? s.killCount;
-  // Right side: cooling rows show "ended X ago", active rows show last-kill age.
-  const meta = s.state === 'cooling'
-    ? `${kc} kills · ended ${fmtAge(s.cooledAt)}`
-    : `${kc} kills · ${fmtAge(s.lastKillTs)}`;
+  // Row meta: cluster kill count + cluster pilot count. Same format for both
+  // active and cooling rows — temporal context lives in the section heading
+  // (// ACTIVE NOW // vs // RECENTLY ACTIVE //) and the tooltip.
+  // clusterPilotCount may be missing during the brief cross-deploy window
+  // before the backend ships it — fall back to '…' so the row looks
+  // intentional rather than broken.
+  const kc = s.clusterKillCount ?? s.killCount;
+  const pilots = s.clusterPilotCount ?? '…';
+  const k = `${kc} kill${kc === 1 ? '' : 's'}`;
+  const p = pilots === '…'
+    ? '… pilots'
+    : `${pilots} pilot${pilots === 1 ? '' : 's'}`;
+  const meta = `${k} · ${p}`;
   row.innerHTML = `
     <span class="an-sys"><span class="an-sys-name">${escapeHtml(s.name)}</span><span class="an-sys-class"> · ${escapeHtml(s.class)}</span></span>
     <span class="an-meta">${meta}</span>
@@ -479,14 +510,16 @@ async function pollActive() {
 // Compute the desired ring color for a system right now. Returns a 3-tuple
 // RGB array, or null if no ring should render.
 //
-// Color is tier-based when the system is active:
-//   score = clusterKillCount × (clusterTotalIsk / 1B)
-//   < 15      → tier 1 (yellow)   small fight, worth glancing
-//   15 – 200  → tier 2 (ember)    real fleet fight, worth flying to
-//   ≥ 200     → tier 3 (red)      major event / eviction
-// During cooling, the tier descends through the frozenTier (snapshot at
-// cool-start) → ember → yellow over the LINGER_MS window. Cooling tiers
-// win over focused cyan — focus is orthogonal to fight state.
+// Tiers (Option D — decoupled AND-rules):
+//   tier1 (yellow): qualifying floor             — small fight
+//   tier2 (ember):  ≥15 kills AND ≥3B ISK        — real fleet fight
+//   tier3 (red):    ≥30 kills AND ≥10B ISK       — major event / eviction
+// Both dimensions must clear independently to promote a tier — many cheap
+// kills alone (frigate-blob roams) no longer push score into ember.
+//
+// During cooling, the tier descends from frozenTier (snapshot at cool-start
+// by the backend) through cooler tiers over the LINGER_MS window. Cooling
+// tiers win over focused cyan — focus is orthogonal to fight state.
 // Focused-but-not-hot-and-not-cooling systems use cyan.
 function desiredRingColor(systemId) {
   const sys = activeSystems.find(s => s.systemId === systemId);
@@ -509,12 +542,11 @@ function desiredRingColor(systemId) {
       return ACTIVE_RING_COLOR_TIER1;
     }
     // state === 'active'. Use cluster fields (v3) when present, fall back
-    // to 15-min fields (v2 backend during rollout).
+    // to 15-min fields (during the brief cross-deploy gap).
     const kc  = sys.clusterKillCount ?? sys.killCount;
     const isk = sys.clusterTotalIsk  ?? sys.totalIsk ?? 0;
-    const score = kc * (isk / 1_000_000_000);
-    if (score >= ACTIVE_RING_TIER3_THRESHOLD) return ACTIVE_RING_COLOR_TIER3;
-    if (score >= ACTIVE_RING_TIER2_THRESHOLD) return ACTIVE_RING_COLOR_TIER2;
+    if (kc >= ACTIVE_RING_TIER3_KILLS && isk >= ACTIVE_RING_TIER3_ISK) return ACTIVE_RING_COLOR_TIER3;
+    if (kc >= ACTIVE_RING_TIER2_KILLS && isk >= ACTIVE_RING_TIER2_ISK) return ACTIVE_RING_COLOR_TIER2;
     return ACTIVE_RING_COLOR_TIER1;
   }
   if (focusedSystemId === systemId) return ACTIVE_RING_COLOR_FOCUSED;
@@ -3796,6 +3828,11 @@ document.addEventListener('mouseover', (e) => {
   if (!el) return;
   customTipTarget = el;
   customTip.textContent = el.dataset.tip;
+  // Active-list rows use no-wrap tooltips so each line stays on a single
+  // visual line regardless of width — long ship names won't break to a
+  // second visual line. Toggled per-target so other tooltips keep their
+  // 300px wrap behavior.
+  customTip.classList.toggle('tooltip--no-wrap', !!el.closest('.active-now-row'));
   customTip.style.display = 'block';
 });
 

@@ -112,19 +112,28 @@ function evaluateCluster(kills, nowSec) {
   };
 }
 
-// Pick the tier name from a hot summary's score. Used to freeze the tier at
-// cool-start. Frontend reads this string and descends through cooler tiers
-// during the linger window. Score = killCount × (totalIsk / 1B).
-// Tier breakpoints (yellow < 15, ember < 200, red ≥ 200) live in the frontend;
-// the backend just returns the tier name to keep the source-of-truth split
-// avoidable. We still need to compute it here once at cool-start — duplicating
-// the breakpoints here is the simplest stable contract.
-const TIER_T2 = 15;
-const TIER_T3 = 200;
+// Pick the tier name from a cluster's kills + ISK. Used to freeze the tier
+// at cool-start. Frontend reads this string and descends through cooler
+// tiers during the linger window.
+//
+// Option D rules (replaced score = killCount × ISK on 2026-05-01):
+//   tier3 (red):    ≥30 kills AND ≥10B ISK   — major event / eviction
+//   tier2 (ember):  ≥15 kills AND ≥3B ISK    — real fleet fight
+//   tier1 (yellow): everything else qualifying — small fight
+//
+// Decoupled AND-conditions instead of multiplied score. Fixes the frigate-
+// blob case where many cheap kills inflated score and reached ember
+// undeservedly. Both dimensions must clear independently.
+//
+// Function name kept as tierForScore for git-diff readability — call sites
+// still pass (killCount, totalIsk) and don't need to change.
+const TIER_T2_KILLS = 15;
+const TIER_T2_ISK   = 3_000_000_000;
+const TIER_T3_KILLS = 30;
+const TIER_T3_ISK   = 10_000_000_000;
 function tierForScore(killCount, totalIsk) {
-  const score = killCount * ((totalIsk || 0) / 1_000_000_000);
-  if (score >= TIER_T3) return 'tier3';
-  if (score >= TIER_T2) return 'tier2';
+  if (killCount >= TIER_T3_KILLS && totalIsk >= TIER_T3_ISK) return 'tier3';
+  if (killCount >= TIER_T2_KILLS && totalIsk >= TIER_T2_ISK) return 'tier2';
   return 'tier1';
 }
 
@@ -159,6 +168,12 @@ function computeCluster(systemId, killstore) {
   const oldest = cluster[cluster.length - 1];
   let totalIsk = 0;
   let biggest = null;
+  // Unique character_ids across victims + attackers in the cluster. Reads as
+  // "fleet engagement size" — 180 pilots = doctrine engagement, 18 = small
+  // gang. NPC entries naturally drop out (no character_id on NPC ships /
+  // structures), so PvE pollution is a non-issue. Same character on both
+  // sides counted once. Multiple kills by the same character counted once.
+  const pilots = new Set();
   for (const k of cluster) {
     const v = k.value || k._zkbValue || 0;
     totalIsk += v;
@@ -170,12 +185,19 @@ function computeCluster(systemId, killstore) {
         biggest = { shipTypeId, isk: v, ts: k.ts };
       }
     }
+    if (k.victim?.character_id) pilots.add(k.victim.character_id);
+    if (Array.isArray(k.attackers)) {
+      for (const a of k.attackers) {
+        if (a.character_id) pilots.add(a.character_id);
+      }
+    }
   }
 
   return {
     clusterStartTs: oldest.ts,
     clusterKillCount: cluster.length,
     clusterTotalIsk: totalIsk,
+    clusterPilotCount: pilots.size,
     biggestKill: biggest,
   };
 }
@@ -250,6 +272,7 @@ export function createActive({ killstore, log }) {
             clusterStartTs,
             clusterKillCount: cluster.clusterKillCount,
             clusterTotalIsk: cluster.clusterTotalIsk,
+            clusterPilotCount: cluster.clusterPilotCount,
             biggestKill: cluster.biggestKill,
             name:  meta.name  || String(systemId),
             class: meta.class || '',
@@ -308,10 +331,11 @@ export function createActive({ killstore, log }) {
           totalIsk:  st.summary.totalIsk,
           lastKill:  st.summary.lastKill,
           // v3 cluster fields
-          clusterStartTs:   st.summary.clusterStartTs,
-          clusterKillCount: st.summary.clusterKillCount,
-          clusterTotalIsk:  st.summary.clusterTotalIsk,
-          biggestKill:      st.summary.biggestKill,
+          clusterStartTs:    st.summary.clusterStartTs,
+          clusterKillCount:  st.summary.clusterKillCount,
+          clusterTotalIsk:   st.summary.clusterTotalIsk,
+          clusterPilotCount: st.summary.clusterPilotCount,
+          biggestKill:       st.summary.biggestKill,
           // v3 state fields
           state:       st.state,
           cooledAt:    st.cooledAt,

@@ -2702,6 +2702,13 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   max-width: 300px;
   line-height: 1.6;
 }
+/* Active-list rows opt into no-wrap tooltips — each line stays on a single
+   visual line regardless of width. Toggled in main.js when the tooltip
+   target is inside .active-now-row. */
+#custom-tip.tooltip--no-wrap {
+  max-width: none;
+  white-space: pre;
+}
 
 /* ================================================================ */
 /* INFO MODAL                                                       */
