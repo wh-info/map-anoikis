@@ -13,7 +13,7 @@
 <meta name="robots" content="index,follow">
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
-<link rel="stylesheet" href="./styles/main.css?v=20260501c" />
+<link rel="stylesheet" href="./styles/main.css?v=20260501e" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="57ac0157-6021-4a9e-b0a0-73fddc9eb45d"></script>
 </head>
 <body class="no-flash">
@@ -304,12 +304,21 @@
 <!-- RIGHT PANEL: kill feed -->
 <div id="panel-right" class="panel">
   <div id="kill-header">
-    <div class="title" id="kill-header-title" style="margin: 0;"><span id="kill-header-label">Killfeed Online</span><span class="live-dots"><span>.</span><span>.</span><span>.</span></span></div>
-    <div style="display: flex; align-items: center; gap: 8px;">
+    <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+      <!-- Decorative chevron-right prefix in global mode, mirrors the focused
+           mode's chevron-left back-arrow (same SVG, flipped via path) so the
+           title's left edge stays at a consistent horizontal position.
+           Non-interactive. Hidden when focused. -->
+      <span id="kill-global-prefix" class="kill-header-prefix" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </span>
       <!-- Exit focused-killfeed mode. Hidden when not focused. Returns to global feed. -->
       <button class="panel-hide-btn" id="kill-focus-exit" data-tip="Back to global killfeed" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
+      <div class="title" id="kill-header-title" style="margin: 0;"><span id="kill-header-label">Killfeed Online</span><span class="live-dots"><span>.</span><span>.</span><span>.</span></span></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
       <button class="panel-hide-btn" id="kill-history-toggle" data-tip="View kill history">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
       </button>
@@ -503,6 +512,6 @@
   </button>
 </nav>
 
-<script src="./src/main.js?v=20260501f"></script>
+<script src="./src/main.js?v=20260501g"></script>
 </body>
 </html>

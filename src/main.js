@@ -712,9 +712,12 @@ function drawHotSystemRings(now) {
 function setKillFocus(systemId) {
   const wasFocused = focusedSystemId != null;
   focusedSystemId = systemId;
-  // Show/hide the exit ✕ in the kill header.
+  // Show/hide the exit "<" back button in the kill header. Inverted: the
+  // decorative ">" prefix shows in global mode, hides while focused.
   const exitBtn = document.getElementById('kill-focus-exit');
   if (exitBtn) exitBtn.style.display = systemId != null ? '' : 'none';
+  const globalPrefix = document.getElementById('kill-global-prefix');
+  if (globalPrefix) globalPrefix.style.display = systemId != null ? 'none' : '';
 
   if (systemId != null) {
     // Entering or switching focus — fetch from /intel and render paginated.

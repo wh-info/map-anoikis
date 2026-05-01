@@ -1246,6 +1246,21 @@ button.ctrl.on    { border-color: rgba(0, 200, 200, 0.4); color: var(--muted); }
 .panel-hide-btn svg { width: 11px; height: 11px; display: block; }
 #kill-header .panel-hide-btn { width: 26px; height: 26px; }
 #kill-header .panel-hide-btn svg { width: 16px; height: 16px; }
+/* Decorative chevron-right prefix on global killfeed header. Same 26×26
+   footprint as the focused-mode back button (and same SVG sizing) so the
+   title's left edge stays at the same position regardless of mode.
+   Non-interactive, no hover. */
+.kill-header-prefix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: var(--dim);
+  user-select: none;
+  flex-shrink: 0;
+}
+.kill-header-prefix svg { width: 16px; height: 16px; display: block; }
 
 /* Corner-triangle minimize button (left panel top-left, right panel top-right). */
 .panel-minimize-corner {
