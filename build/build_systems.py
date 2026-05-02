@@ -50,6 +50,19 @@ EFFECT_BY_TYPEID = {
     30670: "Cataclysmic Variable",
 }
 
+# Custom planet-name overrides for Anoikis. CCP keeps named celestials in
+# the SDE SQLite invUniqueNames table; the JSONL distribution we build from
+# doesn't ship that table, so the names we want to surface are baked in here.
+# Currently exactly one — re-check on major SDE patches by querying the
+# SQLite SDE locally:
+#   SELECT n.itemID, n.itemName FROM invUniqueNames n
+#   JOIN mapDenormalize p ON p.itemID = n.itemID
+#   WHERE p.solarSystemID BETWEEN 31000000 AND 31999999 AND p.groupID = 7;
+PLANET_NAME_OVERRIDES = {
+    40467692: "Eyjafjallajokull II",  # J102834 II — lava planet, named after
+                                       # the Icelandic volcano (CCP is Icelandic).
+}
+
 FRAME_WIDTH  = 1000.0
 FRAME_CENTER = (4250.0, 4500.0)
 DEFAULT_RADIUS = 2.5
@@ -124,10 +137,14 @@ def load_lookups() -> tuple[dict, dict, dict, dict, dict, dict]:
             ci       = rec.get("celestialIndex") or 0  # 1-based planet index (I, II, III…)
             moon_count = len(rec.get("moonIDs") or [])
             pid_i = int(pid)
-            planets_by_id[pid_i] = {
+            entry = {
                 "typeId": type_id, "r": orbit_au, "a": angle,
                 "ci": ci, "moons": moon_count,
             }
+            name_override = PLANET_NAME_OVERRIDES.get(pid_i)
+            if name_override:
+                entry["name"] = name_override
+            planets_by_id[pid_i] = entry
             if moon_count:
                 planet_xz[pid_i] = (px, pz)
 

@@ -1352,11 +1352,14 @@ function buildOrreryList(star) {
     const type    = planetTypeName(p.typeId);
     const moons   = p.moons || 0;
     const moonStr = moons === 0 ? 'no moons' : moons + ' moon' + (moons !== 1 ? 's' : '');
+    // Use the CCP custom name when present (PLANET_NAME_OVERRIDES in the
+    // build script). Falls back to the default "<J-code> <roman>" label.
+    const planetName = p.name || `${star.name} ${roman}`;
     const row = document.createElement('div');
     row.className = 'olist-row';
     row.innerHTML =
       `<img class="olist-img" src="https://images.evetech.net/types/${p.typeId}/icon?size=64" alt="" loading="lazy">` +
-      `<div><div class="olist-name">${escapeHtml(star.name)} ${roman}</div>` +
+      `<div><div class="olist-name">${escapeHtml(planetName)}</div>` +
       `<div class="olist-sub">${escapeHtml(type)} · ${moonStr}</div></div>`;
     el.appendChild(row);
     attachRowHover(row, { isSun: false, ci: p.ci, typeId: p.typeId });
