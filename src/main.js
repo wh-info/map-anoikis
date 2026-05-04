@@ -300,9 +300,9 @@ const ACTIVE_RING_COLOR_TIER2   = [232, 154, 77];   // #e89a4d ember/orange
 const ACTIVE_RING_COLOR_TIER3   = [254,  55, 67];   // #fe3743 red (matches --danger)
 const ACTIVE_RING_COLOR_FOCUSED = [  0, 200, 200];  // #00c8c8 cyan
 const ACTIVE_RING_TIER2_KILLS = 15;
-const ACTIVE_RING_TIER2_ISK   = 3_000_000_000;
+const ACTIVE_RING_TIER2_ISK   = 5_000_000_000;
 const ACTIVE_RING_TIER3_KILLS = 30;
-const ACTIVE_RING_TIER3_ISK   = 10_000_000_000;
+const ACTIVE_RING_TIER3_ISK   = 15_000_000_000;
 // v3 — cooling linger window. Mirrors backend LINGER_MS.
 const COOLING_LINGER_MS = 30 * 60 * 1000;
 

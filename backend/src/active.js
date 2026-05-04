@@ -48,15 +48,25 @@ for (const [k, v] of Object.entries(rawSystems)) {
 // cheap. If we end up tuning frequently we can revisit.
 const WINDOW_MS         = 15 * 60 * 1000;   // sliding kill-cluster window
 const RECENCY_MS        = 20 * 60 * 1000;   // last-kill-must-be-within
-const MIN_KILLS         = 10;               // condition 1
-const MIN_ISK           = 300_000_000;      // condition 2
+const MIN_KILLS         = 10;               // condition 1 (initial detection)
+const MIN_ISK           = 500_000_000;      // condition 2 (initial detection)
 const MIN_SIDE_LOSSES   = 2;                // condition 3 — losses per side
 const TICK_MS           = 60_000;           // detector tick cadence
+
+// Relaxed thresholds for systems that are already hot (active or cooling).
+// "Sticky" relaxed rule: once a system has qualified, the bar to STAY hot
+// (or come back from cooling) is lower than the initial detection bar.
+// This prevents ping-ponging on borderline activity and matches the v3
+// narrative — the fight stays alive until truly dead.
+const MIN_KILLS_REQUALIFY = 5;              // condition 1 (sticky/relaxed)
+const MIN_ISK_REQUALIFY   = 300_000_000;    // condition 2 (sticky/relaxed)
+// condition 3 (mutual loss with depth) is dropped when relaxed.
 
 // v3 — linger + cluster constants.
 const LINGER_MS         = 30 * 60 * 1000;   // cooled systems stay this long
 const LINGER_LIST_CAP   = 5;                // max "recently active" rows
-const CLUSTER_GAP_MS    = WINDOW_MS;        // walk-back gap = same as window
+const CLUSTER_GAP_MS    = 20 * 60 * 1000;   // walk-back gap (decoupled from WINDOW_MS;
+                                            // tolerates typical 15-22 min refit pauses)
 
 // Identify a "side" by alliance_id when present, else corp_id. Some pilots
 // fly without alliance — corp is the next-best identity. Pre-prefix the
@@ -71,8 +81,18 @@ function sideKeyForVictim(victim) {
 // Apply the four-condition rule to a list of kills already filtered to
 // last 15 min for the same system. Returns null if not hot, or a hot
 // summary object if it qualifies.
-function evaluateCluster(kills, nowSec) {
-  if (kills.length < MIN_KILLS) return null;
+//
+// opts.relaxed = true uses the sticky/relaxed thresholds — kills 5/300M
+// and the mutual-loss-with-depth check is dropped. Used for systems that
+// are already in active or cooling state, so the bar to STAY hot (or come
+// back from cooling) is lower than the initial detection bar. Prevents
+// ping-ponging on borderline activity.
+function evaluateCluster(kills, nowSec, opts = {}) {
+  const minKills = opts.relaxed ? MIN_KILLS_REQUALIFY : MIN_KILLS;
+  const minIsk   = opts.relaxed ? MIN_ISK_REQUALIFY   : MIN_ISK;
+  const requireSides = !opts.relaxed;
+
+  if (kills.length < minKills) return null;
 
   // Condition 4 — recency. Cluster's newest kill must be within RECENCY_MS.
   // Kills are pre-sorted by ts asc by the caller, so newest = kills[last].
@@ -82,23 +102,27 @@ function evaluateCluster(kills, nowSec) {
   // Condition 2 — ISK total in window. Uses the _zkbValue / value field.
   let totalIsk = 0;
   for (const k of kills) totalIsk += k.value || k._zkbValue || 0;
-  if (totalIsk < MIN_ISK) return null;
+  if (totalIsk < minIsk) return null;
 
   // Condition 3 — mutual loss with depth. Tally losses per side; require
   // at least two distinct sides each with ≥MIN_SIDE_LOSSES losses.
-  const lossesBySide = new Map();
-  for (const k of kills) {
-    const key = sideKeyForVictim(k.victim);
-    if (!key) continue;
-    lossesBySide.set(key, (lossesBySide.get(key) || 0) + 1);
+  // Skipped when relaxed (sticky rule) — captures fights winding down to
+  // single-side dominance.
+  if (requireSides) {
+    const lossesBySide = new Map();
+    for (const k of kills) {
+      const key = sideKeyForVictim(k.victim);
+      if (!key) continue;
+      lossesBySide.set(key, (lossesBySide.get(key) || 0) + 1);
+    }
+    let qualifyingSides = 0;
+    for (const count of lossesBySide.values()) {
+      if (count >= MIN_SIDE_LOSSES) qualifyingSides++;
+    }
+    if (qualifyingSides < 2) return null;
   }
-  let qualifyingSides = 0;
-  for (const count of lossesBySide.values()) {
-    if (count >= MIN_SIDE_LOSSES) qualifyingSides++;
-  }
-  if (qualifyingSides < 2) return null;
 
-  // All four conditions pass. Build the summary used by the tooltip.
+  // All conditions pass. Build the summary used by the tooltip.
   const lastShipTypeId = lastKill.victim?.ship_type_id || lastKill.shipTypeId || null;
   return {
     killCount: kills.length,
@@ -128,9 +152,9 @@ function evaluateCluster(kills, nowSec) {
 // Function name kept as tierForScore for git-diff readability — call sites
 // still pass (killCount, totalIsk) and don't need to change.
 const TIER_T2_KILLS = 15;
-const TIER_T2_ISK   = 3_000_000_000;
+const TIER_T2_ISK   = 5_000_000_000;
 const TIER_T3_KILLS = 30;
-const TIER_T3_ISK   = 10_000_000_000;
+const TIER_T3_ISK   = 15_000_000_000;
 function tierForScore(killCount, totalIsk) {
   if (killCount >= TIER_T3_KILLS && totalIsk >= TIER_T3_ISK) return 'tier3';
   if (killCount >= TIER_T2_KILLS && totalIsk >= TIER_T2_ISK) return 'tier2';
@@ -138,30 +162,45 @@ function tierForScore(killCount, totalIsk) {
 }
 
 // Walk this system's killstore entries newest-first, find the cluster
-// boundary (first >15-min gap working backward), and compute cluster fields
-// (start ts, kill count, total ISK, biggest kill). Excludes NPC kills to
-// match the detection rule's PvP-only premise.
+// boundary (first >CLUSTER_GAP_MS gap working backward), and compute cluster
+// fields (start ts, kill count, total ISK, biggest kill). Excludes NPC kills
+// to match the detection rule's PvP-only premise.
+//
+// floorTs (optional) — when provided (re-qualifying from cooling), the walker
+// includes all kills back to floorTs and IGNORES gaps in between. This makes
+// anchor + counts always agree across cooling re-qualifications, even when
+// there was a real silence between fights.
 //
 // Note: the killstore returns kills newest-first already. We iterate from
-// newest, accept each kill into the cluster, and stop when the gap to the
-// next-older kill exceeds CLUSTER_GAP_MS.
-function computeCluster(systemId, killstore) {
+// newest, accept each kill into the cluster, and stop when either:
+//   - we hit a kill older than floorTs (when floor mode active), OR
+//   - the gap to the next-older kill exceeds CLUSTER_GAP_MS (default mode).
+function computeCluster(systemId, killstore, floorTs = null) {
   const kills = killstore.getBySystem(systemId); // newest-first
   if (!kills || kills.length === 0) {
-    return { clusterStartTs: null, clusterKillCount: 0, clusterTotalIsk: 0, biggestKill: null };
+    return { clusterStartTs: null, clusterKillCount: 0, clusterTotalIsk: 0,
+             clusterPilotCount: 0, biggestKill: null };
   }
 
   const cluster = [];
   let prevTs = null;
   for (const k of kills) {
     if (k.isNpc) continue;
-    if (prevTs !== null && (prevTs - k.ts) * 1000 > CLUSTER_GAP_MS) break;
+    if (floorTs != null) {
+      // Floor mode (re-qualifying from cooling): include everything back to
+      // floorTs, ignore gaps in between.
+      if (k.ts < floorTs) break;
+    } else if (prevTs !== null && (prevTs - k.ts) * 1000 > CLUSTER_GAP_MS) {
+      // Default mode: stop at first >CLUSTER_GAP_MS gap.
+      break;
+    }
     cluster.push(k);
     prevTs = k.ts;
   }
 
   if (cluster.length === 0) {
-    return { clusterStartTs: null, clusterKillCount: 0, clusterTotalIsk: 0, biggestKill: null };
+    return { clusterStartTs: null, clusterKillCount: 0, clusterTotalIsk: 0,
+             clusterPilotCount: 0, biggestKill: null };
   }
 
   // cluster is newest-first; oldest at the end.
@@ -233,34 +272,44 @@ export function createActive({ killstore, log }) {
         arr.push(kill);
       }
 
-      // Pass 1 — evaluate each currently-active candidate against v2 rule.
-      // Track the systems that qualified this tick so we can flip the rest
-      // of systemState's 'active' entries to 'cooling' below.
+      // Pass 1 — evaluate each currently-active candidate against the
+      // detection rule. Track the systems that qualified this tick so we
+      // can flip the rest of systemState's 'active' entries to 'cooling'
+      // below.
+      //
+      // Sticky relaxed rule: if the system is already in active OR cooling
+      // state (wasHot), use the relaxed thresholds — kills 5/300M and no
+      // mutual-loss check. This prevents ping-ponging on borderline
+      // activity and matches the v3 narrative ("fight stays alive until
+      // truly dead"). Fresh detections (no prev state) use strict rule.
       const qualifiedThisTick = new Set();
       for (const [systemId, kills] of bySystem) {
         kills.sort((a, b) => a.ts - b.ts); // ts asc for evaluateCluster
-        const summary = evaluateCluster(kills, nowSec);
-        if (!summary) continue;
-        qualifiedThisTick.add(systemId);
-
-        const cluster = computeCluster(systemId, killstore);
-        const meta = SYSTEM_INFO.get(systemId) || {};
 
         const prev = systemState.get(systemId);
         const wasNew = !prev;
         const wasCooling = prev?.state === 'cooling';
+        const wasHot = prev?.state === 'active' || wasCooling;
 
-        // Preserve clusterStartTs across cool→re-qualify. If prev had a
-        // clusterStartTs and the cluster boundary walker confirms it's
-        // still inside the current cluster (newer than the cluster's
-        // computed oldest ts), keep it. Otherwise the cluster has genuinely
-        // restarted (>15min gap) and we use the fresh boundary.
-        let clusterStartTs = cluster.clusterStartTs;
-        if (prev?.clusterStartTs && cluster.clusterStartTs != null
-            && prev.clusterStartTs <= cluster.clusterStartTs) {
-          // prev's anchor is older or equal → cluster never broke. Preserve.
-          clusterStartTs = prev.clusterStartTs;
-        }
+        const summary = evaluateCluster(kills, nowSec, { relaxed: wasHot });
+        if (!summary) continue;
+        qualifiedThisTick.add(systemId);
+
+        // Floor mode for the cluster walker: only when re-qualifying from
+        // cooling, walk all the way back to prev anchor (ignore gaps).
+        // Active→active continuations and fresh detections use the default
+        // CLUSTER_GAP_MS gap behavior.
+        const floorTs = wasCooling ? prev.clusterStartTs : null;
+        const cluster = computeCluster(systemId, killstore, floorTs);
+        const meta = SYSTEM_INFO.get(systemId) || {};
+
+        // Always preserve clusterStartTs when the system was previously
+        // hot. The floorTs param ensures the cluster walker has already
+        // included everything back to prev.clusterStartTs, so anchor +
+        // counts always agree.
+        const clusterStartTs = wasHot && prev?.clusterStartTs
+          ? prev.clusterStartTs
+          : cluster.clusterStartTs;
 
         const next = {
           state: 'active',
@@ -286,15 +335,23 @@ export function createActive({ killstore, log }) {
             tier: tierForScore(cluster.clusterKillCount, cluster.clusterTotalIsk) },
             'active: new hot system');
         } else if (wasCooling) {
+          // bridgedSilenceMs: how big a silence the floor-mode walker
+          // bridged. 0 = no real silence (fight resumed within the natural
+          // cluster gap). Larger values = silence we crossed via cooling.
+          const bridgedSilenceMs = cluster.clusterStartTs && prev.clusterStartTs
+            ? Math.max(0, (cluster.clusterStartTs - prev.clusterStartTs) * 1000)
+            : 0;
           log?.info?.({ systemId, name: next.summary.name,
-            clusterStartTs, preservedAnchor: prev.clusterStartTs === clusterStartTs },
+            clusterStartTs, bridgedSilenceMs },
             'active: re-qualified mid-cool');
         }
       }
 
       // Pass 2 — sweep stale 'active' entries. Anything in systemState that
-      // didn't qualify this tick flips to 'cooling'. Anything already cooling
-      // past LINGER_MS is dropped entirely.
+      // didn't qualify this tick flips to 'cooling'. Cooling systems get
+      // their lastKillTs live-updated from the killstore so the tooltip
+      // reflects actual recent activity. Anything cooling past LINGER_MS
+      // is dropped entirely.
       const lingerCutoffSec = nowSec - LINGER_MS / 1000;
       for (const [systemId, st] of systemState) {
         if (st.state === 'active' && !qualifiedThisTick.has(systemId)) {
@@ -309,9 +366,21 @@ export function createActive({ killstore, log }) {
           log?.info?.({ systemId, name: st.summary.name, frozenTier: tier,
             clusterKillCount: st.summary.clusterKillCount },
             'active: cooling');
-        } else if (st.state === 'cooling' && st.cooledAt < lingerCutoffSec) {
-          systemState.delete(systemId);
-          log?.info?.({ systemId, name: st.summary.name }, 'active: linger expired, removed');
+        } else if (st.state === 'cooling') {
+          // Live-update lastKillTs so the cooling-row tooltip reflects the
+          // genuinely most-recent kill in this system, not the value frozen
+          // at cool-start. Killstore.getBySystem returns newest-first.
+          const recent = killstore.getBySystem(systemId);
+          if (recent && recent.length > 0) {
+            const newestTs = recent[0].ts;
+            if (newestTs > st.summary.lastKillTs) {
+              st.summary.lastKillTs = newestTs;
+            }
+          }
+          if (st.cooledAt < lingerCutoffSec) {
+            systemState.delete(systemId);
+            log?.info?.({ systemId, name: st.summary.name }, 'active: linger expired, removed');
+          }
         }
       }
 
