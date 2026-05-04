@@ -210,7 +210,7 @@ function computeResetTarget() {
     MIN_SCALE, 1.5
   );
   const anchorX = RESET_ANCHOR ? RESET_ANCHOR.x : (starBounds.minX + starBounds.maxX) / 2;
-  const anchorShiftPx = _isMobile ? 20 : 75;
+  const anchorShiftPx = _isMobile ? 20 : 50;
   const anchorShiftPy = _isMobile ? -20 : 0;
   return {
     scale,
