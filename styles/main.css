@@ -944,6 +944,7 @@ html, body {
 .kill-footer:empty { display: none; }
 .kill-value { color: var(--highlight); font-weight: 400; font-size: 13px; }
 .kill-value b { font-weight: 700; }
+.isk-num { margin-right: 0.12em; }
 
 /* --- compact kill list ----------------------------------------- */
 .kill-list--compact .kill {

@@ -4552,10 +4552,10 @@ let historyPage = 0;
 let unseenLiveKills = 0;
 
 function formatIsk(v) {
-  if (v >= 1e9) return '<b>' + (v / 1e9).toFixed(1) + '</b>B';
-  if (v >= 1e6) return '<b>' + (v / 1e6).toFixed(0) + '</b>M';
-  if (v >= 1e3) return '<b>' + (v / 1e3).toFixed(0) + '</b>K';
-  return '<b>' + v + '</b>';
+  if (v >= 1e9) return '<b class="isk-num">' + (v / 1e9).toFixed(1) + '</b>B';
+  if (v >= 1e6) return '<b class="isk-num">' + (v / 1e6).toFixed(0) + '</b>M';
+  if (v >= 1e3) return '<b class="isk-num">' + (v / 1e3).toFixed(0) + '</b>K';
+  return '<b class="isk-num">' + v + '</b>';
 }
 
 function formatAge(ts) {
