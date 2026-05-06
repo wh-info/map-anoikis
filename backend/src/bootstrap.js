@@ -189,7 +189,15 @@ export function createBootstrap({ killstore, log, onIngest }) {
     const kill = buildIntelKill(raw, classification);
     const added = await killstore.add(kill);
     if (added) {
-      if (stats) bucketKillByAge(stats, kill.ts);
+      if (stats) {
+        // True "added to killstore" count. The walker's stats.added counter
+        // (incremented in drainEsiQueue) over-counts because it ticks on any
+        // valid timestamp, including kills we already have. Surfaced in
+        // /health.reconcile.lastAdded; the over-counter surfaces as
+        // lastHydrated so the gap = "already-known overlap with live stream."
+        stats.addedFresh = (stats.addedFresh ?? 0) + 1;
+        bucketKillByAge(stats, kill.ts);
+      }
       // Notify the caller about brand-new additions so it can rebroadcast
       // over WS for forward-stall recoveries (caller decides whether to
       // broadcast based on which path triggered this ingest — daily
@@ -243,7 +251,8 @@ export function createBootstrap({ killstore, log, onIngest }) {
   // grinding through A-R00001 again.
   async function walkWindow(fromTs, _toTs, { skipKnown, resumable }) {
     const stats = {
-      regions: 0, pages: 0, slimSeen: 0, hydrated: 0, added: 0, throttled: 0,
+      regions: 0, pages: 0, slimSeen: 0, hydrated: 0, added: 0, addedFresh: 0,
+      throttled: 0,
       byAge: emptyAgeBuckets()
     };
     const queue = [];
@@ -410,8 +419,8 @@ export function createBootstrap({ killstore, log, onIngest }) {
     log?.info?.({ months }, 'second-pass starting');
     const started = Date.now();
     const stats = {
-      regions: 0, pages: 0, slimSeen: 0, hydrated: 0, added: 0, throttled: 0,
-      skipKnown: 0,
+      regions: 0, pages: 0, slimSeen: 0, hydrated: 0, added: 0, addedFresh: 0,
+      throttled: 0, skipKnown: 0,
       byAge: emptyAgeBuckets()
     };
 

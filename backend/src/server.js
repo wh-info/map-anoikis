@@ -130,6 +130,7 @@ let reconcileStats = {
   lastRunAt: null,
   totalRuns: 0,
   lastAdded: 0,
+  lastHydrated: 0,
   lastAddedByAge: null,
   broadcastedTotal: 0
 };
@@ -329,7 +330,12 @@ async function runReconcile(fromTs, toTs, reason) {
     reconcileStats = {
       lastRunAt: Date.now(),
       totalRuns: reconcileStats.totalRuns + 1,
-      lastAdded: stats.added,
+      // lastAdded = real new kills written to the killstore.
+      // lastHydrated = ESI fetches that returned a valid timestamp (includes
+      // already-known kills that were skipped at the actual add step).
+      // Gap between them = overlap between reconcile sweep and live stream.
+      lastAdded: stats.addedFresh ?? 0,
+      lastHydrated: stats.added ?? 0,
       lastAddedByAge: stats.byAge ?? null,
       broadcastedTotal: reconcileStats.broadcastedTotal,
     };
