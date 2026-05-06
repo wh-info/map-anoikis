@@ -2160,21 +2160,21 @@ const SCATTER_CLASS_COLOR = {
   Capital:            '#c66bff',
   Industrial:         '#c8a878',
   Structures:         '#ffffff',
-  'Towers/Depl.':     '#b0b0c8',
+  'POS/Depl.':     '#b0b0c8',
   'Pods/Shuttles':    '#888888',
 };
 const SCATTER_LEGEND_ORDER = [
   'Frigate', 'Destroyer', 'Cruiser', 'Industrial',
   'Battlecruiser', 'Battleship', 'Capital', 'Structures',
-  'Pods/Shuttles', 'Towers/Depl.',
+  'Pods/Shuttles', 'POS/Depl.',
 ];
 
 function scatterClassFor(typeId) {
   const kind = window.TYPE_KINDS && window.TYPE_KINDS[typeId];
   if (kind === 'structure')  return 'Structures';
-  if (kind === 'tower')      return 'Towers/Depl.';
-  if (kind === 'deployable') return 'Towers/Depl.';
-  if (kind === 'fighter')    return 'Towers/Depl.';
+  if (kind === 'tower')      return 'POS/Depl.';
+  if (kind === 'deployable') return 'POS/Depl.';
+  if (kind === 'fighter')    return 'POS/Depl.';
   const slug = window.TYPE_ICONS && window.TYPE_ICONS[typeId];
   if (slug && SCATTER_CLASS_LABELS[slug]) return SCATTER_CLASS_LABELS[slug];
   return null; // pods, shuttles — not plotted
@@ -2199,7 +2199,7 @@ function buildScatterLegend() {
     }
     return;
   }
-  const bottomLabels = ['Pods/Shuttles', 'Towers/Depl.'];
+  const bottomLabels = ['Pods/Shuttles', 'POS/Depl.'];
   for (const label of SCATTER_LEGEND_ORDER) {
     if (bottomLabels.includes(label)) continue;
     const span = document.createElement('span');
