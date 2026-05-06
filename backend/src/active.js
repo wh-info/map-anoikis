@@ -186,6 +186,7 @@ function computeCluster(systemId, killstore, floorTs = null) {
   let prevTs = null;
   for (const k of kills) {
     if (k.isNpc) continue;
+    if (k.kind === 'fighter') continue;
     if (floorTs != null) {
       // Floor mode (re-qualifying from cooling): include everything back to
       // floorTs, ignore gaps in between.
@@ -266,6 +267,7 @@ export function createActive({ killstore, log }) {
       const bySystem = new Map();
       for (const kill of killstore.values()) {
         if (kill.isNpc) continue;             // condition 1 filter
+        if (kill.kind === 'fighter') continue; // fighters never trigger hot
         if (kill.ts < cutoff) continue;       // outside the window
         let arr = bySystem.get(kill.systemId);
         if (!arr) { arr = []; bySystem.set(kill.systemId, arr); }

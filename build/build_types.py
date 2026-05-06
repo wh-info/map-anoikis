@@ -22,10 +22,11 @@ Reads groups.jsonl and types.jsonl from build/sde_cache/ and produces:
     { "kinds": { "<typeID>": "ship" | ... } }
 
 Scope:
-  - Ship          (category 6)   — includes capsules
-  - Structure     (category 65)  — Citadels + other Upwell
-  - Control Tower (category 23, group 365) — POS guns/arrays/silos excluded
-  - Deployable    (category 22)
+  - Ship       (category 6)   — includes capsules
+  - Structure  (category 65)  — Citadels + other Upwell
+  - POS        (category 23)  — Control Towers, batteries, silos, arrays
+  - Deployable (category 22)
+  - Fighter    (category 87)  — drone fighters from carriers/supers
 
 Run:
     python build/build_types.py
@@ -47,8 +48,9 @@ OUT_JSON  = ROOT / "backend" / "src" / "type-kinds.json"
 KIND_RULES: list[tuple[str, int, int | None]] = [
     ("ship",        6,  None),
     ("structure",  65,  None),
-    ("tower",      23,  365),
+    ("tower",      23,  None),
     ("deployable", 22,  None),
+    ("fighter",    87,  None),
 ]
 
 # metaGroupIDs we surface as tech-tier badges (ships only).

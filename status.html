@@ -670,6 +670,10 @@ function renderClassified(h) {
     ['runs',                fmt(r.totalRuns)],
     ['broadcast',           fmt(r.broadcastedTotal)],
     ['last run',            fmtDate(r.lastRunAt)],
+    ['last added',          fmt(r.lastAdded)],
+    ['↳ 0-12h',             fmt(r.lastAddedByAge?.['0-12h']),  true],
+    ['↳ 12-24h',            fmt(r.lastAddedByAge?.['12-24h']), true],
+    ['↳ 24h+',              fmt(r.lastAddedByAge?.['24h+']),   true],
 
     '// KILLSTORE //',
     ['kills',               fmt(k.size)],

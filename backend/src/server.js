@@ -126,7 +126,13 @@ fastify.options('/*', async (_req, reply) => {
   return reply.code(204).send();
 });
 
-let reconcileStats = { lastRunAt: null, totalRuns: 0, lastAdded: 0, broadcastedTotal: 0 };
+let reconcileStats = {
+  lastRunAt: null,
+  totalRuns: 0,
+  lastAdded: 0,
+  lastAddedByAge: null,
+  broadcastedTotal: 0
+};
 
 // Set inside the onJump callback while a watchdog-triggered reconcile is
 // running, cleared after. The bootstrap onIngest hook reads this to decide
@@ -324,6 +330,7 @@ async function runReconcile(fromTs, toTs, reason) {
       lastRunAt: Date.now(),
       totalRuns: reconcileStats.totalRuns + 1,
       lastAdded: stats.added,
+      lastAddedByAge: stats.byAge ?? null,
       broadcastedTotal: reconcileStats.broadcastedTotal,
     };
     return stats;

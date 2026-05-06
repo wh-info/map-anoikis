@@ -2062,9 +2062,9 @@ const SCATTER_RANGE_MS = {
 let scatterHits       = [];        // {x, y, k, color, label} — rebuilt each draw
 let intelEntityFilter = null;      // { kind: 'corp'|'alli', id }
 
-// Intel-wide filter: ships are always counted, fighters are always excluded,
-// the rest are toggleable via the footer chips. Applied by every intel
-// aggregator (short/long/parties) and the scatter renderer.
+// Intel-wide filter: ships and fighters are always counted, the rest are
+// toggleable via the footer chips. Applied by every intel aggregator
+// (short/long/parties) and the scatter renderer.
 //
 // EVE SDE groupID 31 is the Shuttle group. Used by the Shuttles chip in
 // both the killfeed and intel filters to identify shuttle kills via
@@ -2083,7 +2083,6 @@ let intelFilterNpc = localStorage.getItem(INTEL_NPC_KEY) === '1';
 let intelFilterShuttle = localStorage.getItem(INTEL_SHUTTLE_KEY) !== '0';
 function passesIntelFilter(k) {
   const kind = k.kind;
-  if (kind === 'fighter') return false;
   if (kind === 'structure' || kind === 'tower' || kind === 'deployable') {
     if (!intelFilterKinds.has(kind)) return false;
   }
@@ -2175,9 +2174,10 @@ function scatterClassFor(typeId) {
   if (kind === 'structure')  return 'Structures';
   if (kind === 'tower')      return 'Towers/Depl.';
   if (kind === 'deployable') return 'Towers/Depl.';
+  if (kind === 'fighter')    return 'Towers/Depl.';
   const slug = window.TYPE_ICONS && window.TYPE_ICONS[typeId];
   if (slug && SCATTER_CLASS_LABELS[slug]) return SCATTER_CLASS_LABELS[slug];
-  return null; // pods, shuttles, fighters — not plotted
+  return null; // pods, shuttles — not plotted
 }
 
 function buildScatterLegend() {
@@ -3087,7 +3087,6 @@ function updateFilteredCount() {
   }
   let filtered = 0;
   for (const k of kills) {
-    if (k.kind === 'fighter') continue;
     const ts = k.killmail_time ? Date.parse(k.killmail_time) : 0;
     if (ts < cutoff) continue;
     if (!passesIntelFilter(k)) filtered++;
@@ -4644,8 +4643,9 @@ function typeNameFor(typeId) {
 const KIND_LABEL = {
   ship: 'Ship',
   structure: 'Structure',
-  tower: 'Tower',
-  deployable: 'Deployable'
+  tower: 'POS',
+  deployable: 'Deployable',
+  fighter: 'Fighter'
 };
 
 // metaGroupID → badge filename (populated by build_types.py into window.TYPE_META)
@@ -4678,7 +4678,8 @@ if (!activeTags.has('shuttle') && !localStorage.getItem('anoikis-kill-tags-shutt
   localStorage.setItem('anoikis-kill-tags-shuttle-migrated', '1');
 }
 function isKillVisible(kind, isNpc, isDelayed, typeId) {
-  if (!activeKinds.has(kind)) return false;
+  // Fighters bypass the chip system — they always show in the killfeed.
+  if (kind !== 'fighter' && !activeKinds.has(kind)) return false;
   if (isNpc && !activeTags.has('npc')) return false;
   if (isDelayed && !activeTags.has('delayed')) return false;
   // Shuttle filter (only ships in groupID 31 — racial + faction shuttles).

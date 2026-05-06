@@ -3,7 +3,7 @@
 // A kill is in-scope when BOTH:
 //   1. solar_system_id falls inside Anoikis (31000000 <= id < 32000000)
 //   2. victim.ship_type_id resolves to one of our tracked kinds
-//      (ship / structure / tower / deployable)
+//      (ship / structure / tower / deployable / fighter)
 //
 // Kind resolution order:
 //   1. type-kinds.json (built from SDE at deploy time) — instant, covers ~600 types
@@ -27,10 +27,11 @@ const KIND_BY_CATEGORY = new Map([
   [6,  'ship'],
   [65, 'structure'],
   [22, 'deployable'],
+  [87, 'fighter'],
 ]);
-// Control towers: category 23 group 365 — handled separately after ESI lookup.
+// All of category 23 (POS infrastructure: Control Towers, batteries, silos,
+// arrays, hangars) is treated as 'tower'.
 const TOWER_CATEGORY = 23;
-const TOWER_GROUP    = 365;
 
 // In-memory cache for ESI-resolved types so each unknown is only fetched once.
 const esiKindCache = new Map();
@@ -44,9 +45,8 @@ async function kindFromEsi(typeId) {
     if (!res.ok) { esiKindCache.set(typeId, null); return null; }
     const data = await res.json();
     const catId   = data.category_id;
-    const groupId = data.group_id;
     let kind = KIND_BY_CATEGORY.get(catId) || null;
-    if (catId === TOWER_CATEGORY && groupId === TOWER_GROUP) kind = 'tower';
+    if (catId === TOWER_CATEGORY) kind = 'tower';
     esiKindCache.set(typeId, kind);
     return kind;
   } catch {
@@ -74,7 +74,7 @@ export async function classifyKill(msg) {
 
   let kind = kindForType(shipTypeId);
   if (!kind) kind = await kindFromEsi(shipTypeId);
-  if (!kind || kind === 'fighter') return null;
+  if (!kind) return null;
 
   return { systemId, shipTypeId, kind };
 }

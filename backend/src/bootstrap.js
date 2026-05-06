@@ -83,6 +83,27 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+// Reconcile age-distribution buckets. Each kill we add gets dropped into one
+// of three buckets by its age (now - kill.ts). Surfaces in /health.reconcile
+// so we can tell steady R2Z2 drops from restart gaps from zKB pipeline
+// incidents at a glance. The 24h+ overflow catches kills the per-page stop
+// let through past the 24h reconcile window.
+const AGE_BUCKET_LABELS = ['0-12h', '12-24h', '24h+'];
+
+function emptyAgeBuckets() {
+  return { '0-12h': 0, '12-24h': 0, '24h+': 0 };
+}
+
+function bucketKillByAge(stats, killTs) {
+  if (!stats.byAge) stats.byAge = emptyAgeBuckets();
+  const ageH = (Math.floor(Date.now() / 1000) - killTs) / 3600;
+  let label;
+  if (ageH < 12)      label = AGE_BUCKET_LABELS[0];
+  else if (ageH < 24) label = AGE_BUCKET_LABELS[1];
+  else                label = AGE_BUCKET_LABELS[2];
+  stats.byAge[label]++;
+}
+
 export function createBootstrap({ killstore, log, onIngest }) {
   let esiRemaining  = 100;
   let esiPauseUntil = 0;
@@ -152,7 +173,7 @@ export function createBootstrap({ killstore, log, onIngest }) {
   // Turn a hydrated ESI killmail + its slim zkb envelope into the intel
   // shape and push into the killstore. Returns the kill's unix ts so the
   // caller can decide when to stop pagination, or null on failure.
-  async function ingest(slim, esiKill) {
+  async function ingest(slim, esiKill, stats) {
     if (!esiKill || !esiKill.killmail_time) return null;
     const raw = {
       killmail_id: slim.killmail_id,
@@ -167,12 +188,15 @@ export function createBootstrap({ killstore, log, onIngest }) {
     }
     const kill = buildIntelKill(raw, classification);
     const added = await killstore.add(kill);
-    // Notify the caller about brand-new additions so it can rebroadcast over
-    // WS for forward-stall recoveries (caller decides whether to broadcast
-    // based on which path triggered this ingest — daily reconcile pulls 60
-    // days back and shouldn't fire animations).
-    if (added && onIngest) {
-      try { onIngest(kill); } catch { /* never let a callback break ingest */ }
+    if (added) {
+      if (stats) bucketKillByAge(stats, kill.ts);
+      // Notify the caller about brand-new additions so it can rebroadcast
+      // over WS for forward-stall recoveries (caller decides whether to
+      // broadcast based on which path triggered this ingest — daily
+      // reconcile pulls 60 days back and shouldn't fire animations).
+      if (onIngest) {
+        try { onIngest(kill); } catch { /* never let a callback break ingest */ }
+      }
     }
     return kill.ts;
   }
@@ -189,7 +213,7 @@ export function createBootstrap({ killstore, log, onIngest }) {
       const results = await Promise.allSettled(chunk.map(async (row) => {
         const esiKill = await hydrateKillmail(row);
         if (!esiKill) return { ts: null, added: false };
-        const ts = await ingest(row, esiKill);
+        const ts = await ingest(row, esiKill, stats);
         return { ts, added: ts != null };
       }));
       for (const r of results) {
@@ -218,7 +242,10 @@ export function createBootstrap({ killstore, log, onIngest }) {
   // persist the index so the next restart picks up mid-sweep instead of
   // grinding through A-R00001 again.
   async function walkWindow(fromTs, _toTs, { skipKnown, resumable }) {
-    const stats = { regions: 0, pages: 0, slimSeen: 0, hydrated: 0, added: 0, throttled: 0, skippedFighters: 0 };
+    const stats = {
+      regions: 0, pages: 0, slimSeen: 0, hydrated: 0, added: 0, throttled: 0,
+      byAge: emptyAgeBuckets()
+    };
     const queue = [];
 
     let startIdx = 0;
@@ -252,15 +279,6 @@ export function createBootstrap({ killstore, log, onIngest }) {
         for (const row of slim) {
           if (!row?.killmail_id) continue;
           if (skipKnown && killstore.has(row.killmail_id)) continue;
-          // Pre-filter via zkb labels: drop rows we already know we'd drop
-          // post-classification, so we don't spend ESI budget hydrating them.
-          // Labels look like ["tz:ru","cat:6","pvp","loc:w-space"] — cat:87 is
-          // fighters, which filter.js rejects. Cheap win on ESI load.
-          const labels = row.zkb?.labels;
-          if (Array.isArray(labels) && labels.includes('cat:87')) {
-            stats.skippedFighters++;
-            continue;
-          }
           queue.push(row);
         }
 
@@ -363,11 +381,6 @@ export function createBootstrap({ killstore, log, onIngest }) {
           stats.skipKnown++;
           continue;
         }
-        const labels = row.zkb?.labels;
-        if (Array.isArray(labels) && labels.includes('cat:87')) {
-          stats.skippedFighters++;
-          continue;
-        }
         queue.push(row);
         newRowsThisPage++;
       }
@@ -396,7 +409,11 @@ export function createBootstrap({ killstore, log, onIngest }) {
     const months = monthsForSecondPass(Date.now());
     log?.info?.({ months }, 'second-pass starting');
     const started = Date.now();
-    const stats = { regions: 0, pages: 0, slimSeen: 0, hydrated: 0, added: 0, throttled: 0, skippedFighters: 0, skipKnown: 0 };
+    const stats = {
+      regions: 0, pages: 0, slimSeen: 0, hydrated: 0, added: 0, throttled: 0,
+      skipKnown: 0,
+      byAge: emptyAgeBuckets()
+    };
 
     const cursor = state.secondPass?.cursor || { rIdx: 0, mIdx: 0 };
     for (let rIdx = cursor.rIdx; rIdx < ANOIKIS_REGIONS.length; rIdx++) {
