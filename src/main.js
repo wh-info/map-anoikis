@@ -2034,7 +2034,7 @@ function intelAggregatePartiesLive(kills, windowMs, bucketCount) {
 // view + scatter range. Centralizes the branch so the two call sites
 // (renderIntelAll + the throttled-render block) stay identical.
 function getPartyAggregation(kills) {
-  if (intelView === 'scatter' && (intelScatterRange === '3h' || intelScatterRange === '12h')) {
+  if (intelView === 'scatter' && (intelScatterRange === '3h' || intelScatterRange === '24h')) {
     return intelAggregatePartiesLive(kills, SCATTER_RANGE_MS[intelScatterRange], 12);
   }
   // Day-scale path — match scatter range when in scatter view, else fall
@@ -2049,13 +2049,13 @@ function getPartyAggregation(kills) {
 // color = victim ship class. Reveals system character at a glance — ratter
 // farm vs. brawl hub vs. capital killing field.
 let intelView         = 'recent'; // 'recent' | 'heatmap' | 'scatter'
-let intelScatterRange = '30d';     // '3h' | '12h' | '30d' | '60d'
+let intelScatterRange = '30d';     // '3h' | '24h' | '30d' | '60d'
 // Lookup of scatter range → window in ms. Used by renderScatter and
 // updateFilteredCount. Hour-scale ranges are scatter-only — parties +
 // other intel views always operate on day-scale windows.
 const SCATTER_RANGE_MS = {
   '3h':  3  * 60 * 60 * 1000,
-  '12h': 12 * 60 * 60 * 1000,
+  '24h': 24 * 60 * 60 * 1000,
   '30d': 30 * 24 * 60 * 60 * 1000,
   '60d': 60 * 24 * 60 * 60 * 1000,
 };
@@ -2337,7 +2337,7 @@ function renderScatter() {
   // sits at the right edge ("NOW") and the largest tick at the left edge.
   const tickPresets = {
     '3h':  { ticks: [3, 2, 1, 0],     unit: 'h', span: 3  },
-    '12h': { ticks: [12, 9, 6, 3, 0], unit: 'h', span: 12 },
+    '24h': { ticks: [24, 18, 12, 6, 0], unit: 'h', span: 24 },
     '30d': { ticks: [30, 20, 10, 0],  unit: 'd', span: 30 },
     '60d': { ticks: [60, 45, 30, 15, 0], unit: 'd', span: 60 },
   };
@@ -3076,7 +3076,7 @@ function updateFilteredCount() {
     cutoff = Date.now() - INTEL_DAY_MS;
   } else if (intelView === 'scatter') {
     // Use the actual scatter range when day-scale, else default to 30d.
-    const isHourScale = intelScatterRange === '3h' || intelScatterRange === '12h';
+    const isHourScale = intelScatterRange === '3h' || intelScatterRange === '24h';
     const windowDays = intelScatterRange === '60d' ? 60 : 30;
     cutoff = isHourScale
       ? Date.now() - 30 * INTEL_DAY_MS
