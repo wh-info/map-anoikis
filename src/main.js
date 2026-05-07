@@ -2237,7 +2237,7 @@ function scatterClassFor(typeId) {
   if (kind === 'fighter')    return 'POS/Depl.';
   const slug = window.TYPE_ICONS && window.TYPE_ICONS[typeId];
   if (slug && SCATTER_CLASS_LABELS[slug]) return SCATTER_CLASS_LABELS[slug];
-  return null; // pods, shuttles — not plotted
+  return null; // unknown typeID (e.g. ship added after last SDE build)
 }
 
 function buildScatterLegend() {
