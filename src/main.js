@@ -1002,6 +1002,66 @@ function buildSprite(color) {
 }
 for (const cls of Object.keys(CLASS_COLORS)) spriteCache[cls] = buildSprite(CLASS_COLORS[cls]);
 
+// --- Effect stats tooltip ---------------------------------------
+// Builds the rich-HTML tooltip shown when hovering the system info panel's
+// Effect row. Data lives in window.WH_EFFECTS (see data/wh-effects.js):
+// per-effect array of { label, values[6] }, indexed by class.
+//
+// Lookup rules:
+//   C1..C6  → use the system's effect at the matching class index.
+//   C13     → all C13 systems are Wolf-Rayet by spec; use WR at C6 magnitude.
+//   Drifter → each Drifter system has its own effect, but always C2 magnitude.
+//   Thera / no effect → no tooltip wired (selectStar deletes data-tip-html).
+function effectStatsFor(s) {
+  if (!s || !window.WH_EFFECTS) return null;
+  let effect, classIdx;
+  // Runtime star objects rename the SDE `class` field to `whClass`
+  // (see line 120 where stars are built from window.ANOIKIS_SYSTEMS).
+  const cls = s.whClass;
+  if (cls === 'C13') {
+    effect = 'Wolf-Rayet';
+    classIdx = 5;                     // C6 magnitude
+  } else if (cls === 'Drifter') {
+    if (!s.effect) return null;
+    effect = s.effect;
+    classIdx = 1;                     // C2 magnitude
+  } else if (/^C[1-6]$/.test(cls || '')) {
+    if (!s.effect) return null;
+    effect = s.effect;
+    classIdx = parseInt(cls.slice(1), 10) - 1;
+  } else {
+    return null;                      // Thera + anything else
+  }
+  const rows = window.WH_EFFECTS[effect];
+  if (!Array.isArray(rows)) return null;
+  return {
+    effect,
+    classIdx,
+    stats: rows.map((r) => ({ label: r.label, value: r.values[classIdx] })),
+  };
+}
+
+function effectStatsTooltip(s) {
+  const data = effectStatsFor(s);
+  if (!data || !data.stats.length) return null;
+  const { effect, classIdx, stats } = data;
+  // Render stats in their source-data order (matches what's shown in the
+  // EVE in-game tooltip). All values rendered in the same yellow bold;
+  // the +/- sign in the value tells the user whether it's a buff or debuff.
+  const labelWidth = Math.max(...stats.map((r) => r.label.length));
+  const fmtRow = (r) => {
+    const pad = ' '.repeat(labelWidth - r.label.length + 4);
+    return `<div class="effect-tip-row">${escapeHtml(r.label)}${pad}<b class="effect-tip-val">${escapeHtml(r.value)}</b></div>`;
+  };
+  const parts = [];
+  // Header: "Class N Effect-Name effect" reflecting the magnitude bucket
+  // being shown (C13 always shows C6 magnitudes; Drifter always C2).
+  parts.push(`<div class="effect-tip-head">C${classIdx + 1} ${escapeHtml(effect)} effect</div>`);
+  parts.push('<div class="effect-tip-sep effect-tip-sep--solid"></div>');
+  for (const r of stats) parts.push(fmtRow(r));
+  return parts.join('');
+}
+
 // --- Orrery (solar system view) ----------------------------------
 const orreryPanel  = document.getElementById('panel-orrery');
 const orreryCanvas = document.getElementById('orrery-canvas');
@@ -3931,10 +3991,18 @@ let customTipTarget = null;
 
 document.addEventListener('mouseover', (e) => {
   if (isTouchDevice) return;
-  const el = e.target.closest('[data-tip]');
+  const el = e.target.closest('[data-tip], [data-tip-html]');
   if (!el) return;
   customTipTarget = el;
-  customTip.textContent = el.dataset.tip;
+  // Two tooltip modes: plain text (default, safe) and rich HTML (opt-in via
+  // data-tip-html for the effect-stats tooltip). The rich path renders bold
+  // colored values; plain path stays textContent-only to keep other tooltips
+  // injection-safe.
+  if (el.dataset.tipHtml != null) {
+    customTip.innerHTML = el.dataset.tipHtml;
+  } else {
+    customTip.textContent = el.dataset.tip;
+  }
   // Active-list rows use no-wrap tooltips so each line stays on a single
   // visual line regardless of width — long ship names won't break to a
   // second visual line. Toggled per-target so other tooltips keep their
@@ -3954,7 +4022,7 @@ document.addEventListener('mousemove', (e) => {
 });
 
 document.addEventListener('mouseout', (e) => {
-  const el = e.target.closest('[data-tip]');
+  const el = e.target.closest('[data-tip], [data-tip-html]');
   if (!el) return;
   customTipTarget = null;
   customTip.style.display = 'none';
@@ -4050,7 +4118,14 @@ function selectStar(s, focus) {
   document.getElementById('si-class').textContent = longClass;
   document.getElementById('si-region').textContent = s.regionName;
   document.getElementById('si-const').textContent = s.constellation;
-  document.getElementById('si-effect').textContent = s.effect || 'None';
+  const effEl = document.getElementById('si-effect');
+  effEl.textContent = s.effect || 'None';
+  // Effect-stats hover tooltip — populated only when the system has an effect
+  // AND we have a stats lookup for it. Cleared otherwise so the tooltip
+  // handler doesn't fire on no-effect systems.
+  const effTip = effectStatsTooltip(s);
+  if (effTip) effEl.dataset.tipHtml = effTip;
+  else delete effEl.dataset.tipHtml;
   const stEl = document.getElementById('si-statics');
   stEl.innerHTML = '';
   stEl.classList.toggle('statics--grid3', _isMobile && s.statics.length >= 6);

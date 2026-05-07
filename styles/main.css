@@ -2784,6 +2784,36 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   max-width: none;
   white-space: pre;
 }
+/* Effect-stats tooltip: monospace rows so column-aligned padding produced
+   by effectStatsTooltip() lines up. Header reads "Class N Effect" then a
+   dashed separator, then yellow-bold values for both buffs and debuffs
+   (the +/- prefix in the value tells you which is which). A second
+   separator renders only when both buff and debuff groups exist. */
+#custom-tip .effect-tip-row,
+#custom-tip .effect-tip-head {
+  font-family: 'Roboto Mono', ui-monospace, Menlo, Consolas, monospace;
+  white-space: pre;
+}
+#custom-tip .effect-tip-row {
+  border-bottom: 1px dashed var(--border);
+  padding: 2px 0;
+}
+#custom-tip .effect-tip-row:last-child {
+  border-bottom: none;
+}
+#custom-tip .effect-tip-head {
+  color: var(--text);
+  font-weight: 700;
+  text-align: right;
+}
+#custom-tip .effect-tip-val { color: var(--highlight); }
+#custom-tip .effect-tip-sep {
+  border-top: 1px dashed var(--border);
+  margin: 4px 0;
+}
+#custom-tip .effect-tip-sep--solid {
+  border-top-style: solid;
+}
 
 /* ================================================================ */
 /* INFO MODAL                                                       */
