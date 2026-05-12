@@ -537,7 +537,13 @@ function computeMood(h) {
 function computeZkill(h) {
   const zk = h?.zkill || '';
   if (!zk) return { text: '—', cls: '' };
-  if (zk.startsWith('error:')) return { text: 'down', cls: 'down' };
+  // `zkillStatus` only updates on interesting events (errors + watchdog
+  // jumps), not on every successful poll. A single 502 leaves the string
+  // stuck at "error:..." even after the poller recovers and resumes
+  // streaming kills. Trust `lastPollAt` as the truthful liveness signal:
+  // if it ticked within the last 60s, the live stream is healthy.
+  const pollAge = h.lastPollAt ? Date.now() - h.lastPollAt : Infinity;
+  if (zk.startsWith('error:') && pollAge > 60_000) return { text: 'down', cls: 'down' };
   if (zk === 'init') return { text: 'stalled', cls: 'warn' };
   return { text: 'streaming', cls: 'ok' };
 }
@@ -563,7 +569,9 @@ function computeBadge(h, esiStatus) {
   if (pollAge > 60_000) return { text: 'POLLER DOWN',     cls: 'down' };
   if (pollAge > 30_000) return { text: 'POLLER DEGRADED', cls: 'warn' };
   const zk = h.zkill || '';
-  if (zk.startsWith('error:')) return { text: 'POLLER DEGRADED', cls: 'warn' };
+  // Same stale-error guard as computeZkill — only flag DEGRADED when the
+  // poller hasn't actually polled successfully in the last 60s.
+  if (zk.startsWith('error:') && pollAge > 60_000) return { text: 'POLLER DEGRADED', cls: 'warn' };
   if (esiStatus === 'down')    return { text: 'PARTIALLY DEGRADED', cls: 'warn' };
   const es = h.evescout || '';
   if (es.startsWith('error:')) return { text: 'PARTIALLY DEGRADED', cls: 'warn' };
