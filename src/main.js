@@ -5993,8 +5993,13 @@ connectKillFeed();
         const pollAge = h.lastPollAt ? Date.now() - h.lastPollAt : Infinity;
         if (pollAge > 60_000) { statusDot.classList.add('red');    return; }
         if (pollAge > 30_000) { statusDot.classList.add('yellow'); return; }
+        // zkillStatus only updates on watchdog events and errors — a single
+        // 502 leaves the string stuck even after the poller recovers. Trust
+        // lastPollAt (already verified fresh above) as the truthful signal;
+        // only treat the error as real if no successful poll has happened
+        // in the last 60s. Same gate as status.html's computeBadge.
         const zk = h.zkill || '';
-        if (zk.startsWith('error:'))       { statusDot.classList.add('yellow'); return; }
+        if (zk.startsWith('error:') && pollAge > 60_000) { statusDot.classList.add('yellow'); return; }
         const es = h.evescout || '';
         if (es.startsWith('error:'))       { statusDot.classList.add('yellow'); return; }
         statusDot.classList.add('green');
