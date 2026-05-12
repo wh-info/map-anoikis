@@ -2715,6 +2715,34 @@ body.cinema #panel-intel { opacity: 0; pointer-events: none; }
   margin-top: 2px;
 }
 
+/* NPC station rows — appear nested under their parent planet. Indented from
+   the left edge so the planet→stations hierarchy reads visually, and the
+   name is allowed to wrap to two lines since station names are long
+   (e.g. "Thera XII - The Sanctuary Institute of Paleocybernetics"). */
+.olist-row--station {
+  padding-left: 18px;
+  position: relative;
+}
+.olist-row--station::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  width: 8px;
+  height: 1px;
+  background: var(--border);
+}
+.olist-row--station .olist-name {
+  white-space: normal;
+  line-height: 1.25;
+}
+/* Prefix (e.g. "Thera XIII") is redundant with the parent planet row that
+   appears directly above. Kept in the data + canvas tooltip, hidden in the
+   list view. The <br> after it is hidden alongside so the subname starts at
+   the top of the row instead of below a blank line. */
+.olist-station-prefix,
+.olist-station-prefix + br { display: none; }
+
 .orrery-footer {
   display: flex;
   align-items: center;

@@ -17,11 +17,13 @@ from __future__ import annotations
 
 import json
 import math
+import sqlite3
 from pathlib import Path
 
 ROOT      = Path(__file__).resolve().parent.parent
 SDE_CACHE = ROOT / "build" / "sde_cache"
 OUTPUT    = ROOT / "data" / "anoikis-systems.js"
+SDE_SQLITE = SDE_CACHE / "sqlite-latest.sqlite"
 
 WSPACE_REGION_MIN = 11000000
 WSPACE_REGION_MAX = 11999999
@@ -91,6 +93,94 @@ def en(name_field) -> str:
     return str(name_field) if name_field else ""
 
 
+def load_npc_stations() -> dict[int, list[dict]]:
+    """Return {planetID: [{id, name, typeId, a (angle rad)}]} for Anoikis NPC stations.
+
+    Reads `npcStationIDs` from mapPlanets.jsonl to find which stations live
+    where, then joins against staStations in the SQLite SDE for the full
+    name/type/position record. The angle `a` is computed in the XZ plane
+    relative to the parent planet, matching how moons store their angle.
+
+    Falls back to {} if the SQLite SDE isn't available — the JSONL alone
+    only carries station IDs, not their names or positions.
+    """
+    planets_path = SDE_CACHE / "mapPlanets.jsonl"
+    if not planets_path.exists():
+        return {}
+
+    # planetID -> {x, z, stationIDs} for planets that host any NPC stations.
+    planet_index: dict[int, dict] = {}
+    for pid, rec in iter_jsonl(planets_path):
+        if pid is None:
+            continue
+        station_ids = rec.get("npcStationIDs") or []
+        if not station_ids:
+            continue
+        pos = rec.get("position") or {}
+        planet_index[int(pid)] = {
+            "px": float(pos.get("x", 0)),
+            "pz": float(pos.get("z", 0)),
+            "stationIDs": [int(s) for s in station_ids],
+        }
+    if not planet_index:
+        return {}
+
+    if not SDE_SQLITE.exists():
+        print(f"warning: {SDE_SQLITE.name} missing — NPC station names/coords skipped")
+        return {}
+
+    # Pull all station rows we care about in one query. Joining invTypes gives
+    # us the canonical station type name (e.g. "Sisters of EVE Logistics
+    # Station") which the frontend renders as the sub-label.
+    all_station_ids = [sid for v in planet_index.values() for sid in v["stationIDs"]]
+    placeholders = ",".join("?" for _ in all_station_ids)
+    con = sqlite3.connect(str(SDE_SQLITE))
+    cur = con.cursor()
+    cur.execute(
+        f"""
+        SELECT s.stationID, s.stationName, s.stationTypeID, t.typeName, s.x, s.z
+        FROM staStations s
+        LEFT JOIN invTypes t ON t.typeID = s.stationTypeID
+        WHERE s.stationID IN ({placeholders})
+        """,
+        all_station_ids,
+    )
+    station_rows = {row[0]: row for row in cur.fetchall()}
+    con.close()
+
+    out: dict[int, list[dict]] = {}
+    for pid, info in planet_index.items():
+        entries = []
+        for sid in info["stationIDs"]:
+            row = station_rows.get(sid)
+            if not row:
+                continue
+            _, full_name, type_id, type_name, sx, sz = row
+            # Split "Thera XIII - The Sanctuary Applied Gravitation Laboratory"
+            # into prefix + subname for two-line rendering. Fallback: if the
+            # SDE name doesn't have " - ", show the full name as subname only.
+            full_name = str(full_name)
+            if " - " in full_name:
+                prefix, subname = full_name.split(" - ", 1)
+            else:
+                prefix, subname = "", full_name
+            dx = float(sx) - info["px"]
+            dz = float(sz) - info["pz"]
+            # Angle in XZ relative to parent — same projection as moons.
+            angle = round(math.atan2(dz, dx), 4)
+            entries.append({
+                "id":       int(sid),
+                "prefix":   prefix,
+                "subname":  subname,
+                "typeId":   int(type_id),
+                "typeName": str(type_name) if type_name else "",
+                "a":        angle,
+            })
+        if entries:
+            out[pid] = entries
+    return out
+
+
 def load_lookups() -> tuple[dict, dict, dict, dict, dict, dict]:
     """Return regions, constellations, effects, planets, star_type, star_info lookups."""
     # regionID → {name, wormholeClassID}
@@ -118,6 +208,11 @@ def load_lookups() -> tuple[dict, dict, dict, dict, dict, dict]:
             if label:
                 effects[int(sid)] = label
 
+    # NPC stations per planet — pulled from SQLite SDE. Currently only Thera's
+    # 3 outermost planets have any entries; every other Anoikis planet returns
+    # nothing.
+    stations_by_planet = load_npc_stations()
+
     # planetID → {typeId, r (AU), moons} — loaded from mapPlanets.jsonl if present.
     planets_by_id: dict[int, dict] = {}
     planet_xz:     dict[int, tuple[float, float]] = {}  # pid -> (x, z) for moon math
@@ -144,6 +239,9 @@ def load_lookups() -> tuple[dict, dict, dict, dict, dict, dict]:
             name_override = PLANET_NAME_OVERRIDES.get(pid_i)
             if name_override:
                 entry["name"] = name_override
+            stations = stations_by_planet.get(pid_i)
+            if stations:
+                entry["stations"] = stations
             planets_by_id[pid_i] = entry
             if moon_count:
                 planet_xz[pid_i] = (px, pz)

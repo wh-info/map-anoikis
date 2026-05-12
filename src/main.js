@@ -1307,6 +1307,30 @@ function drawOrrery(star) {
     }
 
     orreryHits.push({ x: px, y: py, hitR: pR + 5, typeId: p.typeId, ci: p.ci || 0, moons: p.moons || 0 });
+
+    // NPC stations — small grey squares with thin white border, positioned
+    // just outside the moon ring around the parent planet. Angle comes from
+    // the SDE-derived `a` field; rotation follows the same model as moons.
+    const stations = p.stations || [];
+    for (let si = 0; si < stations.length; si++) {
+      const st = stations[si];
+      const sBase = st.a != null ? st.a : (si / stations.length) * Math.PI * 2;
+      const sDist = pR + 5 + moonCount * 2.5 + 4 + si * 3;
+      const sOmega = 250 / Math.pow(sDist, 1.5);
+      const sAngle = orreryRotate ? sBase + t * sOmega : sBase;
+      const sx = px + Math.cos(sAngle) * sDist;
+      const sy = py + Math.sin(sAngle) * sDist;
+      const sz = 7;
+      oc.fillStyle = 'rgba(170,170,170,0.9)';
+      oc.fillRect(sx - sz / 2, sy - sz / 2, sz, sz);
+      oc.strokeStyle = 'rgba(255,255,255,0.9)';
+      oc.lineWidth = 1;
+      oc.strokeRect(sx - sz / 2 + 0.5, sy - sz / 2 + 0.5, sz - 1, sz - 1);
+      orreryHits.push({
+        x: sx, y: sy, hitR: sz + 2,
+        isStation: true, stationId: st.id, ci: p.ci || 0, typeId: st.typeId,
+      });
+    }
   }
 
   oc.restore();
@@ -1324,9 +1348,14 @@ const orreryBodyEl  = document.querySelector('.orrery-body');
 
 function updateOrreryTrace() {
   if (!orreryListHover) { traceSvgLine.classList.remove('on'); return; }
-  const hit = orreryListHover.isSun
-    ? orreryHits.find(h => h.isSun)
-    : orreryHits.find(h => !h.isSun && h.ci === orreryListHover.ci);
+  let hit;
+  if (orreryListHover.isSun) {
+    hit = orreryHits.find(h => h.isSun);
+  } else if (orreryListHover.isStation) {
+    hit = orreryHits.find(h => h.isStation && h.stationId === orreryListHover.stationId);
+  } else {
+    hit = orreryHits.find(h => !h.isSun && !h.isStation && h.ci === orreryListHover.ci);
+  }
   if (!hit) { traceSvgLine.classList.remove('on'); return; }
   const bodyRect = orreryBodyEl.getBoundingClientRect();
   const canvRect = orreryCanvas.getBoundingClientRect();
@@ -1343,9 +1372,14 @@ function updateOrreryTrace() {
   traceSvgGrad.setAttribute('y1', by);
   traceSvgGrad.setAttribute('x2', ex);
   traceSvgGrad.setAttribute('y2', ey);
-  const endColor = orreryListHover.isSun
-    ? `rgba(${(SUN_COLORS[orreryListHover.typeId] || [255,220,100]).join(',')},0.85)`
-    : `rgba(${planetRGB(orreryListHover.typeId).join(',')},0.85)`;
+  let endColor;
+  if (orreryListHover.isSun) {
+    endColor = `rgba(${(SUN_COLORS[orreryListHover.typeId] || [255,220,100]).join(',')},0.85)`;
+  } else if (orreryListHover.isStation) {
+    endColor = 'rgba(220,220,220,0.85)';
+  } else {
+    endColor = `rgba(${planetRGB(orreryListHover.typeId).join(',')},0.85)`;
+  }
   traceSvgStops[0].setAttribute('stop-color', 'rgba(0,200,200,0.85)');
   traceSvgStops[1].setAttribute('stop-color', endColor);
   traceSvgLine.classList.add('on');
@@ -1372,7 +1406,13 @@ function buildOrreryList(star) {
       row.addEventListener('click', (ev) => {
         if (hoverData.isSun) return; // sun has its own click handler
         ev.stopPropagation();
-        const same = orreryListHover && orreryListHover.ci === hoverData.ci && orreryListHover.isSun === hoverData.isSun;
+        // Station rows identify by stationId; planet rows by ci. Both share
+        // the isSun=false branch but distinguish themselves via isStation.
+        const same = orreryListHover
+          && orreryListHover.isSun === hoverData.isSun
+          && (hoverData.isStation
+              ? orreryListHover.stationId === hoverData.stationId
+              : orreryListHover.ci === hoverData.ci && !orreryListHover.isStation);
         orreryListHover = same ? null : { imgEl: img, ...hoverData };
       });
     } else {
@@ -1423,6 +1463,25 @@ function buildOrreryList(star) {
       `<div class="olist-sub">${escapeHtml(type)} · ${moonStr}</div></div>`;
     el.appendChild(row);
     attachRowHover(row, { isSun: false, ci: p.ci, typeId: p.typeId });
+
+    // Station rows — appear nested under their parent planet. Only Thera's
+    // outer planets currently carry these. The station name renders on two
+    // visible lines: prefix ("Thera XIII") on row 1, subname ("The Sanctuary
+    // Applied Gravitation Laboratory") on row 2. Sub-label is the full CCP
+    // station type name from invTypes.
+    for (const st of (p.stations || [])) {
+      const stationRow = document.createElement('div');
+      stationRow.className = 'olist-row olist-row--station';
+      const nameHtml = st.prefix
+        ? `<span class="olist-station-prefix">${escapeHtml(st.prefix)}</span><br>${escapeHtml(st.subname)}`
+        : escapeHtml(st.subname);
+      stationRow.innerHTML =
+        `<img class="olist-img" src="https://images.evetech.net/types/${st.typeId}/icon?size=64" alt="" loading="lazy">` +
+        `<div><div class="olist-name">${nameHtml}</div>` +
+        `<div class="olist-sub">${escapeHtml(st.typeName || 'NPC Station')}</div></div>`;
+      el.appendChild(stationRow);
+      attachRowHover(stationRow, { isStation: true, stationId: st.id, ci: p.ci, typeId: st.typeId });
+    }
   }
 }
 
@@ -1524,6 +1583,15 @@ orreryCanvas.addEventListener('mousemove', (e) => {
   if (hit) {
     if (hit.isSun) {
       orreryTip.textContent = SUN_NAMES[hit.sunTypeId] || 'Star';
+    } else if (hit.isStation) {
+      // Hover the grey square → full station name reassembled from
+      // prefix + subname. Resolve from selected.planets since orreryHits
+      // doesn't carry the name itself.
+      const planet = selected?.planets?.find(p => (p.ci || 0) === hit.ci);
+      const st = planet?.stations?.find(s => s.id === hit.stationId);
+      orreryTip.textContent = st
+        ? (st.prefix ? `${st.prefix} - ${st.subname}` : st.subname)
+        : 'NPC Station';
     } else {
       const sysName = selected ? selected.name : '';
       const roman   = hit.ci ? toRoman(hit.ci) : '?';
