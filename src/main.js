@@ -316,8 +316,8 @@ let theraConnections = [];
 let theraHoverId = null;
 const THERA_SYSTEM_ID = 31000005;
 const THERA_COLORS = {
-  small:   '#1f5eeb',   // Eve-Scout's frigate-hole size string (A009, E004, …)
-  frigate: '#1f5eeb',   // defensive alias — in case the enum ever uses it
+  small:   '#1c80ee',   // Eve-Scout's frigate-hole size string (A009, E004, …)
+  frigate: '#1c80ee',   // defensive alias — in case the enum ever uses it
   medium:  '#36cccc',
   large:   '#d6d9cc',
   capital: '#f0a800',
