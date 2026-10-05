@@ -46,6 +46,7 @@ const SEQ_URL = 'https://r2z2.zkillboard.com/ephemeral/sequence.json';
 const KILL_URL = (seq) => `https://r2z2.zkillboard.com/ephemeral/${seq}.json`;
 const EMPTY_BACKOFF_MS = 6500;
 const ERROR_BACKOFF_MS = 5000;
+const SUCCESS_DELAY_MS = 250;
 
 const HEAD_CHECK_MS        = 60_000;  // head-check cadence (wall clock)
 const HEAD_SKIP_THRESHOLD  = 500;     // jump forward if this many seqs behind
@@ -249,7 +250,7 @@ export function connectZkill({ onKill, onStatus, onJump } = {}) {
     nextSeq++;
     lastKillAt = Date.now();
     await saveState(nextSeq);
-    return 0;
+    return 250;
   }
 
   async function loop() {
